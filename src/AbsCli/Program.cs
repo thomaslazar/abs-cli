@@ -10,5 +10,6 @@ rootCommand.AddCommand(ItemsCommand.Create());
 rootCommand.AddCommand(SeriesCommand.Create());
 rootCommand.AddCommand(AuthorsCommand.Create());
 rootCommand.AddCommand(SearchCommand.Create());
+rootCommand.AddCommand(SelfTestCommand.Create());
 
 return await rootCommand.InvokeAsync(args);
