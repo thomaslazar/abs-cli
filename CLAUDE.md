@@ -3,6 +3,7 @@
 ## Git Conventions
 
 - Do NOT include `Co-Authored-By:` lines in commit messages.
+- Do NOT add "Generated with Claude Code" or similar attribution lines to PRs, commits, or any auto-generated content.
 
 ## MemPalace
 
