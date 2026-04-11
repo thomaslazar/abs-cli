@@ -36,4 +36,5 @@ claude plugin install caveman@caveman 2>/dev/null || true
 
 # --- Superpowers setup ---
 # Structured development workflow (brainstorming, planning, TDD, debugging, code review).
-claude plugin install superpowers@claude-plugins-official 2>/dev/null || true
+claude plugin marketplace add obra/superpowers 2>/dev/null || true
+claude plugin install superpowers@superpowers-dev 2>/dev/null || true
