@@ -8,6 +8,7 @@
 ## MemPalace
 
 - A project-local memory palace is available via MCP at `.mempalace/`
-- Wing: `abs-cli`. Rooms: `architecture`, `cli-design`, `testing` (add more as needed)
-- Store significant design decisions and rationale as drawers
-- Search the palace before answering questions about past decisions
+- Wing: `abs-cli`. Rooms: `architecture`, `cli-design`, `testing`, `decisions` (add more as needed)
+- **Query the palace first** when you need context on architecture, past decisions, AOT quirks, testing strategy, or any implementation rationale. The palace contains hard-won knowledge from the initial build (e.g., AOT source-gen requirements, macOS cross-compilation, testing architecture decisions).
+- Store significant new findings, decisions, and workarounds as drawers
+- Use `mempalace_search` for broad queries, `mempalace_kg_query` for entity relationships
