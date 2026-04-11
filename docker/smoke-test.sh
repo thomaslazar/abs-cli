@@ -166,6 +166,22 @@ assert_json_expr "items search finds Final Empire" "len(d.get('book',[]))>0" "$o
 output=$($CLI items search --query "zzz_nonexistent_xyz" 2>/dev/null)
 assert_json_expr "items search empty for garbage query" "len(d.get('book',[]))==0" "$output"
 
+# Update metadata — change title, verify it sticks
+ORIGINAL_TITLE=$(echo "$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)" \
+    | python3 -c "import sys,json; print(json.load(sys.stdin)['media']['metadata']['title'])")
+output=$($CLI items update --id "$FIRST_ITEM_ID" --input '{"metadata":{"title":"Smoke Test Updated Title"}}' 2>/dev/null)
+assert_json_key "items update returns updated item" "libraryItem" "$output"
+
+output=$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)
+assert_json_expr "items update persisted new title" \
+    "d['media']['metadata']['title']=='Smoke Test Updated Title'" "$output"
+
+# Restore original title
+$CLI items update --id "$FIRST_ITEM_ID" --input "{\"metadata\":{\"title\":\"$ORIGINAL_TITLE\"}}" 2>/dev/null > /dev/null
+output=$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)
+assert_json_expr "items update restored original title" \
+    "d['media']['metadata']['title']=='$ORIGINAL_TITLE'" "$output"
+
 # ============================================================
 echo ""
 echo "=== Series Commands ==="
