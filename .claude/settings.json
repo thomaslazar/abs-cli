@@ -20,10 +20,37 @@
       "mcp__mempalace__mempalace_add_drawer",
       "mcp__mempalace__mempalace_search",
       "WebFetch(domain:api.audiobookshelf.org)",
-      "mcp__mempalace__mempalace_list_rooms"
+      "mcp__mempalace__mempalace_list_rooms",
+      "mcp__mempalace__mempalace_get_aaak_spec",
+      "mcp__mempalace__mempalace_kg_add",
+      "mcp__mempalace__mempalace_diary_write"
     ],
     "additionalDirectories": [
       "/Users/ibn/Development/abs-cli"
+    ]
+  },
+  "spinnerVerbs": {
+    "mode": "replace",
+    "verbs": [
+      "Casting Zoltraak",
+      "Analyzing defensive magic",
+      "Collecting rare grimoires",
+      "Walking the same path again",
+      "Remembering the journey",
+      "Studying ancient spells",
+      "Waiting... time passes differently for elves",
+      "Learning what it means to understand humans",
+      "Finding flowers in a meadow",
+      "Deciphering a hero's legacy",
+      "Practicing magic that shows flowers",
+      "Regretting not learning more about him",
+      "Traveling north to the Demon King's castle",
+      "Realizing a decade is like the blink of an eye",
+      "Cleaning a statue in a ruined town",
+      "Watching the sunrise from Era",
+      "Taking the scenic route",
+      "Searching for the phantom ore",
+      "Passing the first-class mage exam"
     ]
   }
 }
