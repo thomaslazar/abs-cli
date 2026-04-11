@@ -34,18 +34,26 @@ dotnet test tests/AbsCli.Tests/AbsCli.Tests.csproj
 abs-cli self-test
 ```
 
-Runs on every CI build for all 5 platforms. Catches missing `[JsonSerializable]`
+Runs on every CI build for all 6 platforms. Catches missing `[JsonSerializable]`
 attributes, broken source generators, and platform-specific AOT issues.
 
 ### 3. Smoke Tests (bash, against live ABS)
 
-37 assertions running the AOT binary against a real Audiobookshelf Docker instance:
+67 assertions running the AOT binary against a real Audiobookshelf Docker
+instance seeded with 15 books, 6 authors, and 3 series:
 
-- All 22 help screens render correctly
+- All 23 help screens render correctly
 - Config set/get round-trip
-- Libraries list/get return valid JSON with correct data
-- Items list/search return paginated results
-- Series list, authors list, search all return expected JSON structure
+- Libraries list/get — correct count, correct library by ID and name
+- Items list — 15 items, pagination (5 per page, total preserved)
+- Items get — single item by ID with media metadata
+- Items search — finds books by title, empty for garbage queries
+- Items update — single field (title), multi-field (description + genres),
+  update from file (publisher), all verified via get after write
+- Items batch-get — fetch 2 items by ID via stdin
+- Series list — 3 series with pagination, single series get by ID
+- Authors list — 6 authors, find by name (Brandon Sanderson), get by ID
+- Search — finds books by title, finds series by name
 
 ```bash
 docker compose -f docker/docker-compose.yml up -d
@@ -65,8 +73,8 @@ CLI=./path/to/abs-cli bash docker/smoke-test.sh
 | Job | What | Platforms |
 |-----|------|-----------|
 | unit-test | xUnit tests | ubuntu (any) |
-| smoke-test | AOT binary + live ABS (37 assertions) | linux-x64 only (Docker required) |
-| build | AOT publish + self-test (14 assertions) | linux-x64, linux-arm64, osx-arm64, osx-x64, win-x64 |
+| smoke-test | AOT binary + live ABS (67 assertions) | linux-x64 only (Docker required) |
+| build | AOT publish + self-test (14 assertions) | linux-x64, linux-arm64, osx-arm64, osx-x64, win-x64, win-arm64 |
 
 The smoke test is Linux-only because it needs a Docker ABS container.
 Self-test runs on all platforms to validate AOT integrity everywhere.

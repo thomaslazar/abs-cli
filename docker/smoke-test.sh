@@ -182,6 +182,43 @@ output=$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)
 assert_json_expr "items update restored original title" \
     "d['media']['metadata']['title']=='$ORIGINAL_TITLE'" "$output"
 
+# Update multiple fields at once
+output=$($CLI items update --id "$FIRST_ITEM_ID" \
+    --input '{"metadata":{"description":"Smoke test description","genres":["Fantasy","Epic"]}}' 2>/dev/null)
+assert_json_key "items multi-field update returns item" "libraryItem" "$output"
+
+output=$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)
+assert_json_expr "items multi-field update: description set" \
+    "d['media']['metadata']['description']=='Smoke test description'" "$output"
+assert_json_expr "items multi-field update: genres set" \
+    "'Fantasy' in d['media']['metadata'].get('genres',[])" "$output"
+
+# Restore: clear description and genres
+$CLI items update --id "$FIRST_ITEM_ID" \
+    --input '{"metadata":{"description":null,"genres":[]}}' 2>/dev/null > /dev/null
+
+# Update from file
+TMPFILE=$(mktemp)
+echo '{"metadata":{"publisher":"Smoke Test Press"}}' > "$TMPFILE"
+output=$($CLI items update --id "$FIRST_ITEM_ID" --input "$TMPFILE" 2>/dev/null)
+assert_json_key "items update from file returns item" "libraryItem" "$output"
+
+output=$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)
+assert_json_expr "items update from file: publisher set" \
+    "d['media']['metadata'].get('publisher')=='Smoke Test Press'" "$output"
+rm -f "$TMPFILE"
+
+# Restore publisher
+$CLI items update --id "$FIRST_ITEM_ID" \
+    --input '{"metadata":{"publisher":null}}' 2>/dev/null > /dev/null
+
+# Batch get — fetch two items by ID
+SECOND_ITEM_ID=$($CLI items list --limit 5 --page 0 2>/dev/null \
+    | python3 -c "import sys,json; print(json.load(sys.stdin)['results'][1]['id'])")
+output=$(echo "{\"libraryItemIds\":[\"$FIRST_ITEM_ID\",\"$SECOND_ITEM_ID\"]}" \
+    | $CLI items batch-get --stdin 2>/dev/null)
+assert_json_expr "batch-get returns 2 items" "len(d.get('libraryItems',[]))==2" "$output"
+
 # ============================================================
 echo ""
 echo "=== Series Commands ==="
