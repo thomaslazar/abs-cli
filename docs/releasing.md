@@ -5,8 +5,8 @@
 Semantic versioning: `MAJOR.MINOR.PATCH`
 
 - **0.x.y** — pre-1.0, breaking changes allowed between minor versions
-- **MINOR** — new commands, new ABS version support, new features
-- **PATCH** — bug fixes, doc updates, dependency bumps
+- **MINOR** — new commands, new features
+- **PATCH** — bug fixes, doc updates, dependency bumps, ABS compatibility updates (tested version range bump with no CLI changes)
 
 ## Release Workflow
 
