@@ -60,8 +60,12 @@ jobs:
           # Native AOT requires matching host architecture — no cross-compilation.
           - os: ubuntu-latest
             rid: linux-x64
+          - os: ubuntu-24.04-arm
+            rid: linux-arm64
           - os: macos-latest
             rid: osx-arm64
+          - os: macos-13
+            rid: osx-x64
           - os: windows-latest
             rid: win-x64
     runs-on: ${{ matrix.os }}
@@ -74,6 +78,12 @@ jobs:
         run: >
           dotnet publish src/AbsCli/AbsCli.csproj
           -c Release -r ${{ matrix.rid }} --self-contained true /p:PublishAot=true
+      - name: Verify binary starts
+        shell: bash
+        run: |
+          BIN="src/AbsCli/bin/Release/net8.0/${{ matrix.rid }}/publish/abs-cli"
+          [ -f "${BIN}.exe" ] && BIN="${BIN}.exe"
+          "${BIN}" --help
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
