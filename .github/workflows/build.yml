@@ -80,8 +80,6 @@ jobs:
           dotnet publish src/AbsCli/AbsCli.csproj
           -c Release -r ${{ matrix.rid }} --self-contained true /p:PublishAot=true
       - name: Run self-test (AOT integrity check)
-        # Skip when cross-compiling (osx-x64 on arm64 runner)
-        if: matrix.rid != 'osx-x64' || runner.arch == 'X64'
         shell: bash
         run: |
           BIN="src/AbsCli/bin/Release/net8.0/${{ matrix.rid }}/publish/abs-cli"
