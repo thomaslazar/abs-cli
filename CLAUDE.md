@@ -2,8 +2,20 @@
 
 ## Git Conventions
 
+- **Conventional Commits** format required: `type: subject`
+- Types: `feat`, `fix`, `docs`, `test`, `ci`, `refactor`, `chore`
+- Subject line: imperative mood, lowercase, no period, max ~72 chars
+- Body (optional): explain *why*, not *what*. Wrap at 72 chars.
 - Do NOT include `Co-Authored-By:` lines in commit messages.
 - Do NOT add "Generated with Claude Code" or similar attribution lines to PRs, commits, or any auto-generated content.
+
+Examples:
+```
+feat: add backup create and restore commands
+fix: use accessToken instead of legacy user.token
+docs: update testing strategy for AOT validation
+test: add metadata update assertion to smoke tests
+```
 
 ## MemPalace
 
