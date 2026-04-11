@@ -1,17 +1,11 @@
 using System.Text.Json;
-using System.Text.Json.Serialization.Metadata;
+using AbsCli.Models;
 
 namespace AbsCli.Configuration;
 
 public class ConfigManager
 {
     private readonly string _configPath;
-
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented = true,
-        TypeInfoResolver = new DefaultJsonTypeInfoResolver()
-    };
 
     public ConfigManager(string configPath)
     {
@@ -32,7 +26,7 @@ public class ConfigManager
             return new AppConfig();
 
         var json = File.ReadAllText(_configPath);
-        return JsonSerializer.Deserialize<AppConfig>(json, JsonOptions) ?? new AppConfig();
+        return JsonSerializer.Deserialize(json, AppJsonContext.Default.AppConfig) ?? new AppConfig();
     }
 
     public void Save(AppConfig config)
@@ -41,7 +35,7 @@ public class ConfigManager
         if (dir != null && !Directory.Exists(dir))
             Directory.CreateDirectory(dir);
 
-        var json = JsonSerializer.Serialize(config, JsonOptions);
+        var json = JsonSerializer.Serialize(config, AppJsonContext.Default.AppConfig);
         File.WriteAllText(_configPath, json);
     }
 

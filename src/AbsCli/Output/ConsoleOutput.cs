@@ -1,18 +1,13 @@
 using System.Text.Json;
+using AbsCli.Models;
 
 namespace AbsCli.Output;
 
 public static class ConsoleOutput
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
+    public static void WriteJson(Dictionary<string, string> data)
     {
-        WriteIndented = true,
-        TypeInfoResolver = new System.Text.Json.Serialization.Metadata.DefaultJsonTypeInfoResolver()
-    };
-
-    public static void WriteJson<T>(T data)
-    {
-        var json = JsonSerializer.Serialize(data, JsonOptions);
+        var json = JsonSerializer.Serialize(data, AppJsonContext.Default.DictionaryStringString);
         Console.Out.WriteLine(json);
     }
 

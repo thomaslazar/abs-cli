@@ -1,26 +1,41 @@
 #!/usr/bin/env bash
 # Smoke test: exercises every abs-cli command against a live ABS instance.
-# Requires: ABS running, seeded via seed.sh, dotnet SDK available.
-# Usage: ABS_URL=http://localhost:13378 bash docker/smoke-test.sh
+# Tests the actual binary (AOT or JIT) — not `dotnet run`.
+#
+# Usage:
+#   ABS_URL=http://localhost:13378 CLI=./path/to/abs-cli bash docker/smoke-test.sh
+#
+# If CLI is not set, builds a Release binary via `dotnet publish` first.
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 ABS_URL="${ABS_URL:-http://localhost:13378}"
-CLI="dotnet run --project src/AbsCli/AbsCli.csproj --"
+
+# --- Build or locate the binary ---
+if [ -z "${CLI:-}" ]; then
+    echo "CLI not set — building Release binary..."
+    dotnet publish "$REPO_ROOT/src/AbsCli/AbsCli.csproj" \
+        -c Release -r linux-x64 --self-contained true /p:PublishAot=true \
+        -o "$REPO_ROOT/src/AbsCli/bin/smoke-test" \
+        --nologo -v quiet 2>&1
+    CLI="$REPO_ROOT/src/AbsCli/bin/smoke-test/abs-cli"
+fi
+
+if [ ! -x "$CLI" ]; then
+    echo "ERROR: binary not found or not executable at: $CLI"
+    exit 1
+fi
+
+echo "Binary: $CLI"
+echo "Binary size: $(du -h "$CLI" | cut -f1)"
+echo ""
+
 PASS=0
 FAIL=0
 
 pass() { echo "  PASS: $1"; PASS=$((PASS + 1)); }
 fail() { echo "  FAIL: $1 — $2"; FAIL=$((FAIL + 1)); }
-
-assert_exit_0() {
-    local label="$1"; shift
-    if output=$("$@" 2>&1); then
-        pass "$label"
-    else
-        fail "$label" "exit code $?"
-        echo "    output: $output"
-    fi
-}
 
 assert_json_key() {
     local label="$1" key="$2" json="$3"
@@ -29,15 +44,6 @@ assert_json_key() {
     else
         fail "$label" "key '$key' not found in response"
         echo "    response: ${json:0:200}"
-    fi
-}
-
-assert_contains() {
-    local label="$1" needle="$2" haystack="$3"
-    if echo "$haystack" | grep -q "$needle"; then
-        pass "$label"
-    else
-        fail "$label" "'$needle' not found in output"
     fi
 }
 
@@ -72,7 +78,7 @@ for cmd in "" "login" "config" "config get" "config set" \
            "authors" "authors list" "authors get" \
            "search"; do
     label="help: abs-cli $cmd --help"
-    output=$(eval "$CLI $cmd --help" 2>&1) || true
+    output=$($CLI $cmd --help 2>&1) || true
     if echo "$output" | grep -q "Description:\|Usage:"; then
         pass "$label"
     else
@@ -99,7 +105,7 @@ else
     fail "config set/get roundtrip" "server value not persisted"
 fi
 
-# Restore server for subsequent tests
+# Restore for subsequent tests
 $CLI config set server "$ABS_URL" 2>&1
 
 # ============================================================
@@ -113,7 +119,7 @@ assert_json_key "libraries list returns JSON" "libraries" "$output"
 if LIB_COUNT=$(echo "$output" | python3 -c "import sys,json; print(len(json.load(sys.stdin)['libraries']))" 2>/dev/null) && [ "$LIB_COUNT" -gt 0 ]; then
     pass "libraries list has entries ($LIB_COUNT)"
 else
-    fail "libraries list has entries" "count=$LIB_COUNT"
+    fail "libraries list has entries" "count=${LIB_COUNT:-?}"
 fi
 
 output=$($CLI libraries get --id "$LIB_ID" 2>/dev/null)
