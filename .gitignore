@@ -31,5 +31,8 @@ node_modules/
 .env
 .env.*
 
+# MemPalace (local AI memory database)
+.mempalace/
+
 # Misc
 temp

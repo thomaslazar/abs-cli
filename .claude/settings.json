@@ -12,7 +12,12 @@
       "Bash(git checkout:*)",
       "Bash(gh repo:*)",
       "Bash(gh pr:*)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:api.github.com)",
+      "mcp__mempalace__mempalace_status",
+      "mcp__mempalace__mempalace_add_drawer",
+      "mcp__mempalace__mempalace_search"
     ],
     "additionalDirectories": [
       "/Users/ibn/Development/abs-cli"

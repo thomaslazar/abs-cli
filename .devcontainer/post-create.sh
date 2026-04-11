@@ -23,3 +23,8 @@ cfg['desktop_notifications'] = False
 with open(cfg_path, 'w') as f:
     json.dump(cfg, f, indent=2)
 " 2>/dev/null || true
+
+# --- MemPalace setup ---
+# Register MCP server with Claude Code, pointing to repo-local palace.
+# The palace directory is created automatically on first write.
+claude mcp add mempalace -- python3 -m mempalace.mcp_server --palace "$(pwd)/.mempalace" 2>/dev/null || true
