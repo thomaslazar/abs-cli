@@ -1,0 +1,32 @@
+# IDE
+.idea/
+.vs/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build outputs
+bin/
+obj/
+out/
+build/
+dist/
+
+# Packages
+*.nupkg
+packages/
+node_modules/
+
+# User-specific files
+*.user
+*.suo
+*.log
+
+# Environment
+.env
+.env.*
