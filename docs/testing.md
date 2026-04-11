@@ -2,41 +2,71 @@
 
 ## Principle
 
-Always test the compiled binary, not the source code. If the CLI output is correct,
-the internals are correct.
+Always test the compiled AOT binary, not JIT-mode `dotnet run`. If `dotnet run`
+works but the AOT binary crashes, you've shipped a broken release. AOT disables
+reflection-based serialization — bugs only surface in the real binary.
 
-## Integration Tests
+## Three Test Layers
 
-Tests run against a real ABS instance in Docker:
+### 1. Unit Tests (xUnit)
 
-1. **Docker Compose** — spin up `advplyr/audiobookshelf:2.33.1` (pinned version)
-2. **Seed** — create a deterministic dataset via the ABS API (20-30 items, 2 libraries,
-   a few series and authors, intentional metadata gaps)
-3. **Execute** — run the compiled `abs-cli` binary
-4. **Assert** — validate JSON output matches expected results
+14 tests covering pure logic with no network or binary dependency:
 
-## What Gets Tested
+- `ConfigManagerTests` — config load/save round-trip, precedence resolution
+- `FilterEncoderTests` — base64 encoding, pass-through, error cases
+- `TokenHelperTests` — JWT expiry parsing, edge cases
 
-- Every command produces valid JSON on stdout
-- Errors go to stderr with correct exit codes
-- Auth flow — login, token storage, refresh, 401 handling
-- Filtering — base64 encoding works correctly
-- Batch update — items actually get modified
-- Pipeline — `items list | items batch-update --stdin` end-to-end
-- Config precedence — flags > env vars > config file
+```bash
+dotnet test tests/AbsCli.Tests/AbsCli.Tests.csproj
+```
+
+### 2. Self-Test (built-in command)
+
+14 assertions exercising all AOT-sensitive code paths without network access:
+
+- Source-generated JSON serialization (all types in `JsonContext`)
+- Config save/load round-trip
+- Filter encoder
+- Token helper
+- Console output
+
+```bash
+abs-cli self-test
+```
+
+Runs on every CI build for all 5 platforms. Catches missing `[JsonSerializable]`
+attributes, broken source generators, and platform-specific AOT issues.
+
+### 3. Smoke Tests (bash, against live ABS)
+
+37 assertions running the AOT binary against a real Audiobookshelf Docker instance:
+
+- All 22 help screens render correctly
+- Config set/get round-trip
+- Libraries list/get return valid JSON with correct data
+- Items list/search return paginated results
+- Series list, authors list, search all return expected JSON structure
+
+```bash
+docker compose -f docker/docker-compose.yml up -d
+bash docker/seed.sh
+CLI=./path/to/abs-cli bash docker/smoke-test.sh
+```
 
 ## Local Dev
 
-Same Docker-based ABS instance, but persistent:
-
 - `docker compose up -d` starts ABS (stays running)
 - Seed once on first setup or after container recreate
-- Run tests repeatedly during development
+- `smoke-test.sh` builds AOT binary automatically if `CLI` is not set
 - Works from inside the dev container (Docker-outside-of-Docker)
 
-## CI
+## CI Pipeline
 
-- Starts fresh ABS container per run
-- Seeds, runs tests, tears down
-- Linux only (Docker required)
-- Can test against multiple ABS versions (latest + oldest supported)
+| Job | What | Platforms |
+|-----|------|-----------|
+| unit-test | xUnit tests | ubuntu (any) |
+| smoke-test | AOT binary + live ABS (37 assertions) | linux-x64 only (Docker required) |
+| build | AOT publish + self-test (14 assertions) | linux-x64, linux-arm64, osx-arm64, osx-x64, win-x64 |
+
+The smoke test is Linux-only because it needs a Docker ABS container.
+Self-test runs on all platforms to validate AOT integrity everywhere.

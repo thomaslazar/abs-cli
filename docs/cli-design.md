@@ -108,3 +108,14 @@ Examples:
   # Pipe to jq for further filtering
   abs-cli items list | jq '.results[] | select(.media.metadata.isbn == null)'
 ```
+
+## Self-Test
+
+A built-in AOT integrity check that exercises all serialization paths without
+network access. Used by CI to validate every platform binary.
+
+| Command | Description |
+|---------|-------------|
+| `abs-cli self-test` | Run 14 offline assertions (JSON round-trips, config, filter encoder, token helper) |
+
+Returns exit code 0 on success, 1 on failure. Output goes to stderr.

@@ -16,6 +16,7 @@ obj/
 out/
 build/
 dist/
+publish/
 
 # Packages
 *.nupkg
