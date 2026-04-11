@@ -28,3 +28,15 @@ rooms:
       - ci
       - github actions
       - integration
+  - name: dev-container
+    keywords:
+      - devcontainer
+      - container
+      - plugin
+      - mempalace
+      - caveman
+      - superpowers
+      - peon-ping
+      - claude code
+      - mcp
+      - session
