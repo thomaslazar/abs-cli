@@ -10,6 +10,7 @@
       "Bash(git remote:*)",
       "Bash(git push:*)",
       "Bash(git checkout:*)",
+      "Bash(git commit:*)",
       "Bash(gh repo:*)",
       "Bash(gh pr:*)",
       "WebFetch(domain:github.com)",
@@ -17,14 +18,7 @@
       "WebFetch(domain:api.github.com)",
       "mcp__mempalace__mempalace_status",
       "mcp__mempalace__mempalace_add_drawer",
-      "mcp__mempalace__mempalace_search",
-      "Bash(git commit -m ':*)",
-      "Read(//tmp/everything-claude-code/manifests/**)",
-      "Read(//tmp/everything-claude-code/**)",
-      "Bash(cat rules/csharp/*.md)",
-      "Bash(wc -c skills/**/SKILL.md)",
-      "Bash(xargs cat:*)",
-      "Bash(awk '{print $NF}')"
+      "mcp__mempalace__mempalace_search"
     ],
     "additionalDirectories": [
       "/Users/ibn/Development/abs-cli"
