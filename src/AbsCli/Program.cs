@@ -1,9 +1,8 @@
 using System.CommandLine;
+using AbsCli.Commands;
 
 var rootCommand = new RootCommand("abs-cli — Audiobookshelf CLI");
-rootCommand.SetHandler(() =>
-{
-    Console.Error.WriteLine("Use --help to see available commands.");
-});
+
+rootCommand.AddCommand(LoginCommand.Create());
 
 return await rootCommand.InvokeAsync(args);
