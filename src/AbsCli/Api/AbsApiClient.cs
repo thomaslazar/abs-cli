@@ -111,6 +111,39 @@ public class AbsApiClient
             new AuthenticationHeaderValue("Bearer", _config.AccessToken);
     }
 
+    private static readonly string MinSupportedVersion = "2.33.1";
+    private static readonly string MaxTestedVersion = "2.33.1";
+
+    public static void CheckServerVersion(string? version)
+    {
+        if (string.IsNullOrEmpty(version)) return;
+
+        if (CompareVersions(version, MinSupportedVersion) < 0)
+        {
+            ConsoleOutput.WriteWarning(
+                $"ABS server version {version} is older than the minimum supported version ({MinSupportedVersion}). Some features may not work.");
+        }
+        else if (CompareVersions(version, MaxTestedVersion) > 0)
+        {
+            ConsoleOutput.WriteWarning(
+                $"ABS server version {version} has not been tested with this version of abs-cli. Proceed with caution.");
+        }
+    }
+
+    private static int CompareVersions(string a, string b)
+    {
+        var aParts = a.Split('.').Select(int.Parse).ToArray();
+        var bParts = b.Split('.').Select(int.Parse).ToArray();
+        var len = Math.Max(aParts.Length, bParts.Length);
+        for (int i = 0; i < len; i++)
+        {
+            var av = i < aParts.Length ? aParts[i] : 0;
+            var bv = i < bParts.Length ? bParts[i] : 0;
+            if (av != bv) return av.CompareTo(bv);
+        }
+        return 0;
+    }
+
     private async Task EnsureSuccessOrHandleAuthAsync(
         HttpResponseMessage response, HttpMethod method, string endpoint)
     {

@@ -65,6 +65,8 @@ public static class LoginCommand
 
                 configManager.Save(config);
 
+                AbsApiClient.CheckServerVersion(loginResponse.ServerSettings?.Version);
+
                 var version = loginResponse.ServerSettings?.Version ?? "unknown";
                 Console.Error.WriteLine($"Logged in as {loginResponse.User.Username} to {server} (ABS {version})");
 
