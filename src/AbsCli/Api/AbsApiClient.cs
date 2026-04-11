@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 using AbsCli.Configuration;
 using AbsCli.Models;
 using AbsCli.Output;
@@ -12,6 +13,11 @@ public class AbsApiClient
     private readonly HttpClient _http;
     private readonly ConfigManager _configManager;
     private AppConfig _config;
+
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        TypeInfoResolver = new DefaultJsonTypeInfoResolver()
+    };
 
     public AbsApiClient(AppConfig config, ConfigManager configManager)
     {
@@ -30,7 +36,7 @@ public class AbsApiClient
     public async Task<LoginResponse> LoginAsync(string username, string password)
     {
         var content = new StringContent(
-            JsonSerializer.Serialize(new { username, password }),
+            JsonSerializer.Serialize(new { username, password }, JsonOptions),
             Encoding.UTF8, "application/json");
 
         var request = new HttpRequestMessage(HttpMethod.Post, ApiEndpoints.Login)
@@ -43,7 +49,7 @@ public class AbsApiClient
         response.EnsureSuccessStatusCode();
 
         var json = await response.Content.ReadAsStringAsync();
-        return JsonSerializer.Deserialize<LoginResponse>(json)!;
+        return JsonSerializer.Deserialize<LoginResponse>(json, JsonOptions)!;
     }
 
     public async Task<string> GetAsync(string endpoint)
@@ -101,7 +107,7 @@ public class AbsApiClient
         }
 
         var json = await response.Content.ReadAsStringAsync();
-        var loginResponse = JsonSerializer.Deserialize<LoginResponse>(json)!;
+        var loginResponse = JsonSerializer.Deserialize<LoginResponse>(json, JsonOptions)!;
 
         _config.AccessToken = loginResponse.User.AccessToken;
         _config.RefreshToken = loginResponse.User.RefreshToken;

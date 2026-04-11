@@ -76,3 +76,7 @@ jobs:
         run: dotnet test tests/AbsCli.Tests/AbsCli.Tests.csproj --filter "Category=Integration"
         env:
           ABS_URL: http://localhost:13378
+      - name: Smoke test all CLI commands
+        run: bash docker/smoke-test.sh
+        env:
+          ABS_URL: http://localhost:13378

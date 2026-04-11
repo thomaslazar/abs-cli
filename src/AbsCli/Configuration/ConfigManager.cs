@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 
 namespace AbsCli.Configuration;
 
@@ -8,7 +9,8 @@ public class ConfigManager
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
-        WriteIndented = true
+        WriteIndented = true,
+        TypeInfoResolver = new DefaultJsonTypeInfoResolver()
     };
 
     public ConfigManager(string configPath)
@@ -30,7 +32,7 @@ public class ConfigManager
             return new AppConfig();
 
         var json = File.ReadAllText(_configPath);
-        return JsonSerializer.Deserialize<AppConfig>(json) ?? new AppConfig();
+        return JsonSerializer.Deserialize<AppConfig>(json, JsonOptions) ?? new AppConfig();
     }
 
     public void Save(AppConfig config)
