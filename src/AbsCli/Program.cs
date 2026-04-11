@@ -8,5 +8,6 @@ rootCommand.AddCommand(ConfigCommand.Create());
 rootCommand.AddCommand(LibrariesCommand.Create());
 rootCommand.AddCommand(ItemsCommand.Create());
 rootCommand.AddCommand(SeriesCommand.Create());
+rootCommand.AddCommand(AuthorsCommand.Create());
 
 return await rootCommand.InvokeAsync(args);
