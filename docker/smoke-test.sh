@@ -51,8 +51,9 @@ assert_json_key() {
 echo "Setting up test context..."
 TOKEN=$(curl -sf -X POST "$ABS_URL/login" \
     -H 'Content-Type: application/json' \
+    -H 'X-Return-Tokens: true' \
     -d '{"username":"root","password":"root"}' \
-    | python3 -c "import sys,json; print(json.load(sys.stdin)['user']['token'])")
+    | python3 -c "import sys,json; print(json.load(sys.stdin)['user']['accessToken'])")
 
 LIB_ID=$(curl -sf "$ABS_URL/api/libraries" \
     -H "Authorization: Bearer $TOKEN" \
