@@ -1,6 +1,4 @@
 using System.CommandLine;
-using AbsCli.Api;
-using AbsCli.Configuration;
 using AbsCli.Output;
 using AbsCli.Services;
 
@@ -25,7 +23,7 @@ public static class LibrariesCommand
 
         command.SetHandler(async (string? server, string? token) =>
         {
-            var (client, _) = BuildClient(server, token, null);
+            var (client, _) = CommandHelper.BuildClient(serverOverride: server, tokenOverride: token);
             var service = new LibrariesService(client);
             var json = await service.ListAsync();
             ConsoleOutput.WriteRawJson(json);
@@ -44,31 +42,12 @@ public static class LibrariesCommand
 
         command.SetHandler(async (string id, string? server, string? token) =>
         {
-            var (client, _) = BuildClient(server, token, null);
+            var (client, _) = CommandHelper.BuildClient(serverOverride: server, tokenOverride: token);
             var service = new LibrariesService(client);
             var json = await service.GetAsync(id);
             ConsoleOutput.WriteRawJson(json);
         }, idOption, serverOption, tokenOption);
 
         return command;
-    }
-
-    private static (AbsApiClient client, AppConfig config) BuildClient(
-        string? server, string? token, string? library)
-    {
-        var configManager = new ConfigManager();
-        var config = configManager.Resolve(flagServer: server, flagToken: token, flagLibrary: library);
-
-        if (string.IsNullOrEmpty(config.Server))
-        {
-            ConsoleOutput.WriteError("No server configured. Run: abs-cli login");
-            Environment.Exit(1);
-        }
-        if (string.IsNullOrEmpty(config.AccessToken))
-        {
-            ConsoleOutput.WriteError("Not authenticated. Run: abs-cli login");
-            Environment.Exit(1);
-        }
-        return (new AbsApiClient(config, configManager), config);
     }
 }

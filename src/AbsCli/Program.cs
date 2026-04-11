@@ -6,5 +6,6 @@ var rootCommand = new RootCommand("abs-cli — Audiobookshelf CLI");
 rootCommand.AddCommand(LoginCommand.Create());
 rootCommand.AddCommand(ConfigCommand.Create());
 rootCommand.AddCommand(LibrariesCommand.Create());
+rootCommand.AddCommand(ItemsCommand.Create());
 
 return await rootCommand.InvokeAsync(args);
