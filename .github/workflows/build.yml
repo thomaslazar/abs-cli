@@ -53,22 +53,18 @@ jobs:
 
   build:
     needs: unit-test
-    runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         include:
+          # Native AOT requires matching host architecture — no cross-compilation.
           - os: ubuntu-latest
             rid: linux-x64
-          - os: ubuntu-latest
-            rid: linux-arm64
-          - os: macos-latest
-            rid: osx-x64
           - os: macos-latest
             rid: osx-arm64
           - os: windows-latest
             rid: win-x64
-          - os: windows-latest
-            rid: win-arm64
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
