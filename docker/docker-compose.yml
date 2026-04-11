@@ -1,0 +1,14 @@
+services:
+  audiobookshelf:
+    image: advplyr/audiobookshelf:2.33.1
+    ports:
+      - "13378:80"
+    volumes:
+      - abs-config:/config
+      - abs-metadata:/metadata
+    environment:
+      - PORT=80
+
+volumes:
+  abs-config:
+  abs-metadata:
