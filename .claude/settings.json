@@ -18,7 +18,9 @@
       "WebFetch(domain:api.github.com)",
       "mcp__mempalace__mempalace_status",
       "mcp__mempalace__mempalace_add_drawer",
-      "mcp__mempalace__mempalace_search"
+      "mcp__mempalace__mempalace_search",
+      "WebFetch(domain:api.audiobookshelf.org)",
+      "mcp__mempalace__mempalace_list_rooms"
     ],
     "additionalDirectories": [
       "/Users/ibn/Development/abs-cli"

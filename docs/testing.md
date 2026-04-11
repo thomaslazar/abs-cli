@@ -1,25 +1,42 @@
-# Testing Strategy
+# Testing
 
 ## Principle
 
-Always test the compiled binary, not the source code. The CLI is an AOT-compiled single
-binary — tests should exercise it the same way a user would.
+Always test the compiled binary, not the source code. If the CLI output is correct,
+the internals are correct.
 
-## Integration Testing
+## Integration Tests
 
-Tests run against a real Audiobookshelf instance:
+Tests run against a real ABS instance in Docker:
 
-1. **Docker** — Spin up an Audiobookshelf container
-2. **Seed** — Load a fixed, deterministic dataset
-3. **Execute** — Run the compiled abs-cli binary against the instance
-4. **Assert** — Validate JSON output matches expected results
+1. **Docker Compose** — spin up `advplyr/audiobookshelf:2.33.1` (pinned version)
+2. **Seed** — create a deterministic dataset via the ABS API (20-30 items, 2 libraries,
+   a few series and authors, intentional metadata gaps)
+3. **Execute** — run the compiled `abs-cli` binary
+4. **Assert** — validate JSON output matches expected results
 
-This catches issues that unit tests miss: serialization bugs, API contract changes,
-AOT trimming problems, and end-to-end data flow issues.
+## What Gets Tested
 
-## CI/CD (GitHub Actions)
+- Every command produces valid JSON on stdout
+- Errors go to stderr with correct exit codes
+- Auth flow — login, token storage, refresh, 401 handling
+- Filtering — base64 encoding works correctly
+- Batch update — items actually get modified
+- Pipeline — `items list | items batch-update --stdin` end-to-end
+- Config precedence — flags > env vars > config file
 
-- **Build matrix** — Linux, Windows, macOS
-- **Publish** — AOT-compiled binaries for each platform
-- **Test** — Run Docker-based integration tests
-- **Artifacts** — Upload binaries as release artifacts
+## Local Dev
+
+Same Docker-based ABS instance, but persistent:
+
+- `docker compose up -d` starts ABS (stays running)
+- Seed once on first setup or after container recreate
+- Run tests repeatedly during development
+- Works from inside the dev container (Docker-outside-of-Docker)
+
+## CI
+
+- Starts fresh ABS container per run
+- Seeds, runs tests, tears down
+- Linux only (Docker required)
+- Can test against multiple ABS versions (latest + oldest supported)
