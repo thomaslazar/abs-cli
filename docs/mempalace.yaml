@@ -1,0 +1,30 @@
+wing: abs-cli
+rooms:
+  - name: architecture
+    keywords:
+      - stack
+      - language
+      - layers
+      - rules
+      - build
+      - aot
+      - principles
+  - name: cli-design
+    keywords:
+      - command
+      - resource
+      - items
+      - episodes
+      - series
+      - authors
+      - libraries
+      - filter
+      - output
+      - pipeline
+  - name: testing
+    keywords:
+      - test
+      - docker
+      - ci
+      - github actions
+      - integration
