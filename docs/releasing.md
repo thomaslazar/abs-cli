@@ -8,93 +8,110 @@ Semantic versioning: `MAJOR.MINOR.PATCH`
 - **MINOR** — new commands, new features
 - **PATCH** — bug fixes, doc updates, dependency bumps, ABS compatibility updates (tested version range bump with no CLI changes)
 
-## Release Workflow
+## Release Workflow — Agentic Flow with Human Gates
 
-### 1. Write release notes
+The release process is a multi-step agentic workflow. An agent drives each
+step, but pauses at human gates for review before proceeding. This will be
+implemented as a `/release` slash command (`.claude/commands/release.md`)
+after the v0.1.0 PR is merged.
 
-An agent (or human) writes release notes with two sections:
+### Step 1: Preflight (agent)
 
-**Highlights** — 3-5 bullet points describing what's new in plain language.
-Written by an agent, reviewed by a human. Focus on what users care about,
-not implementation details.
+Agent verifies prerequisites:
+- On `main` branch, working tree clean
+- All unit tests pass (`dotnet test`)
+- Determine version: agent proposes based on commits since last tag, human confirms
 
-**Changes** — auto-grouped from conventional commits since the last tag:
+**Human gate:** Confirm the version number.
 
+### Step 2: Generate release notes (agent)
+
+Agent generates release notes with two sections:
+
+**Highlights** — 3-5 bullet points in plain language. Agent writes these
+by reading the commits and summarizing what users care about.
+
+**Changes** — auto-grouped from conventional commits since last tag:
+
+```bash
+git log --oneline $(git describe --tags --abbrev=0)..HEAD --pretty="- %s" \
+    | grep -E "^- (feat|fix|refactor|docs|ci|test):" | sort
 ```
-### Highlights
+
+Format:
+```markdown
+## Highlights
 - First release of abs-cli with full audiobook metadata management
-- Native AOT binaries for 5 platforms — no runtime required
+- Native AOT binaries for 6 platforms — no runtime required
 - ...
 
-### Features
+## Features
 - feat: add login command with access+refresh token storage
-- feat: add items commands (list, get, search, update, batch-update, batch-get)
 - ...
 
-### Fixes
+## Fixes
 - fix: resolve AOT reflection errors in ConfigManager and AbsApiClient
 - ...
 ```
 
-Generate the changes section:
+Agent saves notes to `release-notes.md` (gitignored).
+
+**Human gate:** Review and approve the release notes. Edit if needed.
+
+### Step 3: Create GitHub Release (agent)
+
 ```bash
-# Changes since last tag (or all commits for first release)
-git log --oneline v0.0.0..HEAD --pretty="- %s" | grep -E "^- (feat|fix|refactor|docs|ci|test):" | sort
+gh release create v{version} --title "v{version}" --notes-file release-notes.md
 ```
 
-### 2. Create the release
+This creates the tag, publishes the release with notes, and triggers CI.
 
-Save the release notes to a file (e.g. `release-notes.md`), then create
-the GitHub Release with the notes attached:
+**Human gate:** Confirm the release was created. Agent shows the URL.
 
+### Step 4: Wait for CI (agent)
+
+Agent monitors the CI run:
 ```bash
-gh release create v0.1.0 --title "v0.1.0" --notes-file release-notes.md
+gh run watch <run-id> --exit-status
 ```
 
-This creates a git tag, a GitHub Release with the notes, and triggers
-the CI release workflow which:
-1. Runs unit tests
-2. Builds AOT binaries for all 6 platforms
-3. Runs self-test on each binary
-4. Runs smoke tests against live ABS (linux-x64)
-5. Uploads binaries as CI artifacts (to be attached to the release)
+Reports status. If CI fails, agent diagnoses and stops — no further steps
+until the failure is resolved.
 
-After CI completes, download the artifacts and attach them:
+**Human gate:** CI passed — confirm before attaching binaries.
+
+### Step 5: Attach binaries (agent)
 
 ```bash
-# Download all artifacts from the release CI run
 gh run download <run-id> --dir ./release-artifacts
-
-# Attach binaries to the release
-gh release upload v0.1.0 ./release-artifacts/abs-cli-*/*
+gh release upload v{version} ./release-artifacts/abs-cli-*/*
+rm -rf release-artifacts release-notes.md
 ```
 
-### 3. Verify
+### Step 6: Verify (agent + human)
 
-- Check the GitHub Release page — all 6 binaries should be attached
-- Download at least one binary and run `abs-cli self-test`
-- Verify the release notes render correctly
+Agent downloads one binary and runs `self-test`. Reports result.
 
-## CI Release Job
+**Human gate:** Check the GitHub Release page — all 6 binaries attached,
+notes render correctly, everything looks right.
 
-The release workflow is triggered by `release: created` events. It builds
-all 6 platform binaries and uploads them as CI artifacts. Attaching
-artifacts directly to the GitHub Release as assets is planned for
-automation after v0.1.0 — until then, download and attach manually.
+### Step 7: Done
 
-## Release Checklist
+Agent reports the release URL and a summary.
 
-For agents executing a release:
+## Human Gates Summary
 
-```
-- [ ] All tests pass on main (unit + smoke)
-- [ ] Write release notes to release-notes.md (highlights + grouped commits)
-- [ ] Human reviews release notes
-- [ ] Create release: gh release create v{version} --title "v{version}" --notes-file release-notes.md
-- [ ] Wait for CI to complete (builds 6 platform binaries)
-- [ ] Download artifacts: gh run download <run-id> --dir ./release-artifacts
-- [ ] Attach binaries: gh release upload v{version} ./release-artifacts/abs-cli-*/*
-- [ ] Verify: download a binary, run self-test
-- [ ] Verify: GitHub Release page looks correct
-- [ ] Clean up: rm release-notes.md release-artifacts/
-```
+| After step | Agent pauses for | Why |
+|------------|-----------------|-----|
+| 1. Preflight | Version confirmation | Human decides the version |
+| 2. Release notes | Notes review | Human quality-checks what users see |
+| 3. Create release | Release URL confirmation | Point of no return for the tag |
+| 4. CI completion | CI result acknowledgement | Don't attach to a broken release |
+| 6. Verify | Final visual check | Human confirms the public-facing page |
+
+## Implementation Plan
+
+After v0.1.0 merges, implement as `.claude/commands/release.md` — a
+project-local slash command invoked via `/release`. The command file
+contains the full flow above as agent instructions with explicit
+`AskUserQuestion` gates at each human checkpoint.
