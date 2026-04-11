@@ -29,6 +29,7 @@ Grab the binary for your platform from the [latest release](https://github.com/t
 | macOS Apple Silicon | `abs-cli-osx-arm64` |
 | macOS Intel | `abs-cli-osx-x64` |
 | Windows x64 | `abs-cli-win-x64` |
+| Windows ARM64 | `abs-cli-win-arm64` |
 
 ```bash
 chmod +x abs-cli-linux-x64

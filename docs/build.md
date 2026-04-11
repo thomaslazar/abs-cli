@@ -7,8 +7,9 @@
 | Linux x64 | `linux-x64` | `ubuntu-latest` | Primary. Full smoke test in CI |
 | Linux ARM64 | `linux-arm64` | `ubuntu-24.04-arm` | Native ARM runner |
 | macOS Apple Silicon | `osx-arm64` | `macos-latest` | Native build |
-| macOS Intel | `osx-x64` | `macos-latest` | Cross-compiled via Xcode toolchain |
+| macOS Intel | `osx-x64` | `macos-latest` | Cross-compiled via Xcode, self-test via Rosetta 2 |
 | Windows x64 | `win-x64` | `windows-latest` | Produces `abs-cli.exe` |
+| Windows ARM64 | `win-arm64` | `windows-11-arm` | Native ARM runner |
 
 Native AOT cannot cross-compile across operating systems, but macOS supports
 arm64-to-x64 cross-compilation via the Xcode toolchain. `macos-13` (Intel)
