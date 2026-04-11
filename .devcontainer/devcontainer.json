@@ -1,0 +1,32 @@
+{
+  "name": "abs-cli",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+
+  // Mount sessions so they're visible inside and outside the container.
+  // Mount sound packs so the relay can resolve the same file paths.
+  "mounts": [
+    "source=${localEnv:HOME}/.claude/projects,target=/home/vscode/.claude/projects,type=bind,consistency=cached",
+    "source=${localEnv:HOME}/.openpeon/packs,target=/home/vscode/.claude/hooks/peon-ping/packs,type=bind,consistency=cached"
+  ],
+
+  // Docker outside of Docker: lets you run `docker build / docker run`
+  // against the host daemon (e.g. OrbStack) from inside the container.
+  "features": {
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
+  },
+
+  "remoteUser": "vscode",
+
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "anthropic.claude-code",
+        "ms-dotnettools.csharp"
+      ]
+    }
+  }
+}
