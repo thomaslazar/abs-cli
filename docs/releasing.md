@@ -44,37 +44,43 @@ git log --oneline v0.0.0..HEAD --pretty="- %s" | grep -E "^- (feat|fix|refactor|
 
 ### 2. Create the release
 
+Save the release notes to a file (e.g. `release-notes.md`), then create
+the GitHub Release with the notes attached:
+
 ```bash
-# Tag the release
-git tag -a v0.1.0 -m "v0.1.0"
-git push origin v0.1.0
+gh release create v0.1.0 --title "v0.1.0" --notes-file release-notes.md
 ```
 
-This triggers the CI release workflow which:
+This creates a git tag, a GitHub Release with the notes, and triggers
+the CI release workflow which:
 1. Runs unit tests
-2. Builds AOT binaries for all 5 platforms
+2. Builds AOT binaries for all 6 platforms
 3. Runs self-test on each binary
 4. Runs smoke tests against live ABS (linux-x64)
-5. Creates a GitHub Release with binaries attached
+5. Uploads binaries as CI artifacts (to be attached to the release)
+
+After CI completes, download the artifacts and attach them:
+
+```bash
+# Download all artifacts from the release CI run
+gh run download <run-id> --dir ./release-artifacts
+
+# Attach binaries to the release
+gh release upload v0.1.0 ./release-artifacts/abs-cli-*/*
+```
 
 ### 3. Verify
 
-- Check the GitHub Release page — all 5 binaries should be attached
+- Check the GitHub Release page — all 6 binaries should be attached
 - Download at least one binary and run `abs-cli self-test`
 - Verify the release notes render correctly
 
 ## CI Release Job
 
-The release workflow is triggered by `release: created` events. It needs a
-dedicated job that:
-
-1. Builds all 5 platform binaries
-2. Attaches them to the GitHub Release as assets
-3. Includes the release notes
-
-**Note:** The release CI job automation is planned for implementation after
-the v0.1.0 PR is merged. The first release may require manually attaching
-binaries downloaded from the PR's CI artifacts.
+The release workflow is triggered by `release: created` events. It builds
+all 6 platform binaries and uploads them as CI artifacts. Attaching
+artifacts directly to the GitHub Release as assets is planned for
+automation after v0.1.0 — until then, download and attach manually.
 
 ## Release Checklist
 
@@ -82,22 +88,13 @@ For agents executing a release:
 
 ```
 - [ ] All tests pass on main (unit + smoke)
-- [ ] Write release notes (highlights + grouped commits)
+- [ ] Write release notes to release-notes.md (highlights + grouped commits)
 - [ ] Human reviews release notes
-- [ ] Tag: git tag -a v{version} -m "v{version}"
-- [ ] Push tag: git push origin v{version}
-- [ ] CI builds and publishes release (or manually attach artifacts)
-- [ ] Verify: download binary, run self-test
+- [ ] Create release: gh release create v{version} --title "v{version}" --notes-file release-notes.md
+- [ ] Wait for CI to complete (builds 6 platform binaries)
+- [ ] Download artifacts: gh run download <run-id> --dir ./release-artifacts
+- [ ] Attach binaries: gh release upload v{version} ./release-artifacts/abs-cli-*/*
+- [ ] Verify: download a binary, run self-test
 - [ ] Verify: GitHub Release page looks correct
+- [ ] Clean up: rm release-notes.md release-artifacts/
 ```
-
-## First Release (v0.1.0)
-
-Since the release CI automation doesn't exist yet:
-
-1. Merge the implementation PR
-2. Write release notes (agent + human review)
-3. Create a GitHub Release manually via `gh release create`
-4. Download CI artifacts from the last green PR run
-5. Attach binaries to the release
-6. After this release, implement the automated release workflow
