@@ -90,13 +90,14 @@ public static class ItemsCommand
         var libraryOption = new Option<string?>("--library", "Library ID or name");
         var limitOption = new Option<int?>("--limit", "Max results");
 
-        var command = new Command("search", "Search items in a library")
+        var command = new Command("search",
+            "Search items in a library (substring match, case-insensitive, searches title/subtitle/ASIN/ISBN)")
         {
             queryOption, libraryOption, limitOption
         };
         command.AddExamples(
-            "abs-cli items search --query \"Brandon Sanderson\"",
-            "abs-cli items search --query \"Mistborn\" --limit 5");
+            "abs-cli items search --query \"Mistborn\"",
+            "abs-cli items search --query \"978-0\" --limit 20");
 
         command.SetHandler(async (string query, string? library, int? limit) =>
         {
