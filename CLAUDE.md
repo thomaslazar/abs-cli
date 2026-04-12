@@ -17,6 +17,12 @@ docs: update testing strategy for AOT validation
 test: add metadata update assertion to smoke tests
 ```
 
+## Code Formatting
+
+- `.editorconfig` (from dotnet/runtime) enforces style. CI checks with `dotnet format --verify-no-changes`.
+- Run `dotnet format AbsCli.sln` after writing or modifying C# files.
+- If formatting check fails in CI, run the format command and commit the fix.
+
 ## MemPalace
 
 - A project-local memory palace is available via MCP at `.mempalace/`
