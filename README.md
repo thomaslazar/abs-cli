@@ -8,7 +8,7 @@ Native AOT binary. No runtime required. ~9 MB.
 
 ## Features
 
-- **7 commands** — login, config, libraries, items, series, authors, search
+- **8 commands** — login, config, libraries, items, series, authors, search, self-test
 - **JSON-only output** — stdout is always valid JSON matching the ABS API, errors go to stderr
 - **Native AOT** — single self-contained binary, no .NET runtime needed
 - **Config precedence** — CLI flags > environment variables > config file
@@ -141,7 +141,7 @@ dotnet run --project src/AbsCli/AbsCli.csproj -- self-test
 # Full smoke test against a live ABS instance
 docker compose -f docker/docker-compose.yml up -d
 bash docker/seed.sh
-bash docker/smoke-test.sh                          # builds AOT binary + runs 37 assertions
+bash docker/smoke-test.sh                          # builds AOT binary + runs 71 assertions
 docker compose -f docker/docker-compose.yml down -v
 ```
 

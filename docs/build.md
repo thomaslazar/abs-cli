@@ -49,6 +49,7 @@ The `self-test` command verifies all registered types work correctly.
 
 - **unit-test** — xUnit tests
 - **smoke-test** — AOT binary against live ABS Docker instance (linux-x64)
-- **build** — 5-platform AOT matrix, each runs `self-test` (except osx-x64 cross-compile)
+- **build** — 6-platform AOT matrix, each runs `self-test` (osx-x64 via Rosetta 2)
+- Binaries auto-attached to GitHub Releases on release events
 - Artifacts uploaded per platform
 - Triggered on pull requests and releases

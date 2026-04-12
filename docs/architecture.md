@@ -22,12 +22,18 @@ CLI  →  Service  →  API Client  →  DTOs
 ```
 
 - **CLI** — Command parsing, argument validation, help text, output to stdout/stderr.
-  Uses System.CommandLine.
-- **Service** — Business logic and orchestration. Coordinates API calls.
+  Uses System.CommandLine. `HelpExtensions` adds custom help sections (Examples,
+  Filter groups, Sort fields) via `HelpBuilder.CustomizeLayout`. `CommandHelper`
+  provides shared client/config resolution for all commands.
+- **Service** — Business logic and orchestration. Returns typed DTOs (not raw strings)
+  to validate the API contract at the service boundary.
 - **API Client** — HTTP communication with Audiobookshelf. Single `AbsApiClient` class
-  wrapping `HttpClient`. Handles auth headers, base URL, filter encoding.
-- **DTOs** — Explicit data transfer objects. Serialized with System.Text.Json source
-  generators (AOT-compatible, no reflection).
+  wrapping `HttpClient`. Handles auth headers, token refresh, base URL. Generic
+  `GetAsync<T>` overloads deserialize responses through `JsonTypeInfo<T>`.
+- **DTOs** — Explicit data transfer objects. All types that cross the serialization
+  boundary are registered in `JsonContext.cs` (`[JsonSerializable]` attributes)
+  for AOT source-generated serialization. This is critical — missing a type causes
+  runtime crashes under AOT.
 
 ## Project Structure
 
@@ -44,6 +50,9 @@ abs-cli/
         SearchCommand.cs
         ConfigCommand.cs
         LoginCommand.cs
+        SelfTestCommand.cs         # AOT integrity verification
+        CommandHelper.cs           # Shared client/config resolution
+        HelpExtensions.cs          # Custom help sections (Examples, Filter groups, etc.)
       Services/
         ItemsService.cs
         LibrariesService.cs
@@ -53,18 +62,23 @@ abs-cli/
       Api/
         AbsApiClient.cs
         ApiEndpoints.cs
+        FilterEncoder.cs           # Base64 filter encoding for ABS API
+        TokenHelper.cs             # JWT expiry decoding
       Models/
+        JsonContext.cs              # Source-generated serialization (AOT-critical)
         LibraryItem.cs
         Library.cs
         Series.cs
         Author.cs
         SearchResult.cs
+        UpdateMediaResponse.cs
+        BatchGetResponse.cs
         ...
       Configuration/
         AppConfig.cs
         ConfigManager.cs
       Output/
-        JsonOutput.cs
+        ConsoleOutput.cs
   tests/
     AbsCli.Tests/
 ```
@@ -74,9 +88,10 @@ abs-cli/
 - No Newtonsoft.Json — incompatible with AOT trimming
 - No `dynamic` — breaks AOT compilation
 - No reflection — breaks AOT trimming
-- Explicit DTOs — every API response has a typed model
+- Explicit DTOs — every API response deserializes through a typed model (contract validation)
+- Every serialized type must be registered in `JsonContext.cs` — untested types crash under AOT
 - JSON is the only output format in v1
-- JSON output matches ABS API response structure exactly — no transformation
+- JSON output is re-serialized from typed DTOs (validates contract, may drop unknown fields)
 
 ## Stack
 

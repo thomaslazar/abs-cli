@@ -11,106 +11,100 @@ Semantic versioning: `MAJOR.MINOR.PATCH`
 ## Release Workflow — Agentic Flow with Human Gates
 
 The release process is a multi-step agentic workflow. An agent drives each
-step, but pauses at human gates for review before proceeding. This will be
-implemented as a `/release` slash command (`.claude/commands/release.md`)
-after the v0.1.0 PR is merged.
+step, but pauses at human gates for review before proceeding. Invoked via
+`/release` in Claude Code.
 
 ### Step 1: Preflight (agent)
 
 Agent verifies prerequisites:
 - On `main` branch, working tree clean
+- Format check (`dotnet format --verify-no-changes`)
 - All unit tests pass (`dotnet test`)
-- Determine version: agent proposes based on commits since last tag, human confirms
+- AOT build + self-test (25 checks)
+- Smoke test against ABS if Docker available (71 assertions)
+- Determine version based on commits since last tag
 
 **Human gate:** Confirm the version number.
 
-### Step 2: Generate release notes (agent)
-
-Agent generates release notes with two sections:
-
-**Highlights** — 3-5 bullet points in plain language. Agent writes these
-by reading the commits and summarizing what users care about.
-
-**Changes** — auto-grouped from conventional commits since last tag:
+### Step 2: Create release branch (agent)
 
 ```bash
-git log --oneline $(git describe --tags --abbrev=0)..HEAD --pretty="- %s" \
-    | grep -E "^- (feat|fix|refactor|docs|ci|test):" | sort
+git checkout -b release/v{version}
 ```
 
-Format:
-```markdown
-## Highlights
-- First release of abs-cli with full audiobook metadata management
-- Native AOT binaries for 6 platforms — no runtime required
-- ...
+### Step 3: Generate release notes (agent)
 
-## Features
-- feat: add login command with access+refresh token storage
-- ...
+Agent writes `release-notes.md` with two sections:
 
-## Fixes
-- fix: resolve AOT reflection errors in ConfigManager and AbsApiClient
-- ...
-```
+**Highlights** — 3-5 bullet points in plain language.
 
-Agent saves notes to `release-notes.md` (gitignored).
+**Changes** — auto-grouped from conventional commits since last tag.
 
-**Human gate:** Review and approve the release notes. Edit if needed.
+**Human gate:** Review and approve the release notes.
 
-### Step 3: Create GitHub Release (agent)
+Agent then prepends the notes to `CHANGELOG.md` and commits.
+
+### Step 4: Open PR for CI validation (agent)
 
 ```bash
+git push -u origin release/v{version}
+gh pr create --title "release: v{version}" --base main
+```
+
+CI runs the full pipeline (unit tests, 6-platform AOT builds + self-test,
+smoke test against live ABS). Agent monitors and reports results.
+
+**Human gate:** CI passed — review and merge the PR.
+
+### Step 5: Tag and create GitHub Release (agent)
+
+After merge, agent switches to main and creates the release using the
+same `release-notes.md` from step 3:
+
+```bash
+git checkout main && git pull
 gh release create v{version} --title "v{version}" --notes-file release-notes.md
 ```
 
-This creates the tag, publishes the release with notes, and triggers CI.
+**Human gate:** Confirm the release was created.
 
-**Human gate:** Confirm the release was created. Agent shows the URL.
+### Step 6: Wait for release CI (agent)
 
-### Step 4: Wait for CI (agent)
+The release event triggers CI which builds all 6 platforms and
+**automatically attaches binaries** to the GitHub Release.
 
-Agent monitors the CI run:
-```bash
-gh run watch <run-id> --exit-status
-```
+Agent monitors the run and reports results.
 
-Reports status. If CI fails, agent diagnoses and stops — no further steps
-until the failure is resolved.
+### Step 7: Verify (agent + human)
 
-**Human gate:** CI passed — confirm before attaching binaries.
-
-### Step 5: Attach binaries (agent)
-
-```bash
-gh run download <run-id> --dir ./release-artifacts
-gh release upload v{version} ./release-artifacts/abs-cli-*/*
-rm -rf release-artifacts release-notes.md
-```
-
-### Step 6: Verify (agent + human)
-
-Agent downloads one binary and runs `self-test`. Reports result.
+Agent downloads one binary and runs `self-test`.
 
 **Human gate:** Check the GitHub Release page — all 6 binaries attached,
-notes render correctly, everything looks right.
+notes render correctly.
 
-### Step 7: Done
+### Step 8: Done
 
-Agent reports the release URL and a summary.
+Agent cleans up (`release-notes.md`, any temp files) and reports summary.
 
 ## Human Gates Summary
 
 | After step | Agent pauses for | Why |
 |------------|-----------------|-----|
 | 1. Preflight | Version confirmation | Human decides the version |
-| 2. Release notes | Notes review | Human quality-checks what users see |
-| 3. Create release | Release URL confirmation | Point of no return for the tag |
-| 4. CI completion | CI result acknowledgement | Don't attach to a broken release |
-| 6. Verify | Final visual check | Human confirms the public-facing page |
+| 3. Release notes | Notes review | Human quality-checks what users see |
+| 4. CI validation | Merge approval | Full CI must pass before tagging |
+| 5. Create release | Release URL confirmation | Point of no return for the tag |
+| 7. Verify | Final visual check | Human confirms the public-facing page |
 
 ## Implementation
 
 Implemented as `.claude/skills/release/SKILL.md` — a project-local skill
 invoked via `/release` in Claude Code. The skill is human-invocable only
 (`disable-model-invocation: true`) to prevent accidental releases.
+
+`CHANGELOG.md` is the permanent record. GitHub Release notes mirror it.
+`release-notes.md` is the working document (gitignored) — written by agent,
+reviewed by human, prepended to CHANGELOG.md, passed to `gh release create`.
+
+CI auto-attaches binaries to GitHub Releases via `gh release upload` in
+the build job (`permissions: contents: write`).
