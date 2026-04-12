@@ -120,6 +120,29 @@ for cmd in "login" "config get" "config set" \
     fi
 done
 
+# items list must have filter groups and sort fields reference
+output=$($CLI items list --help 2>&1)
+if echo "$output" | grep -q "Filter groups:"; then
+    pass "items list help has Filter groups section"
+else
+    fail "items list help has Filter groups section" "missing"
+fi
+if echo "$output" | grep -q "genres"; then
+    pass "items list filter groups lists genres"
+else
+    fail "items list filter groups lists genres" "missing"
+fi
+if echo "$output" | grep -q "Sort fields:"; then
+    pass "items list help has Sort fields section"
+else
+    fail "items list help has Sort fields section" "missing"
+fi
+if echo "$output" | grep -q "media.metadata.title"; then
+    pass "items list sort fields lists title"
+else
+    fail "items list sort fields lists title" "missing"
+fi
+
 # ============================================================
 echo ""
 echo "=== Config Commands ==="
