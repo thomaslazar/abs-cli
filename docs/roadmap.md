@@ -1,33 +1,31 @@
 # Roadmap
 
-## v0.2.0 — Backup & Restore (safety net for agent operations)
+## v0.2.0 — Upload, Metadata & Backup
 
-ABS has a full backup API (`/api/backups/*`, admin-only). Wrapping it in the CLI
-gives agents a rollback mechanism before making bulk metadata changes.
+Enable AI agents to upload books to ABS, apply metadata from providers, and
+create safety-net backups. CLI provides sharp primitives; agents orchestrate.
 
-| Command | ABS Endpoint | Description |
-|---------|-------------|-------------|
-| `abs-cli backup create` | `POST /api/backups` | Snapshot current state before changes |
-| `abs-cli backup list` | `GET /api/backups` | List available backups |
-| `abs-cli backup apply --id <id>` | `GET /api/backups/:id/apply` | Restore from a backup |
-| `abs-cli backup download --id <id>` | `GET /api/backups/:id/download` | Download backup file |
-| `abs-cli backup delete --id <id>` | `DELETE /api/backups/:id` | Delete a backup |
-| `abs-cli backup upload --file <path>` | `POST /api/backups/upload` | Upload a backup file |
+**Backup** — `abs-cli backup create|list|apply|download|delete|upload` (admin-only).
+Safety net before bulk changes. Backups contain the SQLite database + metadata.
 
-Intended agent workflow:
-```bash
-# Before bulk changes
-BACKUP_ID=$(abs-cli backup create | jq -r '.id')
+**Upload** — `abs-cli upload` with author/series/sequence folder naming.
+Supports `--wait` to poll until the item appears in the library after upload.
 
-# Agent makes changes...
-abs-cli items batch-update --stdin < changes.json
+**Scan** — `abs-cli libraries scan` (full library, async) and `abs-cli items scan`
+(single item, sync). Trigger scans after upload to create library items.
 
-# If something went wrong
-abs-cli backup apply --id "$BACKUP_ID"
-```
+**Metadata** — `abs-cli metadata search|providers|covers`. Search ABS-configured
+providers (Audible, Google Books, etc.) for book metadata and covers. Agent picks
+the match and applies via existing `abs-cli items update`.
 
-Backups contain the SQLite database + metadata — all library items, metadata,
-series, authors, user data. Restore replaces the current state entirely.
+**Tasks** — `abs-cli tasks list`. Poll background task status (e.g. scan progress).
+
+**Permission errors** — Improved error messages for 403/400/404/500 across all commands.
+
+**Testing** — New `uploaduser` test user, permission denial smoke tests, external
+provider tests gated behind local-only flag.
+
+Full spec: [docs/specs/2026-04-12-v0.2.0-upload-metadata-backup.md](specs/2026-04-12-v0.2.0-upload-metadata-backup.md)
 
 ---
 
