@@ -44,17 +44,16 @@ public static class ItemsCommand
               birthtimeMs                   — file creation time
               mtimeMs                       — file modification time
               random                        — random order
-
-            Examples:
-              abs-cli items list
-              abs-cli items list --filter "languages=English" --sort "media.metadata.title"
-              abs-cli items list --filter "genres=Fantasy" --desc
-              abs-cli items list --sort "addedAt" --desc --limit 10
-              abs-cli items list | jq '.results[] | select(.media.metadata.isbn == null)'
             """)
         {
             libraryOption, filterOption, sortOption, descOption, limitOption, pageOption
         };
+        command.AddExamples(
+            "abs-cli items list",
+            "abs-cli items list --filter \"languages=English\" --sort \"media.metadata.title\"",
+            "abs-cli items list --filter \"genres=Fantasy\" --desc",
+            "abs-cli items list --sort \"addedAt\" --desc --limit 10",
+            "abs-cli items list | jq '.results[] | select(.media.metadata.isbn == null)'");
 
         command.SetHandler(async (string? library, string? filter, string? sort,
             bool desc, int? limit, int? page) =>
@@ -72,13 +71,10 @@ public static class ItemsCommand
     private static Command CreateGetCommand()
     {
         var idOption = new Option<string>("--id", "Item ID") { IsRequired = true };
-        var command = new Command("get", """
-            Get a single library item by ID
-
-            Examples:
-              abs-cli items get --id "li_abc123"
-              abs-cli items get --id "li_abc123" | jq '.media.metadata'
-            """) { idOption };
+        var command = new Command("get", "Get a single library item by ID") { idOption };
+        command.AddExamples(
+            "abs-cli items get --id \"li_abc123\"",
+            "abs-cli items get --id \"li_abc123\" | jq '.media.metadata'");
 
         command.SetHandler(async (string id) =>
         {
@@ -97,16 +93,13 @@ public static class ItemsCommand
         var libraryOption = new Option<string?>("--library", "Library ID or name");
         var limitOption = new Option<int?>("--limit", "Max results");
 
-        var command = new Command("search", """
-            Search items in a library
-
-            Examples:
-              abs-cli items search --query "Brandon Sanderson"
-              abs-cli items search --query "Mistborn" --limit 5
-            """)
+        var command = new Command("search", "Search items in a library")
         {
             queryOption, libraryOption, limitOption
         };
+        command.AddExamples(
+            "abs-cli items search --query \"Brandon Sanderson\"",
+            "abs-cli items search --query \"Mistborn\" --limit 5");
 
         command.SetHandler(async (string query, string? library, int? limit) =>
         {
@@ -125,14 +118,11 @@ public static class ItemsCommand
         var idOption = new Option<string>("--id", "Item ID") { IsRequired = true };
         var inputOption = new Option<string>("--input", "JSON input (string or file path)") { IsRequired = true };
 
-        var command = new Command("update", """
-            Update a single item's metadata
-
-            Examples:
-              abs-cli items update --id "li_abc123" --input '{"metadata":{"title":"New Title"}}'
-              abs-cli items update --id "li_abc123" --input payload.json
-              abs-cli items update --id "li_abc123" --input '{"metadata":{"genres":["Fantasy","Epic"]}}'
-            """) { idOption, inputOption };
+        var command = new Command("update", "Update a single item's metadata") { idOption, inputOption };
+        command.AddExamples(
+            "abs-cli items update --id \"li_abc123\" --input '{\"metadata\":{\"title\":\"New Title\"}}'",
+            "abs-cli items update --id \"li_abc123\" --input payload.json",
+            "abs-cli items update --id \"li_abc123\" --input '{\"metadata\":{\"genres\":[\"Fantasy\",\"Epic\"]}}'");
 
         command.SetHandler(async (string id, string input) =>
         {
@@ -151,13 +141,10 @@ public static class ItemsCommand
         var inputOption = new Option<string?>("--input", "JSON file path");
         var stdinOption = new Option<bool>("--stdin", "Read JSON from stdin");
 
-        var command = new Command("batch-update", """
-            Batch update multiple items
-
-            Examples:
-              abs-cli items batch-update --input updates.json
-              cat updates.json | abs-cli items batch-update --stdin
-            """) { inputOption, stdinOption };
+        var command = new Command("batch-update", "Batch update multiple items") { inputOption, stdinOption };
+        command.AddExamples(
+            "abs-cli items batch-update --input updates.json",
+            "cat updates.json | abs-cli items batch-update --stdin");
 
         command.SetHandler(async (string? input, bool stdin) =>
         {
@@ -185,13 +172,10 @@ public static class ItemsCommand
         var inputOption = new Option<string?>("--input", "JSON file with libraryItemIds");
         var stdinOption = new Option<bool>("--stdin", "Read JSON from stdin");
 
-        var command = new Command("batch-get", """
-            Batch get multiple items by ID
-
-            Examples:
-              abs-cli items batch-get --input ids.json
-              echo '{"libraryItemIds":["li_abc","li_def"]}' | abs-cli items batch-get --stdin
-            """) { inputOption, stdinOption };
+        var command = new Command("batch-get", "Batch get multiple items by ID") { inputOption, stdinOption };
+        command.AddExamples(
+            "abs-cli items batch-get --input ids.json",
+            "echo '{\"libraryItemIds\":[\"li_abc\",\"li_def\"]}' | abs-cli items batch-get --stdin");
 
         command.SetHandler(async (string? input, bool stdin) =>
         {

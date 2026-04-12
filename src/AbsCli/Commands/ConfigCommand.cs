@@ -1,5 +1,4 @@
 using System.CommandLine;
-using System.Text.Json;
 using AbsCli.Configuration;
 using AbsCli.Output;
 
@@ -17,13 +16,10 @@ public static class ConfigCommand
 
     private static Command CreateGetCommand()
     {
-        var command = new Command("get", """
-            Show current configuration
-
-            Examples:
-              abs-cli config get
-              abs-cli config get | jq '.server'
-            """);
+        var command = new Command("get", "Show current configuration");
+        command.AddExamples(
+            "abs-cli config get",
+            "abs-cli config get | jq '.server'");
 
         command.SetHandler(() =>
         {
@@ -50,17 +46,14 @@ public static class ConfigCommand
         var keyArg = new Argument<string>("key", "Configuration key (server, default-library)");
         var valueArg = new Argument<string>("value", "Configuration value");
 
-        var command = new Command("set", """
-            Set a configuration value
-
-            Examples:
-              abs-cli config set server https://abs.example.com
-              abs-cli config set default-library "lib_abc123"
-            """)
+        var command = new Command("set", "Set a configuration value")
         {
             keyArg,
             valueArg
         };
+        command.AddExamples(
+            "abs-cli config set server https://abs.example.com",
+            "abs-cli config set default-library \"lib_abc123\"");
 
         command.SetHandler((string key, string value) =>
         {

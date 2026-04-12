@@ -1,4 +1,6 @@
 using System.CommandLine;
+using System.CommandLine.Builder;
+using System.CommandLine.Parsing;
 using AbsCli.Commands;
 
 var rootCommand = new RootCommand("abs-cli — Audiobookshelf CLI");
@@ -12,4 +14,9 @@ rootCommand.AddCommand(AuthorsCommand.Create());
 rootCommand.AddCommand(SearchCommand.Create());
 rootCommand.AddCommand(SelfTestCommand.Create());
 
-return await rootCommand.InvokeAsync(args);
+var parser = new CommandLineBuilder(rootCommand)
+    .UseDefaults()
+    .UseExamplesHelp()
+    .Build();
+
+return await parser.InvokeAsync(args);

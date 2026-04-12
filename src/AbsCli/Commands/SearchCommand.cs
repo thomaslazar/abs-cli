@@ -12,17 +12,14 @@ public static class SearchCommand
         var libraryOption = new Option<string?>("--library", "Library ID or name");
         var limitOption = new Option<int?>("--limit", "Max results");
 
-        var command = new Command("search", """
-            Search across a library
-
-            Examples:
-              abs-cli search --query "Brandon Sanderson"
-              abs-cli search --query "Mistborn" --limit 5
-              abs-cli search --query "Fantasy" | jq '.book[].libraryItem.media.metadata.title'
-            """)
+        var command = new Command("search", "Search across a library")
         {
             queryOption, libraryOption, limitOption
         };
+        command.AddExamples(
+            "abs-cli search --query \"Brandon Sanderson\"",
+            "abs-cli search --query \"Mistborn\" --limit 5",
+            "abs-cli search --query \"Fantasy\" | jq '.book[].libraryItem.media.metadata.title'");
 
         command.SetHandler(async (string query, string? library, int? limit) =>
         {

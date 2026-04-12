@@ -1,8 +1,6 @@
 using System.CommandLine;
-using System.Text.Json;
 using AbsCli.Api;
 using AbsCli.Configuration;
-using AbsCli.Models;
 using AbsCli.Output;
 
 namespace AbsCli.Commands;
@@ -15,16 +13,13 @@ public static class LoginCommand
             "--server",
             "Audiobookshelf server URL");
 
-        var command = new Command("login", """
-            Authenticate with an Audiobookshelf server
-
-            Examples:
-              abs-cli login --server https://abs.example.com
-              abs-cli login
-            """)
+        var command = new Command("login", "Authenticate with an Audiobookshelf server")
         {
             serverOption
         };
+        command.AddExamples(
+            "abs-cli login --server https://abs.example.com",
+            "abs-cli login");
 
         command.SetHandler(async (string? server) =>
         {
@@ -70,7 +65,6 @@ public static class LoginCommand
                     config.DefaultLibrary = loginResponse.UserDefaultLibraryId;
 
                 configManager.Save(config);
-
                 AbsApiClient.CheckServerVersion(loginResponse.ServerSettings?.Version);
 
                 var version = loginResponse.ServerSettings?.Version ?? "unknown";

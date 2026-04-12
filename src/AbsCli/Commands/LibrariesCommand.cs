@@ -19,13 +19,10 @@ public static class LibrariesCommand
         var serverOption = new Option<string?>("--server", "Server URL override");
         var tokenOption = new Option<string?>("--token", "Token override");
 
-        var command = new Command("list", """
-            List all libraries
-
-            Examples:
-              abs-cli libraries list
-              abs-cli libraries list | jq '.libraries[].name'
-            """) { serverOption, tokenOption };
+        var command = new Command("list", "List all libraries") { serverOption, tokenOption };
+        command.AddExamples(
+            "abs-cli libraries list",
+            "abs-cli libraries list | jq '.libraries[].name'");
 
         command.SetHandler(async (string? server, string? token) =>
         {
@@ -44,13 +41,10 @@ public static class LibrariesCommand
         var serverOption = new Option<string?>("--server", "Server URL override");
         var tokenOption = new Option<string?>("--token", "Token override");
 
-        var command = new Command("get", """
-            Get a single library
-
-            Examples:
-              abs-cli libraries get --id "lib_abc123"
-              abs-cli libraries get --id "lib_abc123" | jq '.name'
-            """) { idOption, serverOption, tokenOption };
+        var command = new Command("get", "Get a single library") { idOption, serverOption, tokenOption };
+        command.AddExamples(
+            "abs-cli libraries get --id \"lib_abc123\"",
+            "abs-cli libraries get --id \"lib_abc123\" | jq '.name'");
 
         command.SetHandler(async (string id, string? server, string? token) =>
         {
