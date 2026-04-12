@@ -53,12 +53,13 @@ public static class SelfTestCommand
                 Assert(back.DefaultLibrary == "lib-id", "DefaultLibrary mismatch");
             });
 
-            Check("LoginRequest serialize", () =>
+            Check("LoginRequest round-trip", () =>
             {
                 var req = new LoginRequest { Username = "user", Password = "pass" };
                 var json = JsonSerializer.Serialize(req, AppJsonContext.Default.LoginRequest);
-                Assert(json.Contains("\"username\""), "missing username key");
-                Assert(json.Contains("\"password\""), "missing password key");
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.LoginRequest)!;
+                Assert(back.Username == "user", $"username: expected 'user', got '{back.Username}'");
+                Assert(back.Password == "pass", $"password: expected 'pass', got '{back.Password}'");
             });
 
             Check("LoginResponse deserialize", () =>
@@ -79,17 +80,25 @@ public static class SelfTestCommand
                 }
                 """;
                 var resp = JsonSerializer.Deserialize(json, AppJsonContext.Default.LoginResponse)!;
-                Assert(resp.User.Username == "testuser", "username mismatch");
-                Assert(resp.User.AccessToken == "access", "accessToken mismatch");
-                Assert(resp.ServerSettings?.Version == "2.33.1", "version mismatch");
-                Assert(resp.UserDefaultLibraryId == "lib_1", "defaultLibraryId mismatch");
+                Assert(resp.User.Id == "usr_1", $"user.id: expected 'usr_1', got '{resp.User.Id}'");
+                Assert(resp.User.Username == "testuser", $"username: expected 'testuser', got '{resp.User.Username}'");
+                Assert(resp.User.Type == "admin", $"type: expected 'admin', got '{resp.User.Type}'");
+                Assert(resp.User.Token == "tok", $"token: expected 'tok', got '{resp.User.Token}'");
+                Assert(resp.User.IsActive, "isActive should be true");
+                Assert(resp.User.AccessToken == "access", $"accessToken: expected 'access', got '{resp.User.AccessToken}'");
+                Assert(resp.User.RefreshToken == "refresh", $"refreshToken: expected 'refresh', got '{resp.User.RefreshToken}'");
+                Assert(resp.UserDefaultLibraryId == "lib_1", $"defaultLibraryId: expected 'lib_1', got '{resp.UserDefaultLibraryId}'");
+                Assert(resp.ServerSettings?.Version == "2.33.1", $"version: expected '2.33.1', got '{resp.ServerSettings?.Version}'");
+                Assert(resp.ServerSettings?.BuildNumber == 1, $"buildNumber: expected 1, got {resp.ServerSettings?.BuildNumber}");
             });
 
-            Check("Dictionary<string,string> serialize", () =>
+            Check("Dictionary<string,string> round-trip", () =>
             {
-                var dict = new Dictionary<string, string> { ["key"] = "value" };
+                var dict = new Dictionary<string, string> { ["server"] = "https://test.com", ["lib"] = "abc" };
                 var json = JsonSerializer.Serialize(dict, AppJsonContext.Default.DictionaryStringString);
-                Assert(json.Contains("\"key\""), "missing key");
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.DictionaryStringString)!;
+                Assert(back["server"] == "https://test.com", $"server: expected 'https://test.com', got '{back["server"]}'");
+                Assert(back["lib"] == "abc", $"lib: expected 'abc', got '{back["lib"]}'");
             });
 
             Console.Error.WriteLine("");
