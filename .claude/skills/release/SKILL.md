@@ -1,6 +1,6 @@
 ---
 name: release
-description: Create a new abs-cli release with human review gates. Runs preflight checks, generates release notes, creates GitHub release, monitors CI, attaches binaries.
+description: Create a new abs-cli release with human review gates. Creates release branch, generates changelog, opens PR for CI validation, then tags and publishes after merge.
 disable-model-invocation: true
 allowed-tools:
   - Bash
@@ -41,6 +41,7 @@ dotnet test tests/AbsCli.Tests/AbsCli.Tests.csproj
 # Build AOT binary and run self-test (catches AOT serialization issues)
 dotnet publish src/AbsCli/AbsCli.csproj -c Release -r linux-x64 --self-contained true /p:PublishAot=true -o ./publish
 ./publish/abs-cli self-test
+rm -rf publish/
 ```
 
 If Docker is available and an ABS instance is running (or can be started),
@@ -54,129 +55,188 @@ docker compose -f docker/docker-compose.yml down -v
 ```
 
 If Docker is not available, note this in the preflight report — the smoke
-test will still run in CI after the release is created.
+test will still run in CI after the PR is created.
 
 If any check fails, stop and report the issue. Do not proceed.
 
 Determine the version number:
 - Get the last tag: `git describe --tags --abbrev=0 2>/dev/null || echo "none"`
-- Read commits since last tag: `git log --oneline $(git describe --tags --abbrev=0 2>/dev/null || echo "HEAD~50")..HEAD`
+- Read commits since last tag
 - Propose a version based on conventional commits:
   - Any `feat:` commits → bump MINOR
   - Only `fix:`, `docs:`, `test:`, `ci:`, `chore:` → bump PATCH
+  - ABS compatibility bumps with no CLI changes → PATCH
   - See `docs/releasing.md` for versioning rules
 
 **GATE: Ask the human to confirm the version number.** Show them the proposed
-version and the commit summary. Wait for their response. If they want a
-different version, use that instead.
+version and the commit summary. Wait for their response.
 
-## Step 2: Generate Release Notes
+## Step 2: Create Release Branch
+
+```bash
+VERSION="v{version}"  # from step 1, e.g. "v0.1.0"
+git checkout -b "release/${VERSION}"
+```
+
+## Step 3: Generate Changelog Entry
 
 Generate release notes with two sections:
 
-**Highlights** — write 3-5 bullet points describing what's new in plain
-language. Focus on what users care about, not implementation details. Read
-the commits to understand the changes.
+**Highlights** — 3-5 bullet points describing what's new in plain language.
+Focus on what users care about, not implementation details.
 
-**Changes** — auto-grouped from conventional commits:
+**Changes** — auto-grouped from conventional commits since last tag:
 
 ```bash
-# Get commits since last tag (or all if first release)
 LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
 if [ -n "$LAST_TAG" ]; then
     RANGE="${LAST_TAG}..HEAD"
 else
     RANGE="HEAD"
 fi
-
-echo "## Features"
-git log --oneline $RANGE --pretty="- %s" | grep "^- feat:" | sort
-echo ""
-echo "## Fixes"
-git log --oneline $RANGE --pretty="- %s" | grep "^- fix:" | sort
-echo ""
-echo "## Other"
-git log --oneline $RANGE --pretty="- %s" | grep -E "^- (refactor|docs|test|ci|chore):" | sort
+git log --oneline $RANGE --pretty="- %s" | grep -E "^- (feat|fix|refactor|docs|test|ci|chore):" | sort
 ```
 
-Combine highlights and changes into a single markdown document. Save to
-`release-notes.md` in the repo root (this file is gitignored).
+Format the entry as:
 
-**GATE: Show the release notes to the human.** Ask them to review and approve.
-If they want edits, make them and show again. Do not proceed until approved.
+```markdown
+## {version} — YYYY-MM-DD
 
-## Step 3: Create GitHub Release
+### Highlights
+- ...
 
-```bash
-VERSION="v{version}"  # from step 1
-gh release create "$VERSION" --title "$VERSION" --notes-file release-notes.md
+### Features
+- feat: ...
+
+### Fixes
+- fix: ...
 ```
 
-Show the release URL to the human.
+**Prepend** the entry to `CHANGELOG.md` (create the file if it doesn't exist).
+Keep a header at the top:
 
-**GATE: Ask the human to confirm the release was created correctly.** Show
-them the URL. This is a point of no return — the tag is published.
+```markdown
+# Changelog
 
-## Step 4: Wait for CI
+All notable changes to abs-cli are documented here.
+Format follows [Keep a Changelog](https://keepachangelog.com/).
 
-Find the CI run triggered by the release and monitor it:
+## {version} — YYYY-MM-DD
+...
+
+## {previous version} — ...
+...
+```
+
+Commit the changelog:
 
 ```bash
-# Wait a moment for the run to appear, then find it
-RUN_ID=$(gh run list --limit 5 --json databaseId,event,headBranch -q '.[] | select(.event=="release") | .databaseId' | head -1)
+git add CHANGELOG.md
+git commit -m "docs: add v{version} changelog entry"
+```
+
+**GATE: Show the changelog entry to the human.** Ask them to review and approve.
+If they want edits, make them, amend the commit, and show again.
+
+## Step 4: Open PR for CI Validation
+
+Push the release branch and open a PR:
+
+```bash
+git push -u origin "release/${VERSION}"
+gh pr create --title "release: ${VERSION}" --body "Release ${VERSION}. See CHANGELOG.md for details." --base main
+```
+
+Wait for CI to complete:
+
+```bash
+RUN_ID=$(gh run list --branch "release/${VERSION}" --limit 1 --json databaseId -q '.[0].databaseId')
 gh run watch "$RUN_ID" --exit-status
 ```
 
 If CI fails:
-- Show the failure details: `gh run view "$RUN_ID" --log-failed`
-- Stop and report. Do not proceed. The human needs to decide how to handle it.
+- Show failure details: `gh run view "$RUN_ID" --log-failed`
+- Stop and report. Fix issues on the release branch, push, and re-check.
 
-If CI passes, report the results (all jobs, times).
+Report CI results (all jobs, times).
 
-**GATE: Tell the human CI passed and ask them to confirm before attaching
-binaries.** Show the job summary.
+**GATE: Tell the human CI passed. Ask them to review and merge the PR.**
+Show the PR URL. Wait for them to confirm the merge is done.
 
-## Step 5: Attach Binaries
+## Step 5: Tag and Create GitHub Release
 
-Download CI artifacts and attach them to the release:
+After the PR is merged, switch back to main and tag:
 
 ```bash
-VERSION="v{version}"
+git checkout main
+git pull
+
+# Extract the changelog entry for this version to use as release notes
+# (everything between this version's header and the next version header or EOF)
+python3 -c "
+import re, sys
+with open('CHANGELOG.md') as f:
+    content = f.read()
+pattern = r'## ${VERSION#v}.*?\n(.*?)(?=\n## |\Z)'
+match = re.search(pattern, content, re.DOTALL)
+if match:
+    print(match.group(1).strip())
+else:
+    print('Release ${VERSION}')
+" > release-notes.md
+
+gh release create "${VERSION}" --title "${VERSION}" --notes-file release-notes.md
+rm release-notes.md
+```
+
+Show the release URL.
+
+**GATE: Confirm the release was created.** Show the URL.
+
+## Step 6: Attach Binaries
+
+The release creation triggers another CI run that builds all platforms.
+Wait for it:
+
+```bash
+# Find the CI run triggered by the release
+sleep 5  # wait for run to appear
+RUN_ID=$(gh run list --limit 5 --json databaseId,event -q '[.[] | select(.event=="release")] | .[0].databaseId')
+gh run watch "$RUN_ID" --exit-status
+```
+
+Download artifacts and attach to the release:
+
+```bash
 gh run download "$RUN_ID" --dir ./release-artifacts
 
-# Attach all binaries
 for dir in ./release-artifacts/abs-cli-*/; do
     PLATFORM=$(basename "$dir")
-    # Find the binary (abs-cli or abs-cli.exe)
     BIN=$(find "$dir" -name "abs-cli" -o -name "abs-cli.exe" | head -1)
     if [ -n "$BIN" ]; then
-        # Rename to include platform
         EXT=""
         [[ "$BIN" == *.exe ]] && EXT=".exe"
         cp "$BIN" "./release-artifacts/${PLATFORM}${EXT}"
-        gh release upload "$VERSION" "./release-artifacts/${PLATFORM}${EXT}"
+        gh release upload "${VERSION}" "./release-artifacts/${PLATFORM}${EXT}"
         echo "Attached: ${PLATFORM}${EXT}"
     fi
 done
 ```
 
-## Step 6: Verify
+## Step 7: Verify
 
-Download the binary for the current platform and run self-test:
+Download and test:
 
 ```bash
-# Download and test the linux-x64 binary (we're in a Linux devcontainer)
-gh release download "$VERSION" --pattern "abs-cli-linux-x64" --dir /tmp/release-verify
+gh release download "${VERSION}" --pattern "abs-cli-linux-x64" --dir /tmp/release-verify
 chmod +x /tmp/release-verify/abs-cli-linux-x64
 /tmp/release-verify/abs-cli-linux-x64 self-test
 rm -rf /tmp/release-verify
 ```
 
-Report the self-test result.
-
 Clean up:
 ```bash
-rm -rf release-artifacts release-notes.md
+rm -rf release-artifacts
 ```
 
 **GATE: Ask the human to check the GitHub Release page.** They should verify:
@@ -184,18 +244,19 @@ rm -rf release-artifacts release-notes.md
 - Release notes render correctly
 - Everything looks right
 
-## Step 7: Done
+## Step 8: Done
 
 Report:
 - Release URL
 - Version number
 - Number of binaries attached
 - Self-test result
+- Changelog committed to repo
 
 ## Rules
 
 - NEVER skip a human gate
 - NEVER proceed past a failed check
 - If anything unexpected happens, stop and ask
-- Do not push code changes — this is a release-only workflow
-- Clean up temporary files (release-notes.md, release-artifacts/) at the end
+- Clean up temporary files at the end
+- The CHANGELOG.md entry is the source of truth — GitHub Release notes mirror it
