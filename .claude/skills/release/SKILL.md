@@ -32,9 +32,29 @@ git diff --quiet && git diff --cached --quiet || { echo "ERROR: working tree not
 # Pull latest
 git pull
 
+# Format check
+dotnet format AbsCli.sln --verify-no-changes
+
 # Unit tests must pass
 dotnet test tests/AbsCli.Tests/AbsCli.Tests.csproj
+
+# Build AOT binary and run self-test (catches AOT serialization issues)
+dotnet publish src/AbsCli/AbsCli.csproj -c Release -r linux-x64 --self-contained true /p:PublishAot=true -o ./publish
+./publish/abs-cli self-test
 ```
+
+If Docker is available and an ABS instance is running (or can be started),
+also run the full smoke test:
+
+```bash
+docker compose -f docker/docker-compose.yml up -d
+bash docker/seed.sh
+CLI=./publish/abs-cli bash docker/smoke-test.sh
+docker compose -f docker/docker-compose.yml down -v
+```
+
+If Docker is not available, note this in the preflight report — the smoke
+test will still run in CI after the release is created.
 
 If any check fails, stop and report the issue. Do not proceed.
 
