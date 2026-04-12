@@ -13,6 +13,7 @@ rootCommand.AddCommand(SeriesCommand.Create());
 rootCommand.AddCommand(AuthorsCommand.Create());
 rootCommand.AddCommand(SearchCommand.Create());
 rootCommand.AddCommand(BackupCommand.Create());
+rootCommand.AddCommand(UploadCommand.Create());
 rootCommand.AddCommand(SelfTestCommand.Create());
 
 var parser = new CommandLineBuilder(rootCommand)
