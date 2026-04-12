@@ -1,0 +1,97 @@
+name: Build and Test
+
+on:
+  pull_request:
+    branches: [main]
+  release:
+    types: [created]
+
+jobs:
+  unit-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Check formatting
+        run: dotnet format AbsCli.sln --verify-no-changes
+      - name: Run unit tests
+        run: dotnet test tests/AbsCli.Tests/AbsCli.Tests.csproj
+
+  smoke-test:
+    needs: unit-test
+    runs-on: ubuntu-latest
+    services:
+      audiobookshelf:
+        image: advplyr/audiobookshelf:2.33.1
+        ports:
+          - 13378:80
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Build AOT binary
+        run: >
+          dotnet publish src/AbsCli/AbsCli.csproj
+          -c Release -r linux-x64 --self-contained true /p:PublishAot=true
+          -o ./publish
+      - name: Wait for ABS
+        run: |
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:13378/healthcheck && break
+            [ "$i" -eq 30 ] && echo "ABS did not start" && exit 1
+            sleep 1
+          done
+      - name: Seed test data
+        run: bash docker/seed.sh
+        env:
+          ABS_URL: http://localhost:13378
+      - name: Run smoke tests against AOT binary
+        run: bash docker/smoke-test.sh
+        env:
+          ABS_URL: http://localhost:13378
+          CLI: ./publish/abs-cli
+
+  build:
+    needs: unit-test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Native AOT requires matching host arch on Linux/Windows.
+          # macOS supports arm64↔x64 cross-compilation via Xcode toolchain.
+          - os: ubuntu-latest
+            rid: linux-x64
+          - os: ubuntu-24.04-arm
+            rid: linux-arm64
+          - os: macos-latest
+            rid: osx-arm64
+          - os: macos-latest
+            rid: osx-x64
+          - os: windows-latest
+            rid: win-x64
+          - os: windows-11-arm
+            rid: win-arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Publish
+        run: >
+          dotnet publish src/AbsCli/AbsCli.csproj
+          -c Release -r ${{ matrix.rid }} --self-contained true /p:PublishAot=true
+      - name: Run self-test (AOT integrity check)
+        shell: bash
+        run: |
+          BIN="src/AbsCli/bin/Release/net8.0/${{ matrix.rid }}/publish/abs-cli"
+          [ -f "${BIN}.exe" ] && BIN="${BIN}.exe"
+          "${BIN}" self-test
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: abs-cli-${{ matrix.rid }}
+          path: src/AbsCli/bin/Release/net8.0/${{ matrix.rid }}/publish/

@@ -8,138 +8,114 @@ abs-cli <resource> <action> [options]
 
 All commands follow the same structure: a resource noun followed by an action verb.
 
-## Resources
+## Items
 
-### items
+The core resource. Maps to ABS `library-item` concept. Covers audiobooks, podcasts,
+and any future media types.
 
-The core resource. Covers both audiobooks and podcasts — "items" was chosen over "books"
-because it's future-proof and maps to the Audiobookshelf API's `library-item` concept.
+| Command | ABS Endpoint | Description |
+|---------|-------------|-------------|
+| `abs-cli items list` | `GET /api/libraries/{id}/items` | List items. Supports `--filter`, `--sort`, `--desc`, `--limit`, `--page` |
+| `abs-cli items get --id <id>` | `GET /api/items/{id}` | Get single item with full metadata |
+| `abs-cli items search --query <text>` | `GET /api/libraries/{id}/search?q=` | Search items in library |
+| `abs-cli items update --id <id>` | `PATCH /api/items/{id}/media` | Update single item metadata |
+| `abs-cli items batch-update --input file.json` | `PATCH /api/items/batch/update` | Batch update from JSON file |
+| `abs-cli items batch-get --input file.json` | `GET /api/items/batch` | Batch get multiple items by ID |
 
-| Command | Description |
-|---------|-------------|
-| `items list` | List all items, optionally filtered |
-| `items get --id <id>` | Get a single item by ID |
-| `items search --query <text>` | Search items by text |
-| `items update --id <id>` | Update a single item |
-| `items files --id <id>` | List files for an item |
-| `items progress --id <id>` | Get playback progress |
+## Libraries
 
-**Examples:**
+| Command | ABS Endpoint | Description |
+|---------|-------------|-------------|
+| `abs-cli libraries list` | `GET /api/libraries` | List all libraries |
+| `abs-cli libraries get --id <id>` | `GET /api/libraries/{id}` | Get single library |
 
-```bash
-abs-cli items list
-abs-cli items list --type audiobook
-abs-cli items get --id 123
-abs-cli items search --query "Dune"
-```
+## Series
 
-### episodes
+| Command | ABS Endpoint | Description |
+|---------|-------------|-------------|
+| `abs-cli series list` | `GET /api/libraries/{id}/series` | List series. Supports `--limit`, `--page` |
+| `abs-cli series get --id <id>` | `GET /api/series/{id}` | Get single series with its books |
 
-Podcast-specific commands.
+## Authors
 
-```bash
-abs-cli episodes list --podcast-id 123
-abs-cli episodes get --id 456
-abs-cli episodes update --id 456 --played true
-```
+| Command | ABS Endpoint | Description |
+|---------|-------------|-------------|
+| `abs-cli authors list` | `GET /api/libraries/{id}/authors` | List authors in library |
+| `abs-cli authors get --id <id>` | `GET /api/authors/{id}` | Get single author |
 
-### series
+## Search
 
-```bash
-abs-cli series list
-abs-cli series get --id 1
-abs-cli series books --id 1
-abs-cli series check --id 1       # validate series data
-abs-cli series fix --id 1 --apply  # fix detected issues
-```
-
-### authors
-
-```bash
-abs-cli authors list
-abs-cli authors get --id 1
-abs-cli authors items --id 1       # list items by author
-```
-
-### libraries
-
-```bash
-abs-cli libraries list
-abs-cli libraries get --id 1
-abs-cli items list --library 1     # list items in a library
-```
-
-### search
-
-Global search across resource types.
-
-```bash
-abs-cli search --query "Dune" --type items
-abs-cli search --query "Dune" --type series
-abs-cli search --query "Dune" --type authors
-```
-
-## Media Type Filter
-
-Applicable to items commands:
-
-```bash
---type audiobook
---type podcast
-```
-
-## Output
-
-- `--json` — Default. Machine-readable JSON. Source of truth.
-- `--table` — Optional. Human-readable table formatting via Spectre.Console.
-
-## Input
-
-- `--input file.json` — Read input from a JSON file
-- `--stdin` — Read input from standard input
+| Command | ABS Endpoint | Description |
+|---------|-------------|-------------|
+| `abs-cli search --query <text>` | `GET /api/libraries/{id}/search?q=` | Search library. Returns books, series, authors, tags grouped |
 
 ## Filtering
 
-Simple filter expressions for batch operations:
+Mirrors the ABS API filter system. The API uses `filter=group.base64(value)` encoding.
+The CLI handles encoding transparently.
 
-```
-language=null
-series!='Dune'
-language=null AND series!=null
-```
-
-## Update Modes
-
-**Single item:**
-
-```bash
-abs-cli items update --id 123 --language en
-```
-
-**Batch update with filter:**
+Available filter groups (from ABS source):
+- `authors` — by author ID (base64-encoded)
+- `genres` — by genre name
+- `tags` — by tag name
+- `series` — by series ID (base64-encoded)
+- `narrators` — by narrator name
+- `languages` — by language
+- `progress` — by listening status
+- `issues` — items with metadata/file problems
 
 ```bash
-abs-cli items update --filter "language=null" --set "language=en"
+abs-cli items list --filter "genres=Sci Fi"        # CLI encodes to genres.U2NpIEZp
+abs-cli items list --filter "languages=English"
+abs-cli items list --filter "languages="            # items with no language
+abs-cli items list --sort "media.metadata.title" --desc
 ```
 
-**Batch update from file (with confidence threshold for agent workflows):**
+## Help Text
 
-```bash
-abs-cli items update --input updates.json --min-confidence 0.9
+Every command includes comprehensive help with copy-paste examples:
+
+```
+$ abs-cli items list --help
+
+Description:
+  List library items with optional filtering, sorting, and pagination.
+
+Usage:
+  abs-cli items list [options]
+
+Options:
+  --library <id|name>    Library to list from (uses default if configured)
+  --filter <expression>  Filter items (e.g. "genres=Sci Fi", "languages=English")
+  --sort <field>         Sort by field path (e.g. "media.metadata.title")
+  --desc                 Sort descending
+  --limit <n>            Results per page (default: all)
+  --page <n>             Page number, 0-indexed (default: 0)
+
+Examples:
+  # List all items in default library
+  abs-cli items list
+
+  # List English audiobooks sorted by title
+  abs-cli items list --filter "languages=English" --sort "media.metadata.title"
+
+  # List items with no language set (for metadata cleanup)
+  abs-cli items list --filter "languages="
+
+  # Page through results
+  abs-cli items list --limit 50 --page 2
+
+  # Pipe to jq for further filtering
+  abs-cli items list | jq '.results[] | select(.media.metadata.isbn == null)'
 ```
 
-## Pipeline Support
+## Self-Test
 
-Commands can be piped together, using JSON as the interchange format:
+A built-in AOT integrity check that exercises all serialization paths without
+network access. Used by CI to validate every platform binary.
 
-```bash
-abs-cli items list --filter "language=null" --json | abs-cli items update --stdin
-```
+| Command | Description |
+|---------|-------------|
+| `abs-cli self-test` | Run 14 offline assertions (JSON round-trips, config, filter encoder, token helper) |
 
-## Agent Workflow
-
-The CLI is designed to support this pattern:
-
-1. **List** — use the CLI to find items with missing or incorrect data
-2. **Analyze** — an AI agent processes the output and determines corrections
-3. **Update** — feed corrections back through the CLI with a confidence threshold
+Returns exit code 0 on success, 1 on failure. Output goes to stderr.

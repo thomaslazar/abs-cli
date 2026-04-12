@@ -16,6 +16,7 @@ obj/
 out/
 build/
 dist/
+publish/
 
 # Packages
 *.nupkg
@@ -39,3 +40,4 @@ node_modules/
 
 # Misc
 temp
+.superpowers/
