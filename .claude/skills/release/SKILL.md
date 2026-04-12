@@ -193,50 +193,34 @@ Show the release URL.
 
 **GATE: Confirm the release was created.** Show the URL.
 
-## Step 6: Attach Binaries
+## Step 6: Wait for Release CI
 
-The release creation triggers another CI run that builds all platforms.
-Wait for it:
+The release triggers CI which builds all 6 platforms and **automatically
+attaches binaries** to the GitHub Release. Monitor it:
 
 ```bash
-# Find the CI run triggered by the release
-sleep 5  # wait for run to appear
-RUN_ID=$(gh run list --limit 5 --json databaseId,event -q '[.[] | select(.event=="release")] | .[0].databaseId')
+# Wait for the run to appear
+for i in $(seq 1 10); do
+    RUN_ID=$(gh run list --limit 5 --json databaseId,event -q '[.[] | select(.event=="release")] | .[0].databaseId')
+    [ -n "$RUN_ID" ] && break
+    sleep 3
+done
 gh run watch "$RUN_ID" --exit-status
 ```
 
-Download artifacts and attach to the release:
+If CI fails, show failure details and stop.
 
-```bash
-gh run download "$RUN_ID" --dir ./release-artifacts
-
-for dir in ./release-artifacts/abs-cli-*/; do
-    PLATFORM=$(basename "$dir")
-    BIN=$(find "$dir" -name "abs-cli" -o -name "abs-cli.exe" | head -1)
-    if [ -n "$BIN" ]; then
-        EXT=""
-        [[ "$BIN" == *.exe ]] && EXT=".exe"
-        cp "$BIN" "./release-artifacts/${PLATFORM}${EXT}"
-        gh release upload "${VERSION}" "./release-artifacts/${PLATFORM}${EXT}"
-        echo "Attached: ${PLATFORM}${EXT}"
-    fi
-done
-```
+Report CI results (all jobs, times).
 
 ## Step 7: Verify
 
-Download and test:
+Download and test one binary:
 
 ```bash
 gh release download "${VERSION}" --pattern "abs-cli-linux-x64" --dir /tmp/release-verify
 chmod +x /tmp/release-verify/abs-cli-linux-x64
 /tmp/release-verify/abs-cli-linux-x64 self-test
 rm -rf /tmp/release-verify
-```
-
-Clean up:
-```bash
-rm -rf release-artifacts
 ```
 
 **GATE: Ask the human to check the GitHub Release page.** They should verify:
@@ -249,7 +233,7 @@ rm -rf release-artifacts
 Report:
 - Release URL
 - Version number
-- Number of binaries attached
+- Number of binaries attached (should be 6)
 - Self-test result
 - Changelog committed to repo
 
