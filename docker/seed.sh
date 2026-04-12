@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ABS_URL="${ABS_URL:-http://localhost:13378}"
+ABS_URL="${ABS_URL:-http://host.docker.internal:13378}"
 MAX_WAIT=30
 
 echo "Waiting for ABS to start..."

@@ -5,14 +5,14 @@
 # Expects a seeded ABS instance (15 books, 6 authors, 3 series).
 #
 # Usage:
-#   ABS_URL=http://localhost:13378 CLI=./path/to/abs-cli bash docker/smoke-test.sh
+#   ABS_URL=http://host.docker.internal:13378 CLI=./path/to/abs-cli bash docker/smoke-test.sh
 #
 # If CLI is not set, builds a Release binary via `dotnet publish` first.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-ABS_URL="${ABS_URL:-http://localhost:13378}"
+ABS_URL="${ABS_URL:-http://host.docker.internal:13378}"
 
 # --- Build or locate the binary ---
 if [ -z "${CLI:-}" ]; then
