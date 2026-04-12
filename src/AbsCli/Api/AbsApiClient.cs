@@ -96,6 +96,101 @@ public class AbsApiClient
             ?? throw new InvalidOperationException($"Failed to deserialize response from {endpoint}");
     }
 
+    public async Task<string> GetAsync(string endpoint, string? permissionHint)
+    {
+        await EnsureValidTokenAsync();
+        var response = await _http.GetAsync(endpoint);
+        await EnsureSuccessOrHandleAuthAsync(response, HttpMethod.Get, endpoint, permissionHint);
+        return await response.Content.ReadAsStringAsync();
+    }
+
+    public async Task<T> GetAsync<T>(string endpoint, JsonTypeInfo<T> typeInfo, string? permissionHint)
+    {
+        var json = await GetAsync(endpoint, permissionHint);
+        return JsonSerializer.Deserialize(json, typeInfo)
+            ?? throw new InvalidOperationException($"Failed to deserialize response from {endpoint}");
+    }
+
+    public async Task<string> PatchAsync(string endpoint, string jsonBody, string? permissionHint)
+    {
+        await EnsureValidTokenAsync();
+        var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
+        var response = await _http.PatchAsync(endpoint, content);
+        await EnsureSuccessOrHandleAuthAsync(response, HttpMethod.Patch, endpoint, permissionHint);
+        return await response.Content.ReadAsStringAsync();
+    }
+
+    public async Task<T> PatchAsync<T>(string endpoint, string jsonBody, JsonTypeInfo<T> typeInfo, string? permissionHint)
+    {
+        var json = await PatchAsync(endpoint, jsonBody, permissionHint);
+        return JsonSerializer.Deserialize(json, typeInfo)
+            ?? throw new InvalidOperationException($"Failed to deserialize response from {endpoint}");
+    }
+
+    public async Task<string> PostAsync(string endpoint, string jsonBody, string? permissionHint)
+    {
+        await EnsureValidTokenAsync();
+        var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
+        var response = await _http.PostAsync(endpoint, content);
+        await EnsureSuccessOrHandleAuthAsync(response, HttpMethod.Post, endpoint, permissionHint);
+        return await response.Content.ReadAsStringAsync();
+    }
+
+    public async Task<T> PostAsync<T>(string endpoint, string jsonBody, JsonTypeInfo<T> typeInfo, string? permissionHint)
+    {
+        var json = await PostAsync(endpoint, jsonBody, permissionHint);
+        return JsonSerializer.Deserialize(json, typeInfo)
+            ?? throw new InvalidOperationException($"Failed to deserialize response from {endpoint}");
+    }
+
+    public async Task<string> DeleteAsync(string endpoint, string? permissionHint = null)
+    {
+        await EnsureValidTokenAsync();
+        var response = await _http.DeleteAsync(endpoint);
+        await EnsureSuccessOrHandleAuthAsync(response, HttpMethod.Delete, endpoint, permissionHint);
+        return await response.Content.ReadAsStringAsync();
+    }
+
+    public async Task<T> DeleteAsync<T>(string endpoint, JsonTypeInfo<T> typeInfo, string? permissionHint = null)
+    {
+        var json = await DeleteAsync(endpoint, permissionHint);
+        return JsonSerializer.Deserialize(json, typeInfo)
+            ?? throw new InvalidOperationException($"Failed to deserialize response from {endpoint}");
+    }
+
+    public async Task PostMultipartAsync(string endpoint, MultipartFormDataContent content,
+        string? permissionHint = null)
+    {
+        await EnsureValidTokenAsync();
+        var response = await _http.PostAsync(endpoint, content);
+        await EnsureSuccessOrHandleAuthAsync(response, HttpMethod.Post, endpoint, permissionHint);
+    }
+
+    public async Task DownloadFileAsync(string endpoint, string outputPath, string? permissionHint = null)
+    {
+        await EnsureValidTokenAsync();
+        var response = await _http.GetAsync(endpoint, HttpCompletionOption.ResponseHeadersRead);
+        await EnsureSuccessOrHandleAuthAsync(response, HttpMethod.Get, endpoint, permissionHint);
+        await using var stream = await response.Content.ReadAsStreamAsync();
+        await using var fileStream = new FileStream(outputPath, FileMode.Create, FileAccess.Write);
+        await stream.CopyToAsync(fileStream);
+    }
+
+    public async Task<string> PostEmptyAsync(string endpoint, string? permissionHint = null)
+    {
+        await EnsureValidTokenAsync();
+        var response = await _http.PostAsync(endpoint, null);
+        await EnsureSuccessOrHandleAuthAsync(response, HttpMethod.Post, endpoint, permissionHint);
+        return await response.Content.ReadAsStringAsync();
+    }
+
+    public async Task<T> PostEmptyAsync<T>(string endpoint, JsonTypeInfo<T> typeInfo, string? permissionHint = null)
+    {
+        var json = await PostEmptyAsync(endpoint, permissionHint);
+        return JsonSerializer.Deserialize(json, typeInfo)
+            ?? throw new InvalidOperationException($"Failed to deserialize response from {endpoint}");
+    }
+
     private async Task EnsureValidTokenAsync()
     {
         if (_config.AccessToken == null) return;
@@ -172,27 +267,34 @@ public class AbsApiClient
     }
 
     private async Task EnsureSuccessOrHandleAuthAsync(
-        HttpResponseMessage response, HttpMethod method, string endpoint)
+        HttpResponseMessage response, HttpMethod method, string endpoint,
+        string? permissionHint = null)
     {
         if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
         {
-            // Try one refresh
             await RefreshTokenAsync();
-
-            // Retry the original request
             var retryRequest = new HttpRequestMessage(method, endpoint);
             var retryResponse = await _http.SendAsync(retryRequest);
-
             if (!retryResponse.IsSuccessStatusCode)
             {
-                ConsoleOutput.WriteError($"API request failed: {(int)retryResponse.StatusCode} {retryResponse.ReasonPhrase}");
+                ConsoleOutput.WriteError($"API request failed after token refresh: {(int)retryResponse.StatusCode} {retryResponse.ReasonPhrase}");
                 Environment.Exit(2);
             }
         }
         else if (!response.IsSuccessStatusCode)
         {
             var body = await response.Content.ReadAsStringAsync();
-            ConsoleOutput.WriteError($"API request failed: {(int)response.StatusCode} {response.ReasonPhrase}\n{body}");
+            var status = (int)response.StatusCode;
+            var message = status switch
+            {
+                403 when permissionHint != null =>
+                    $"Permission denied. This operation requires {permissionHint}.",
+                403 => $"Permission denied.{(string.IsNullOrWhiteSpace(body) ? "" : $" {body.Trim()}")}",
+                400 => $"Bad request.{(string.IsNullOrWhiteSpace(body) ? "" : $" {body.Trim()}")}",
+                404 => $"Not found.{(string.IsNullOrWhiteSpace(body) ? "" : $" {body.Trim()}")}",
+                _ => $"API request failed: {status} {response.ReasonPhrase}{(string.IsNullOrWhiteSpace(body) ? "" : $"\n{body.Trim()}")}"
+            };
+            ConsoleOutput.WriteError(message);
             Environment.Exit(2);
         }
     }
