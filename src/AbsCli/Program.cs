@@ -16,7 +16,7 @@ rootCommand.AddCommand(SelfTestCommand.Create());
 
 var parser = new CommandLineBuilder(rootCommand)
     .UseDefaults()
-    .UseExamplesHelp()
+    .UseCustomHelpSections()
     .Build();
 
 return await parser.InvokeAsync(args);

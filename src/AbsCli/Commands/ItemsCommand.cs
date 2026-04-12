@@ -27,27 +27,24 @@ public static class ItemsCommand
         var limitOption = new Option<int?>("--limit", "Results per page");
         var pageOption = new Option<int?>("--page", "Page number (0-indexed)");
 
-        var command = new Command("list", """
-            List library items with optional filtering, sorting, and pagination
-
-            Filter groups:
-              authors, genres, tags, series, narrators, languages, progress, issues
-
-            Sort fields:
-              media.metadata.title          — title (default)
-              media.metadata.authorName     — author name (first last)
-              media.metadata.authorNameLF   — author name (last, first)
-              media.metadata.publishedYear  — publication year
-              media.duration                — total duration
-              addedAt                       — date added to library
-              size                          — file size
-              birthtimeMs                   — file creation time
-              mtimeMs                       — file modification time
-              random                        — random order
-            """)
+        var command = new Command("list",
+            "List library items with optional filtering, sorting, and pagination")
         {
             libraryOption, filterOption, sortOption, descOption, limitOption, pageOption
         };
+        command.AddHelpSection("Filter groups",
+            "authors, genres, tags, series, narrators, languages, progress, issues");
+        command.AddHelpSection("Sort fields",
+            "media.metadata.title          — title (default)",
+            "media.metadata.authorName     — author name (first last)",
+            "media.metadata.authorNameLF   — author name (last, first)",
+            "media.metadata.publishedYear  — publication year",
+            "media.duration                — total duration",
+            "addedAt                       — date added to library",
+            "size                          — file size",
+            "birthtimeMs                   — file creation time",
+            "mtimeMs                       — file modification time",
+            "random                        — random order");
         command.AddExamples(
             "abs-cli items list",
             "abs-cli items list --filter \"languages=English\" --sort \"media.metadata.title\"",

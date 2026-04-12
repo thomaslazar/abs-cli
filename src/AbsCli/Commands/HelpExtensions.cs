@@ -5,52 +5,74 @@ using System.CommandLine.Help;
 namespace AbsCli.Commands;
 
 /// <summary>
-/// Adds an "Examples" section to help output for commands.
+/// Adds custom sections (Examples, Filter groups, Sort fields, etc.) to help output.
+/// Sections render after the default Options section, in registration order.
 /// </summary>
 public static class HelpExtensions
 {
-    private static readonly Dictionary<Command, string[]> CommandExamples = new();
+    private static readonly Dictionary<Command, List<(string Title, string[] Lines)>> CommandSections = new();
 
     /// <summary>
-    /// Register examples for a command (displayed as a separate help section).
+    /// Add a named section to a command's help output.
+    /// </summary>
+    public static void AddHelpSection(this Command command, string title, params string[] lines)
+    {
+        if (!CommandSections.TryGetValue(command, out var sections))
+        {
+            sections = new List<(string, string[])>();
+            CommandSections[command] = sections;
+        }
+        sections.Add((title, lines));
+    }
+
+    /// <summary>
+    /// Shorthand for adding an "Examples" section.
     /// </summary>
     public static void AddExamples(this Command command, params string[] examples)
     {
-        CommandExamples[command] = examples;
+        command.AddHelpSection("Examples", examples);
     }
 
     /// <summary>
-    /// Get registered examples for a command (used by tests).
+    /// Get the number of examples registered for a command (used by tests).
     /// </summary>
-    public static string[]? GetExamples(this Command command)
+    public static int GetExampleCount(this Command command)
     {
-        return CommandExamples.TryGetValue(command, out var examples) ? examples : null;
+        if (!CommandSections.TryGetValue(command, out var sections))
+            return 0;
+        return sections
+            .Where(s => s.Title == "Examples")
+            .SelectMany(s => s.Lines)
+            .Count();
     }
 
     /// <summary>
-    /// Configure the CommandLineBuilder to render examples sections in help output.
+    /// Configure the CommandLineBuilder to render custom help sections.
     /// </summary>
-    public static CommandLineBuilder UseExamplesHelp(this CommandLineBuilder builder)
+    public static CommandLineBuilder UseCustomHelpSections(this CommandLineBuilder builder)
     {
         builder.UseHelp(ctx =>
         {
             ctx.HelpBuilder.CustomizeLayout(_ =>
                 HelpBuilder.Default.GetLayout()
-                    .Append(helpCtx => WriteExamples(helpCtx)));
+                    .Append(helpCtx => WriteSections(helpCtx)));
         });
         return builder;
     }
 
-    private static void WriteExamples(HelpContext ctx)
+    private static void WriteSections(HelpContext ctx)
     {
-        if (ctx.Command is Command command &&
-            CommandExamples.TryGetValue(command, out var examples) &&
-            examples.Length > 0)
+        if (ctx.Command is not Command command)
+            return;
+        if (!CommandSections.TryGetValue(command, out var sections))
+            return;
+
+        foreach (var (title, lines) in sections)
         {
-            ctx.Output.WriteLine("Examples:");
-            foreach (var example in examples)
+            ctx.Output.WriteLine($"{title}:");
+            foreach (var line in lines)
             {
-                ctx.Output.WriteLine($"  {example}");
+                ctx.Output.WriteLine($"  {line}");
             }
             ctx.Output.WriteLine();
         }
