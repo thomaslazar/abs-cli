@@ -22,6 +22,7 @@ public class AbsApiClient
         {
             BaseAddress = new Uri(config.Server!.TrimEnd('/'))
         };
+        _http.DefaultRequestHeaders.UserAgent.ParseAdd("abs-cli/0.1.0");
 
         if (config.AccessToken != null)
             _http.DefaultRequestHeaders.Authorization =

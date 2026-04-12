@@ -2,6 +2,7 @@
 
 ## Git Conventions
 
+- **Always ask the user before committing.** Do not commit automatically after making changes.
 - **Conventional Commits** format required: `type: subject`
 - Types: `feat`, `fix`, `docs`, `test`, `ci`, `refactor`, `chore`
 - Subject line: imperative mood, lowercase, no period, max ~72 chars

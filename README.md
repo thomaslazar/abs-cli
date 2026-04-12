@@ -36,6 +36,14 @@ chmod +x abs-cli-linux-x64
 mv abs-cli-linux-x64 ~/.local/bin/abs-cli
 ```
 
+**macOS users:** The binaries are not signed or notarized. macOS Gatekeeper
+will block them on first run. Remove the quarantine attribute to allow
+execution:
+
+```bash
+sudo xattr -d com.apple.quarantine abs-cli-osx-arm64
+```
+
 ### Build from source
 
 Requires [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0).

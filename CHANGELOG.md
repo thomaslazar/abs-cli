@@ -3,6 +3,21 @@
 All notable changes to abs-cli are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## v0.1.1 — 2026-04-12
+
+### Highlights
+- Fixed login failing with 403 on servers behind reverse proxies (e.g. Cosmos)
+- Added macOS Gatekeeper bypass instructions to README
+- Improved release workflow reliability (clean Docker state, better CI output handling)
+
+### Fixes
+- fix: add User-Agent header to HTTP client
+- fix: use host.docker.internal in Docker test scripts
+- fix: improve release skill reliability
+
+### Docs
+- docs: add macOS Gatekeeper instructions and ask-before-commit rule
+
 ## v0.1.0 — 2026-04-12
 
 ### Highlights

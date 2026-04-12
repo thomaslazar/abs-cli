@@ -41,21 +41,19 @@ dotnet test tests/AbsCli.Tests/AbsCli.Tests.csproj
 # Build AOT binary and run self-test (catches AOT serialization issues)
 dotnet publish src/AbsCli/AbsCli.csproj -c Release -r linux-x64 --self-contained true /p:PublishAot=true -o ./publish
 ./publish/abs-cli self-test
-rm -rf publish/
 ```
 
-If Docker is available and an ABS instance is running (or can be started),
-also run the full smoke test:
+Run the full smoke test (Docker is required):
 
 ```bash
+# Tear down first to ensure clean state (no leftover data from prior runs)
+docker compose -f docker/docker-compose.yml down -v
 docker compose -f docker/docker-compose.yml up -d
 bash docker/seed.sh
 CLI=./publish/abs-cli bash docker/smoke-test.sh
 docker compose -f docker/docker-compose.yml down -v
+rm -rf publish/
 ```
-
-If Docker is not available, note this in the preflight report — the smoke
-test will still run in CI after the PR is created.
 
 If any check fails, stop and report the issue. Do not proceed.
 
@@ -112,8 +110,9 @@ Write `release-notes.md` in this format:
 - fix: ...
 ```
 
-**GATE: Show the release notes to the human.** Ask them to review and approve.
-If they want edits, make them and show again.
+**GATE: Open `release-notes.md` in the editor** (e.g. `code release-notes.md`)
+and ask the human to review and approve. If they want edits, make them and
+show again.
 
 Then prepend the release notes to `CHANGELOG.md` (create the file if it
 doesn't exist). Keep a header at the top:
@@ -148,15 +147,24 @@ gh pr create --title "release: ${VERSION}" --body "Release ${VERSION}. See CHANG
 Wait for CI to complete:
 
 ```bash
-RUN_ID=$(gh run list --branch "release/${VERSION}" --limit 1 --json databaseId -q '.[0].databaseId')
+# Run may not exist immediately — retry until it appears
+for i in $(seq 1 10); do
+    RUN_ID=$(gh run list --branch "release/${VERSION}" --limit 1 --json databaseId -q '.[0].databaseId')
+    [ -n "$RUN_ID" ] && break
+    sleep 3
+done
+# Watch in background to avoid flooding context with streaming output
 gh run watch "$RUN_ID" --exit-status
+# Then get structured results
+gh run view "$RUN_ID" --json jobs --jq '.jobs[] | "\(.name)\t\(.conclusion)"'
 ```
 
 If CI fails:
 - Show failure details: `gh run view "$RUN_ID" --log-failed`
 - Stop and report. Fix issues on the release branch, push, and re-check.
 
-Report CI results (all jobs, times).
+Report CI results (all jobs, times). Use `gh run view --json` for the
+summary — do not paste streaming `gh run watch` output into chat.
 
 **GATE: Tell the human CI passed. Ask them to review and merge the PR.**
 Show the PR URL. Wait for them to confirm the merge is done.
@@ -232,3 +240,4 @@ Report:
 - If anything unexpected happens, stop and ask
 - Clean up temporary files at the end
 - The CHANGELOG.md entry is the source of truth — GitHub Release notes mirror it
+- This skill may commit without asking — the commit steps are part of the defined workflow (overrides the ask-before-commit rule in CLAUDE.md)
