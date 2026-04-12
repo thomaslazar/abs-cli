@@ -240,3 +240,4 @@ Report:
 - If anything unexpected happens, stop and ask
 - Clean up temporary files at the end
 - The CHANGELOG.md entry is the source of truth — GitHub Release notes mirror it
+- This skill may commit without asking — the commit steps are part of the defined workflow (overrides the ask-before-commit rule in CLAUDE.md)
