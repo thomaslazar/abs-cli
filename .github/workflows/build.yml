@@ -6,6 +6,9 @@ on:
   release:
     types: [created]
 
+permissions:
+  contents: write
+
 jobs:
   unit-test:
     runs-on: ubuntu-latest
@@ -95,3 +98,15 @@ jobs:
         with:
           name: abs-cli-${{ matrix.rid }}
           path: src/AbsCli/bin/Release/net8.0/${{ matrix.rid }}/publish/
+      - name: Attach binary to GitHub Release
+        if: github.event_name == 'release'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          BIN="src/AbsCli/bin/Release/net8.0/${{ matrix.rid }}/publish/abs-cli"
+          [ -f "${BIN}.exe" ] && BIN="${BIN}.exe"
+          EXT=""
+          [[ "$BIN" == *.exe ]] && EXT=".exe"
+          cp "$BIN" "abs-cli-${{ matrix.rid }}${EXT}"
+          gh release upload "${{ github.event.release.tag_name }}" "abs-cli-${{ matrix.rid }}${EXT}"

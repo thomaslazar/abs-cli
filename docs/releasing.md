@@ -109,9 +109,8 @@ Agent reports the release URL and a summary.
 | 4. CI completion | CI result acknowledgement | Don't attach to a broken release |
 | 6. Verify | Final visual check | Human confirms the public-facing page |
 
-## Implementation Plan
+## Implementation
 
-After v0.1.0 merges, implement as `.claude/commands/release.md` — a
-project-local slash command invoked via `/release`. The command file
-contains the full flow above as agent instructions with explicit
-`AskUserQuestion` gates at each human checkpoint.
+Implemented as `.claude/skills/release/SKILL.md` — a project-local skill
+invoked via `/release` in Claude Code. The skill is human-invocable only
+(`disable-model-invocation: true`) to prevent accidental releases.
