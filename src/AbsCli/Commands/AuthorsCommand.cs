@@ -20,9 +20,12 @@ public static class AuthorsCommand
         var command = new Command("list", """
             List authors in a library
 
+            Returns all authors. No pagination — the ABS API returns the full list.
+
             Examples:
               abs-cli authors list
               abs-cli authors list | jq '.authors[] | {name, numBooks}'
+              abs-cli authors list | jq '.authors | sort_by(.numBooks) | reverse | .[:5]'
             """) { libraryOption };
 
         command.SetHandler(async (string? library) =>

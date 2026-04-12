@@ -23,9 +23,12 @@ public static class SeriesCommand
         var command = new Command("list", """
             List series in a library
 
+            Note: --limit is required to return results (default returns total count only).
+
             Examples:
-              abs-cli series list
+              abs-cli series list --limit 50
               abs-cli series list --limit 10 --page 0
+              abs-cli series list --limit 100 | jq '.results[].name'
             """) { libraryOption, limitOption, pageOption };
 
         command.SetHandler(async (string? library, int? limit, int? page) =>

@@ -30,11 +30,26 @@ public static class ItemsCommand
         var command = new Command("list", """
             List library items with optional filtering, sorting, and pagination
 
+            Filter groups:
+              authors, genres, tags, series, narrators, languages, progress, issues
+
+            Sort fields:
+              media.metadata.title          — title (default)
+              media.metadata.authorName     — author name (first last)
+              media.metadata.authorNameLF   — author name (last, first)
+              media.metadata.publishedYear  — publication year
+              media.duration                — total duration
+              addedAt                       — date added to library
+              size                          — file size
+              birthtimeMs                   — file creation time
+              mtimeMs                       — file modification time
+              random                        — random order
+
             Examples:
               abs-cli items list
               abs-cli items list --filter "languages=English" --sort "media.metadata.title"
               abs-cli items list --filter "genres=Fantasy" --desc
-              abs-cli items list --limit 50 --page 2
+              abs-cli items list --sort "addedAt" --desc --limit 10
               abs-cli items list | jq '.results[] | select(.media.metadata.isbn == null)'
             """)
         {
