@@ -17,7 +17,13 @@ public static class AuthorsCommand
     private static Command CreateListCommand()
     {
         var libraryOption = new Option<string?>("--library", "Library ID or name");
-        var command = new Command("list", "List authors in a library") { libraryOption };
+        var command = new Command("list", """
+            List authors in a library
+
+            Examples:
+              abs-cli authors list
+              abs-cli authors list | jq '.authors[] | {name, numBooks}'
+            """) { libraryOption };
 
         command.SetHandler(async (string? library) =>
         {
@@ -34,7 +40,13 @@ public static class AuthorsCommand
     private static Command CreateGetCommand()
     {
         var idOption = new Option<string>("--id", "Author ID") { IsRequired = true };
-        var command = new Command("get", "Get a single author") { idOption };
+        var command = new Command("get", """
+            Get a single author
+
+            Examples:
+              abs-cli authors get --id "aut_abc123"
+              abs-cli authors get --id "aut_abc123" | jq '.name'
+            """) { idOption };
 
         command.SetHandler(async (string id) =>
         {

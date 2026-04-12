@@ -87,19 +87,36 @@ export ABS_LIBRARY="$LIB_ID"
 echo "=== Help Screens ==="
 # ============================================================
 
-for cmd in "" "login" "config" "config get" "config set" \
-           "libraries" "libraries list" "libraries get" \
-           "items" "items list" "items get" "items search" \
-           "items update" "items batch-update" "items batch-get" \
-           "series" "series list" "series get" \
-           "authors" "authors list" "authors get" \
-           "search" "self-test"; do
+# Parent commands and self-test don't need examples (they just list subcommands)
+for cmd in "" "config" "libraries" "items" "series" "authors" "self-test"; do
     label="help: abs-cli $cmd --help"
     output=$($CLI $cmd --help 2>&1) || true
     if echo "$output" | grep -q "Description:\|Usage:"; then
         pass "$label"
     else
         fail "$label" "no help text"
+    fi
+done
+
+# Leaf commands must have at least 2 examples (for AI agent usability)
+for cmd in "login" "config get" "config set" \
+           "libraries list" "libraries get" \
+           "items list" "items get" "items search" \
+           "items update" "items batch-update" "items batch-get" \
+           "series list" "series get" \
+           "authors list" "authors get" \
+           "search"; do
+    label="help+examples: abs-cli $cmd"
+    output=$($CLI $cmd --help 2>&1) || true
+    if ! echo "$output" | grep -q "Description:\|Usage:"; then
+        fail "$label" "no help text"
+        continue
+    fi
+    example_count=$(echo "$output" | grep -c "abs-cli " || true)
+    if [ "$example_count" -ge 2 ]; then
+        pass "$label ($example_count examples)"
+    else
+        fail "$label" "only $example_count examples (need at least 2)"
     fi
 done
 

@@ -20,7 +20,13 @@ public static class SeriesCommand
         var limitOption = new Option<int?>("--limit", "Results per page");
         var pageOption = new Option<int?>("--page", "Page number (0-indexed)");
 
-        var command = new Command("list", "List series in a library") { libraryOption, limitOption, pageOption };
+        var command = new Command("list", """
+            List series in a library
+
+            Examples:
+              abs-cli series list
+              abs-cli series list --limit 10 --page 0
+            """) { libraryOption, limitOption, pageOption };
 
         command.SetHandler(async (string? library, int? limit, int? page) =>
         {
@@ -37,7 +43,13 @@ public static class SeriesCommand
     private static Command CreateGetCommand()
     {
         var idOption = new Option<string>("--id", "Series ID") { IsRequired = true };
-        var command = new Command("get", "Get a single series") { idOption };
+        var command = new Command("get", """
+            Get a single series
+
+            Examples:
+              abs-cli series get --id "se_abc123"
+              abs-cli series get --id "se_abc123" | jq '.name'
+            """) { idOption };
 
         command.SetHandler(async (string id) =>
         {

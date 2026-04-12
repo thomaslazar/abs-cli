@@ -15,7 +15,13 @@ public static class LoginCommand
             "--server",
             "Audiobookshelf server URL");
 
-        var command = new Command("login", "Authenticate with an Audiobookshelf server")
+        var command = new Command("login", """
+            Authenticate with an Audiobookshelf server
+
+            Examples:
+              abs-cli login --server https://abs.example.com
+              abs-cli login
+            """)
         {
             serverOption
         };
