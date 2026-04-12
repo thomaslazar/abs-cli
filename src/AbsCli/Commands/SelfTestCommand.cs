@@ -215,6 +215,108 @@ public static class SelfTestCommand
                 Assert(back.Authors[0].Name == "Test", $"name: {back.Authors[0].Name}");
             });
 
+            Check("BackupItem round-trip", () =>
+            {
+                var obj = new BackupItem
+                {
+                    Id = "2024-03-15T1430",
+                    Filename = "2024-03-15T1430.audiobookshelf",
+                    FileSize = 12345,
+                    CreatedAt = 1710510600000,
+                    ServerVersion = "2.33.1"
+                };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.BackupItem);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.BackupItem)!;
+                Assert(back.Id == "2024-03-15T1430", $"id: {back.Id}");
+                Assert(back.FileSize == 12345, $"fileSize: {back.FileSize}");
+                Assert(back.ServerVersion == "2.33.1", $"serverVersion: {back.ServerVersion}");
+            });
+
+            Check("BackupListResponse round-trip", () =>
+            {
+                var obj = new BackupListResponse
+                {
+                    Backups = new List<BackupItem>
+                    {
+                        new() { Id = "bk_1", Filename = "test.audiobookshelf" }
+                    },
+                    BackupLocation = "/backups",
+                    BackupPathEnvSet = false
+                };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.BackupListResponse);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.BackupListResponse)!;
+                Assert(back.Backups.Count == 1, $"count: {back.Backups.Count}");
+                Assert(back.BackupLocation == "/backups", $"location: {back.BackupLocation}");
+            });
+
+            Check("ScanResult round-trip", () =>
+            {
+                var obj = new ScanResult { Result = "UPDATED" };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.ScanResult);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.ScanResult)!;
+                Assert(back.Result == "UPDATED", $"result: {back.Result}");
+            });
+
+            Check("TaskItem round-trip", () =>
+            {
+                var json = """{"id":"task_1","action":"library-scan","title":"Scanning","isFailed":false,"isFinished":true,"startedAt":1000,"finishedAt":2000,"data":{"added":5}}""";
+                var obj = JsonSerializer.Deserialize(json, AppJsonContext.Default.TaskItem)!;
+                Assert(obj.Id == "task_1", $"id: {obj.Id}");
+                Assert(obj.Action == "library-scan", $"action: {obj.Action}");
+                Assert(obj.IsFinished, "isFinished should be true");
+                Assert(obj.Data.HasValue, "data should have value");
+                var roundTrip = JsonSerializer.Serialize(obj, AppJsonContext.Default.TaskItem);
+                Assert(roundTrip.Contains("\"action\""), "action key missing in output");
+            });
+
+            Check("TaskListResponse round-trip", () =>
+            {
+                var obj = new TaskListResponse
+                {
+                    Tasks = new List<TaskItem> { new() { Id = "t_1", Action = "scan" } }
+                };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.TaskListResponse);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.TaskListResponse)!;
+                Assert(back.Tasks.Count == 1, $"count: {back.Tasks.Count}");
+                Assert(back.Tasks[0].Action == "scan", $"action: {back.Tasks[0].Action}");
+            });
+
+            Check("MetadataProvidersResponse round-trip", () =>
+            {
+                var obj = new MetadataProvidersResponse
+                {
+                    Providers = new MetadataProviderGroups
+                    {
+                        Books = new List<ProviderEntry>
+                        {
+                            new() { Value = "google", Text = "Google Books" }
+                        },
+                        BooksCovers = new List<ProviderEntry>
+                        {
+                            new() { Value = "best", Text = "Best" }
+                        },
+                        Podcasts = new List<ProviderEntry>()
+                    }
+                };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.MetadataProvidersResponse);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.MetadataProvidersResponse)!;
+                Assert(back.Providers.Books.Count == 1, $"books count: {back.Providers.Books.Count}");
+                Assert(back.Providers.Books[0].Value == "google", $"value: {back.Providers.Books[0].Value}");
+                Assert(back.Providers.Books[0].Text == "Google Books", $"text: {back.Providers.Books[0].Text}");
+            });
+
+            Check("CoverSearchResponse round-trip", () =>
+            {
+                var obj = new CoverSearchResponse
+                {
+                    Results = new List<string> { "https://example.com/cover1.jpg", "https://example.com/cover2.jpg" }
+                };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.CoverSearchResponse);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.CoverSearchResponse)!;
+                Assert(back.Results.Count == 2, $"count: {back.Results.Count}");
+                Assert(back.Results[0] == "https://example.com/cover1.jpg", $"url: {back.Results[0]}");
+            });
+
             Console.Error.WriteLine("");
             Console.Error.WriteLine("=== Configuration ===");
 
