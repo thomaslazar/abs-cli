@@ -1,4 +1,5 @@
 using AbsCli.Api;
+using AbsCli.Models;
 
 namespace AbsCli.Services;
 
@@ -11,13 +12,13 @@ public class LibrariesService
         _client = client;
     }
 
-    public async Task<string> ListAsync()
+    public async Task<LibraryListResponse> ListAsync()
     {
-        return await _client.GetAsync(ApiEndpoints.Libraries);
+        return await _client.GetAsync(ApiEndpoints.Libraries, AppJsonContext.Default.LibraryListResponse);
     }
 
-    public async Task<string> GetAsync(string id)
+    public async Task<Library> GetAsync(string id)
     {
-        return await _client.GetAsync(ApiEndpoints.Library(id));
+        return await _client.GetAsync(ApiEndpoints.Library(id), AppJsonContext.Default.Library);
     }
 }

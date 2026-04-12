@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 using AbsCli.Configuration;
 using AbsCli.Models;
 using AbsCli.Output;
@@ -55,6 +56,13 @@ public class AbsApiClient
         return await response.Content.ReadAsStringAsync();
     }
 
+    public async Task<T> GetAsync<T>(string endpoint, JsonTypeInfo<T> typeInfo)
+    {
+        var json = await GetAsync(endpoint);
+        return JsonSerializer.Deserialize(json, typeInfo)
+            ?? throw new InvalidOperationException($"Failed to deserialize response from {endpoint}");
+    }
+
     public async Task<string> PatchAsync(string endpoint, string jsonBody)
     {
         await EnsureValidTokenAsync();
@@ -64,6 +72,13 @@ public class AbsApiClient
         return await response.Content.ReadAsStringAsync();
     }
 
+    public async Task<T> PatchAsync<T>(string endpoint, string jsonBody, JsonTypeInfo<T> typeInfo)
+    {
+        var json = await PatchAsync(endpoint, jsonBody);
+        return JsonSerializer.Deserialize(json, typeInfo)
+            ?? throw new InvalidOperationException($"Failed to deserialize response from {endpoint}");
+    }
+
     public async Task<string> PostAsync(string endpoint, string jsonBody)
     {
         await EnsureValidTokenAsync();
@@ -71,6 +86,13 @@ public class AbsApiClient
         var response = await _http.PostAsync(endpoint, content);
         await EnsureSuccessOrHandleAuthAsync(response, HttpMethod.Post, endpoint);
         return await response.Content.ReadAsStringAsync();
+    }
+
+    public async Task<T> PostAsync<T>(string endpoint, string jsonBody, JsonTypeInfo<T> typeInfo)
+    {
+        var json = await PostAsync(endpoint, jsonBody);
+        return JsonSerializer.Deserialize(json, typeInfo)
+            ?? throw new InvalidOperationException($"Failed to deserialize response from {endpoint}");
     }
 
     private async Task EnsureValidTokenAsync()

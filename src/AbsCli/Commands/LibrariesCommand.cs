@@ -1,4 +1,5 @@
 using System.CommandLine;
+using AbsCli.Models;
 using AbsCli.Output;
 using AbsCli.Services;
 
@@ -28,8 +29,8 @@ public static class LibrariesCommand
         {
             var (client, _) = CommandHelper.BuildClient(serverOverride: server, tokenOverride: token);
             var service = new LibrariesService(client);
-            var json = await service.ListAsync();
-            ConsoleOutput.WriteRawJson(json);
+            var result = await service.ListAsync();
+            ConsoleOutput.WriteJson(result, AppJsonContext.Default.LibraryListResponse);
         }, serverOption, tokenOption);
 
         return command;
@@ -50,8 +51,8 @@ public static class LibrariesCommand
         {
             var (client, _) = CommandHelper.BuildClient(serverOverride: server, tokenOverride: token);
             var service = new LibrariesService(client);
-            var json = await service.GetAsync(id);
-            ConsoleOutput.WriteRawJson(json);
+            var result = await service.GetAsync(id);
+            ConsoleOutput.WriteJson(result, AppJsonContext.Default.Library);
         }, idOption, serverOption, tokenOption);
 
         return command;

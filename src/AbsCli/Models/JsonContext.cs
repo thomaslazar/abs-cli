@@ -7,6 +7,17 @@ namespace AbsCli.Models;
 [JsonSerializable(typeof(LoginResponse))]
 [JsonSerializable(typeof(LoginRequest))]
 [JsonSerializable(typeof(Dictionary<string, string>))]
+[JsonSerializable(typeof(LibraryListResponse))]
+[JsonSerializable(typeof(Library))]
+[JsonSerializable(typeof(PaginatedResponse))]
+[JsonSerializable(typeof(LibraryItemMinified))]
+[JsonSerializable(typeof(SearchResult))]
+[JsonSerializable(typeof(UpdateMediaResponse))]
+[JsonSerializable(typeof(BatchUpdateResponse))]
+[JsonSerializable(typeof(BatchGetResponse))]
+[JsonSerializable(typeof(SeriesItem))]
+[JsonSerializable(typeof(AuthorItem))]
+[JsonSerializable(typeof(AuthorListResponse))]
 [JsonSourceGenerationOptions(WriteIndented = true)]
 public partial class AppJsonContext : JsonSerializerContext;
 

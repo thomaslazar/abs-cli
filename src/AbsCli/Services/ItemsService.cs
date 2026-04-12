@@ -1,5 +1,6 @@
 using System.Web;
 using AbsCli.Api;
+using AbsCli.Models;
 
 namespace AbsCli.Services;
 
@@ -12,7 +13,7 @@ public class ItemsService
         _client = client;
     }
 
-    public async Task<string> ListAsync(string libraryId, string? filter, string? sort,
+    public async Task<PaginatedResponse> ListAsync(string libraryId, string? filter, string? sort,
         bool desc, int? limit, int? page)
     {
         var query = HttpUtility.ParseQueryString("");
@@ -25,34 +26,34 @@ public class ItemsService
         var url = ApiEndpoints.LibraryItems(libraryId);
         if (query.Count > 0) url += "?" + query;
 
-        return await _client.GetAsync(url);
+        return await _client.GetAsync(url, AppJsonContext.Default.PaginatedResponse);
     }
 
-    public async Task<string> GetAsync(string id)
+    public async Task<LibraryItemMinified> GetAsync(string id)
     {
-        return await _client.GetAsync(ApiEndpoints.Item(id));
+        return await _client.GetAsync(ApiEndpoints.Item(id), AppJsonContext.Default.LibraryItemMinified);
     }
 
-    public async Task<string> SearchAsync(string libraryId, string query, int? limit)
+    public async Task<SearchResult> SearchAsync(string libraryId, string query, int? limit)
     {
         var qs = HttpUtility.ParseQueryString("");
         qs["q"] = query;
         if (limit.HasValue) qs["limit"] = limit.Value.ToString();
-        return await _client.GetAsync(ApiEndpoints.LibrarySearch(libraryId) + "?" + qs);
+        return await _client.GetAsync(ApiEndpoints.LibrarySearch(libraryId) + "?" + qs, AppJsonContext.Default.SearchResult);
     }
 
-    public async Task<string> UpdateMediaAsync(string id, string jsonBody)
+    public async Task<UpdateMediaResponse> UpdateMediaAsync(string id, string jsonBody)
     {
-        return await _client.PatchAsync(ApiEndpoints.ItemMedia(id), jsonBody);
+        return await _client.PatchAsync(ApiEndpoints.ItemMedia(id), jsonBody, AppJsonContext.Default.UpdateMediaResponse);
     }
 
-    public async Task<string> BatchUpdateAsync(string jsonBody)
+    public async Task<BatchUpdateResponse> BatchUpdateAsync(string jsonBody)
     {
-        return await _client.PatchAsync(ApiEndpoints.ItemsBatchUpdate, jsonBody);
+        return await _client.PatchAsync(ApiEndpoints.ItemsBatchUpdate, jsonBody, AppJsonContext.Default.BatchUpdateResponse);
     }
 
-    public async Task<string> BatchGetAsync(string jsonBody)
+    public async Task<BatchGetResponse> BatchGetAsync(string jsonBody)
     {
-        return await _client.PostAsync(ApiEndpoints.ItemsBatchGet, jsonBody);
+        return await _client.PostAsync(ApiEndpoints.ItemsBatchGet, jsonBody, AppJsonContext.Default.BatchGetResponse);
     }
 }

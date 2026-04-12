@@ -1,4 +1,5 @@
 using System.CommandLine;
+using AbsCli.Models;
 using AbsCli.Output;
 using AbsCli.Services;
 
@@ -29,8 +30,8 @@ public static class AuthorsCommand
             var (client, config) = CommandHelper.BuildClient(libraryOverride: library);
             var libraryId = CommandHelper.RequireLibrary(config);
             var service = new AuthorsService(client);
-            var json = await service.ListAsync(libraryId);
-            ConsoleOutput.WriteRawJson(json);
+            var result = await service.ListAsync(libraryId);
+            ConsoleOutput.WriteJson(result, AppJsonContext.Default.AuthorListResponse);
         }, libraryOption);
 
         return command;
@@ -48,8 +49,8 @@ public static class AuthorsCommand
         {
             var (client, _) = CommandHelper.BuildClient();
             var service = new AuthorsService(client);
-            var json = await service.GetAsync(id);
-            ConsoleOutput.WriteRawJson(json);
+            var result = await service.GetAsync(id);
+            ConsoleOutput.WriteJson(result, AppJsonContext.Default.AuthorItem);
         }, idOption);
 
         return command;

@@ -1,4 +1,5 @@
 using System.CommandLine;
+using AbsCli.Models;
 using AbsCli.Output;
 using AbsCli.Services;
 
@@ -58,8 +59,8 @@ public static class ItemsCommand
             var (client, config) = CommandHelper.BuildClient(libraryOverride: library);
             var libraryId = CommandHelper.RequireLibrary(config);
             var service = new ItemsService(client);
-            var json = await service.ListAsync(libraryId, filter, sort, desc, limit, page);
-            ConsoleOutput.WriteRawJson(json);
+            var result = await service.ListAsync(libraryId, filter, sort, desc, limit, page);
+            ConsoleOutput.WriteJson(result, AppJsonContext.Default.PaginatedResponse);
         }, libraryOption, filterOption, sortOption, descOption, limitOption, pageOption);
 
         return command;
@@ -77,8 +78,8 @@ public static class ItemsCommand
         {
             var (client, _) = CommandHelper.BuildClient();
             var service = new ItemsService(client);
-            var json = await service.GetAsync(id);
-            ConsoleOutput.WriteRawJson(json);
+            var result = await service.GetAsync(id);
+            ConsoleOutput.WriteJson(result, AppJsonContext.Default.LibraryItemMinified);
         }, idOption);
 
         return command;
@@ -104,8 +105,8 @@ public static class ItemsCommand
             var (client, config) = CommandHelper.BuildClient(libraryOverride: library);
             var libraryId = CommandHelper.RequireLibrary(config);
             var service = new ItemsService(client);
-            var json = await service.SearchAsync(libraryId, query, limit);
-            ConsoleOutput.WriteRawJson(json);
+            var result = await service.SearchAsync(libraryId, query, limit);
+            ConsoleOutput.WriteJson(result, AppJsonContext.Default.SearchResult);
         }, queryOption, libraryOption, limitOption);
 
         return command;
@@ -127,8 +128,8 @@ public static class ItemsCommand
             var jsonBody = CommandHelper.ReadJsonInput(input);
             var (client, _) = CommandHelper.BuildClient();
             var service = new ItemsService(client);
-            var json = await service.UpdateMediaAsync(id, jsonBody);
-            ConsoleOutput.WriteRawJson(json);
+            var result = await service.UpdateMediaAsync(id, jsonBody);
+            ConsoleOutput.WriteJson(result, AppJsonContext.Default.UpdateMediaResponse);
         }, idOption, inputOption);
 
         return command;
@@ -158,8 +159,8 @@ public static class ItemsCommand
 
             var (client, _) = CommandHelper.BuildClient();
             var service = new ItemsService(client);
-            var json = await service.BatchUpdateAsync(jsonBody);
-            ConsoleOutput.WriteRawJson(json);
+            var result = await service.BatchUpdateAsync(jsonBody);
+            ConsoleOutput.WriteJson(result, AppJsonContext.Default.BatchUpdateResponse);
         }, inputOption, stdinOption);
 
         return command;
@@ -189,8 +190,8 @@ public static class ItemsCommand
 
             var (client, _) = CommandHelper.BuildClient();
             var service = new ItemsService(client);
-            var json = await service.BatchGetAsync(jsonBody);
-            ConsoleOutput.WriteRawJson(json);
+            var result = await service.BatchGetAsync(jsonBody);
+            ConsoleOutput.WriteJson(result, AppJsonContext.Default.BatchGetResponse);
         }, inputOption, stdinOption);
 
         return command;

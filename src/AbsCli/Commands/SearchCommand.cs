@@ -1,4 +1,5 @@
 using System.CommandLine;
+using AbsCli.Models;
 using AbsCli.Output;
 using AbsCli.Services;
 
@@ -40,8 +41,8 @@ public static class SearchCommand
             var (client, config) = CommandHelper.BuildClient(libraryOverride: library);
             var libraryId = CommandHelper.RequireLibrary(config);
             var service = new SearchService(client);
-            var json = await service.SearchAsync(libraryId, query, limit);
-            ConsoleOutput.WriteRawJson(json);
+            var result = await service.SearchAsync(libraryId, query, limit);
+            ConsoleOutput.WriteJson(result, AppJsonContext.Default.SearchResult);
         }, queryOption, libraryOption, limitOption);
 
         return command;

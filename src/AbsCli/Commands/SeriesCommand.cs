@@ -1,4 +1,5 @@
 using System.CommandLine;
+using AbsCli.Models;
 using AbsCli.Output;
 using AbsCli.Services;
 
@@ -33,8 +34,8 @@ public static class SeriesCommand
             var (client, config) = CommandHelper.BuildClient(libraryOverride: library);
             var libraryId = CommandHelper.RequireLibrary(config);
             var service = new SeriesService(client);
-            var json = await service.ListAsync(libraryId, limit, page);
-            ConsoleOutput.WriteRawJson(json);
+            var result = await service.ListAsync(libraryId, limit, page);
+            ConsoleOutput.WriteJson(result, AppJsonContext.Default.PaginatedResponse);
         }, libraryOption, limitOption, pageOption);
 
         return command;
@@ -52,8 +53,8 @@ public static class SeriesCommand
         {
             var (client, _) = CommandHelper.BuildClient();
             var service = new SeriesService(client);
-            var json = await service.GetAsync(id);
-            ConsoleOutput.WriteRawJson(json);
+            var result = await service.GetAsync(id);
+            ConsoleOutput.WriteJson(result, AppJsonContext.Default.SeriesItem);
         }, idOption);
 
         return command;

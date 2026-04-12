@@ -1,5 +1,6 @@
 using System.Web;
 using AbsCli.Api;
+using AbsCli.Models;
 
 namespace AbsCli.Services;
 
@@ -12,12 +13,11 @@ public class SearchService
         _client = client;
     }
 
-    public async Task<string> SearchAsync(string libraryId, string query, int? limit)
+    public async Task<SearchResult> SearchAsync(string libraryId, string query, int? limit)
     {
         var qs = HttpUtility.ParseQueryString("");
         qs["q"] = query;
         if (limit.HasValue) qs["limit"] = limit.Value.ToString();
-
-        return await _client.GetAsync(ApiEndpoints.LibrarySearch(libraryId) + "?" + qs);
+        return await _client.GetAsync(ApiEndpoints.LibrarySearch(libraryId) + "?" + qs, AppJsonContext.Default.SearchResult);
     }
 }
