@@ -102,6 +102,120 @@ public static class SelfTestCommand
             });
 
             Console.Error.WriteLine("");
+            Console.Error.WriteLine("=== API Response DTOs (source-generated) ===");
+
+            Check("LibraryListResponse round-trip", () =>
+            {
+                var obj = new LibraryListResponse
+                {
+                    Libraries = new List<Library>
+                    {
+                        new() { Id = "lib_1", Name = "Test", MediaType = "book" }
+                    }
+                };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.LibraryListResponse);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.LibraryListResponse)!;
+                Assert(back.Libraries.Count == 1, $"expected 1 library, got {back.Libraries.Count}");
+                Assert(back.Libraries[0].Id == "lib_1", $"id mismatch: {back.Libraries[0].Id}");
+                Assert(back.Libraries[0].Name == "Test", $"name mismatch: {back.Libraries[0].Name}");
+            });
+
+            Check("Library round-trip", () =>
+            {
+                var obj = new Library { Id = "lib_2", Name = "Audio", MediaType = "book", DisplayOrder = 1 };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.Library);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.Library)!;
+                Assert(back.Id == "lib_2", $"id: {back.Id}");
+                Assert(back.DisplayOrder == 1, $"displayOrder: {back.DisplayOrder}");
+            });
+
+            Check("PaginatedResponse round-trip", () =>
+            {
+                var json = """{"results":[{"id":"item1"}],"total":42,"limit":10,"page":0}""";
+                var obj = JsonSerializer.Deserialize(json, AppJsonContext.Default.PaginatedResponse)!;
+                Assert(obj.Total == 42, $"total: {obj.Total}");
+                Assert(obj.Limit == 10, $"limit: {obj.Limit}");
+                Assert(obj.Results.Count == 1, $"results count: {obj.Results.Count}");
+                var roundTrip = JsonSerializer.Serialize(obj, AppJsonContext.Default.PaginatedResponse);
+                Assert(roundTrip.Contains("\"total\":42") || roundTrip.Contains("\"total\": 42"), "total not in output");
+            });
+
+            Check("LibraryItemMinified round-trip", () =>
+            {
+                var obj = new LibraryItemMinified { Id = "li_1", LibraryId = "lib_1", MediaType = "book" };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.LibraryItemMinified);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.LibraryItemMinified)!;
+                Assert(back.Id == "li_1", $"id: {back.Id}");
+                Assert(back.MediaType == "book", $"mediaType: {back.MediaType}");
+            });
+
+            Check("SearchResult round-trip", () =>
+            {
+                var json = """{"book":[],"narrators":[],"tags":[],"genres":[],"series":[],"authors":[]}""";
+                var obj = JsonSerializer.Deserialize(json, AppJsonContext.Default.SearchResult)!;
+                Assert(obj.Book != null, "book null");
+                Assert(obj.Authors != null, "authors null");
+                var roundTrip = JsonSerializer.Serialize(obj, AppJsonContext.Default.SearchResult);
+                Assert(roundTrip.Contains("\"book\""), "book key missing in output");
+            });
+
+            Check("UpdateMediaResponse round-trip", () =>
+            {
+                var json = """{"updated":true,"libraryItem":{"id":"li_1"}}""";
+                var obj = JsonSerializer.Deserialize(json, AppJsonContext.Default.UpdateMediaResponse)!;
+                Assert(obj.Updated, "updated should be true");
+                var roundTrip = JsonSerializer.Serialize(obj, AppJsonContext.Default.UpdateMediaResponse);
+                Assert(roundTrip.Contains("\"updated\""), "updated key missing");
+            });
+
+            Check("BatchUpdateResponse round-trip", () =>
+            {
+                var obj = new BatchUpdateResponse { Success = true, Updates = 3 };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.BatchUpdateResponse);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.BatchUpdateResponse)!;
+                Assert(back.Success, "success should be true");
+                Assert(back.Updates == 3, $"updates: {back.Updates}");
+            });
+
+            Check("BatchGetResponse round-trip", () =>
+            {
+                var json = """{"libraryItems":[{"id":"li_1"},{"id":"li_2"}]}""";
+                var obj = JsonSerializer.Deserialize(json, AppJsonContext.Default.BatchGetResponse)!;
+                Assert(obj.LibraryItems.Count == 2, $"count: {obj.LibraryItems.Count}");
+            });
+
+            Check("SeriesItem round-trip", () =>
+            {
+                var obj = new SeriesItem { Id = "se_1", Name = "Mistborn", LibraryId = "lib_1" };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.SeriesItem);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.SeriesItem)!;
+                Assert(back.Id == "se_1", $"id: {back.Id}");
+                Assert(back.Name == "Mistborn", $"name: {back.Name}");
+            });
+
+            Check("AuthorItem round-trip", () =>
+            {
+                var obj = new AuthorItem { Id = "aut_1", Name = "Sanderson", LibraryId = "lib_1", NumBooks = 4 };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.AuthorItem);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.AuthorItem)!;
+                Assert(back.Id == "aut_1", $"id: {back.Id}");
+                Assert(back.Name == "Sanderson", $"name: {back.Name}");
+                Assert(back.NumBooks == 4, $"numBooks: {back.NumBooks}");
+            });
+
+            Check("AuthorListResponse round-trip", () =>
+            {
+                var obj = new AuthorListResponse
+                {
+                    Authors = new List<AuthorItem> { new() { Id = "aut_1", Name = "Test" } }
+                };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.AuthorListResponse);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.AuthorListResponse)!;
+                Assert(back.Authors.Count == 1, $"count: {back.Authors.Count}");
+                Assert(back.Authors[0].Name == "Test", $"name: {back.Authors[0].Name}");
+            });
+
+            Console.Error.WriteLine("");
             Console.Error.WriteLine("=== Configuration ===");
 
             Check("ConfigManager save/load round-trip", () =>
