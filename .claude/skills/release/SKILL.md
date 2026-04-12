@@ -78,9 +78,9 @@ VERSION="v{version}"  # from step 1, e.g. "v0.1.0"
 git checkout -b "release/${VERSION}"
 ```
 
-## Step 3: Generate Changelog Entry
+## Step 3: Generate Release Notes
 
-Generate release notes with two sections:
+Generate release notes into `release-notes.md` with two sections:
 
 **Highlights** — 3-5 bullet points describing what's new in plain language.
 Focus on what users care about, not implementation details.
@@ -97,7 +97,7 @@ fi
 git log --oneline $RANGE --pretty="- %s" | grep -E "^- (feat|fix|refactor|docs|test|ci|chore):" | sort
 ```
 
-Format the entry as:
+Write `release-notes.md` in this format:
 
 ```markdown
 ## {version} — YYYY-MM-DD
@@ -112,8 +112,11 @@ Format the entry as:
 - fix: ...
 ```
 
-**Prepend** the entry to `CHANGELOG.md` (create the file if it doesn't exist).
-Keep a header at the top:
+**GATE: Show the release notes to the human.** Ask them to review and approve.
+If they want edits, make them and show again.
+
+Then prepend the release notes to `CHANGELOG.md` (create the file if it
+doesn't exist). Keep a header at the top:
 
 ```markdown
 # Changelog
@@ -121,11 +124,9 @@ Keep a header at the top:
 All notable changes to abs-cli are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
-## {version} — YYYY-MM-DD
-...
+{contents of release-notes.md}
 
-## {previous version} — ...
-...
+{previous entries...}
 ```
 
 Commit the changelog:
@@ -134,9 +135,6 @@ Commit the changelog:
 git add CHANGELOG.md
 git commit -m "docs: add v{version} changelog entry"
 ```
-
-**GATE: Show the changelog entry to the human.** Ask them to review and approve.
-If they want edits, make them, amend the commit, and show again.
 
 ## Step 4: Open PR for CI Validation
 
@@ -165,27 +163,17 @@ Show the PR URL. Wait for them to confirm the merge is done.
 
 ## Step 5: Tag and Create GitHub Release
 
-After the PR is merged, switch back to main and tag:
+After the PR is merged, switch back to main and create the release.
+The `release-notes.md` from step 3 is still available (gitignored, not committed).
 
 ```bash
 git checkout main
 git pull
-
-# Extract the changelog entry for this version to use as release notes
-# (everything between this version's header and the next version header or EOF)
-python3 -c "
-import re, sys
-with open('CHANGELOG.md') as f:
-    content = f.read()
-pattern = r'## ${VERSION#v}.*?\n(.*?)(?=\n## |\Z)'
-match = re.search(pattern, content, re.DOTALL)
-if match:
-    print(match.group(1).strip())
-else:
-    print('Release ${VERSION}')
-" > release-notes.md
-
 gh release create "${VERSION}" --title "${VERSION}" --notes-file release-notes.md
+```
+
+Clean up after the release is created:
+```bash
 rm release-notes.md
 ```
 
