@@ -22,6 +22,7 @@ test: add metadata update assertion to smoke tests
 - `.editorconfig` (from dotnet/runtime) enforces style. CI checks with `dotnet format --verify-no-changes`.
 - Run `dotnet format AbsCli.sln` after writing or modifying C# files.
 - If formatting check fails in CI, run the format command and commit the fix.
+- **No unnecessary blank lines** inside method bodies: no blanks between consecutive `AddCommand`/`AddOption` calls, no blank before `return` after setup calls, no blanks between consecutive variable declarations of the same kind. Keep methods compact — see `AuthorsCommand.cs` as reference.
 
 ## MemPalace
 

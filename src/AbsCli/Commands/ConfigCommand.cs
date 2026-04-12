@@ -10,10 +10,8 @@ public static class ConfigCommand
     public static Command Create()
     {
         var command = new Command("config", "Manage abs-cli configuration");
-
         command.AddCommand(CreateGetCommand());
         command.AddCommand(CreateSetCommand());
-
         return command;
     }
 
