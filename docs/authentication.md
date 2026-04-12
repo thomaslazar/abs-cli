@@ -10,6 +10,12 @@ ABS supports access + refresh token pairs. Both are fully implemented:
 The old non-expiring `user.token` still works but is deprecated in the ABS source
 (`@deprecated` annotation, `isOldToken` tracking flag). API keys are also being deprecated.
 
+## HTTP Headers
+
+All requests include a `User-Agent: abs-cli/{version}` header. Some ABS
+deployments behind reverse proxies (e.g. Cosmos) reject requests without a
+User-Agent, returning 403. Added in v0.1.1.
+
 ## Auth Flow
 
 1. **Login:** `POST /login` with `X-Return-Tokens: true` header — response includes

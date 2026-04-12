@@ -27,7 +27,7 @@ Highest wins:
 |---------|-------------|
 | `abs-cli config get` | Shows current config (tokens masked) |
 | `abs-cli config set <key> <value>` | Generic config setter |
-| `abs-cli config set default-library <id\|name>` | Sets default library. Validates it exists on the server. |
+| `abs-cli config set default-library <id\|name>` | Sets default library (stored locally, not validated against server) |
 
 ## Error Messages
 
