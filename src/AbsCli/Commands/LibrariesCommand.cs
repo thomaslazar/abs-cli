@@ -12,6 +12,7 @@ public static class LibrariesCommand
         var command = new Command("libraries", "Manage libraries");
         command.AddCommand(CreateListCommand());
         command.AddCommand(CreateGetCommand());
+        command.AddCommand(CreateScanCommand());
         return command;
     }
 
@@ -55,6 +56,25 @@ public static class LibrariesCommand
             ConsoleOutput.WriteJson(result, AppJsonContext.Default.Library);
         }, idOption, serverOption, tokenOption);
 
+        return command;
+    }
+
+    private static Command CreateScanCommand()
+    {
+        var idOption = new Option<string?>("--id", "Library ID (or default from config)");
+        var forceOption = new Option<bool>("--force", "Force full rescan");
+        var command = new Command("scan", "Trigger a library scan (admin-only, async)") { idOption, forceOption };
+        command.AddExamples(
+            "abs-cli libraries scan",
+            "abs-cli libraries scan --force",
+            "abs-cli libraries scan --id \"lib_abc123\"");
+        command.SetHandler(async (string? id, bool force) =>
+        {
+            var (client, config) = CommandHelper.BuildClient(libraryOverride: id);
+            var libraryId = CommandHelper.RequireLibrary(config);
+            var service = new LibrariesService(client);
+            await service.ScanAsync(libraryId, force);
+        }, idOption, forceOption);
         return command;
     }
 }

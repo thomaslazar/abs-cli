@@ -16,6 +16,7 @@ public static class ItemsCommand
         command.AddCommand(CreateUpdateCommand());
         command.AddCommand(CreateBatchUpdateCommand());
         command.AddCommand(CreateBatchGetCommand());
+        command.AddCommand(CreateScanCommand());
         return command;
     }
 
@@ -194,6 +195,23 @@ public static class ItemsCommand
             ConsoleOutput.WriteJson(result, AppJsonContext.Default.BatchGetResponse);
         }, inputOption, stdinOption);
 
+        return command;
+    }
+
+    private static Command CreateScanCommand()
+    {
+        var idOption = new Option<string>("--id", "Item ID") { IsRequired = true };
+        var command = new Command("scan", "Scan a single library item (admin-only, sync)") { idOption };
+        command.AddExamples(
+            "abs-cli items scan --id \"li_abc123\"",
+            "abs-cli items scan --id \"li_abc123\" | jq '.result'");
+        command.SetHandler(async (string id) =>
+        {
+            var (client, _) = CommandHelper.BuildClient();
+            var service = new ItemsService(client);
+            var result = await service.ScanAsync(id);
+            ConsoleOutput.WriteJson(result, AppJsonContext.Default.ScanResult);
+        }, idOption);
         return command;
     }
 }

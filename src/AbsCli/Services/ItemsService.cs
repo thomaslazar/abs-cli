@@ -56,4 +56,10 @@ public class ItemsService
     {
         return await _client.PostAsync(ApiEndpoints.ItemsBatchGet, jsonBody, AppJsonContext.Default.BatchGetResponse);
     }
+
+    public async Task<ScanResult> ScanAsync(string id)
+    {
+        return await _client.PostEmptyAsync(ApiEndpoints.ItemScan(id),
+            AppJsonContext.Default.ScanResult, "'admin' access");
+    }
 }
