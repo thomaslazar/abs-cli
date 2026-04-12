@@ -18,6 +18,8 @@ namespace AbsCli.Models;
 [JsonSerializable(typeof(SeriesItem))]
 [JsonSerializable(typeof(AuthorItem))]
 [JsonSerializable(typeof(AuthorListResponse))]
+[JsonSerializable(typeof(BackupItem))]
+[JsonSerializable(typeof(BackupListResponse))]
 [JsonSourceGenerationOptions(WriteIndented = true)]
 public partial class AppJsonContext : JsonSerializerContext;
 
