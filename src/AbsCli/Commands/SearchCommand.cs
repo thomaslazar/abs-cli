@@ -11,9 +11,9 @@ public static class SearchCommand
     {
         var queryOption = new Option<string>("--query", "Search text") { IsRequired = true };
         var libraryOption = new Option<string?>("--library", "Library ID or name");
-        var limitOption = new Option<int?>("--limit", "Max results");
+        var limitOption = new Option<int>("--limit", () => 50, "Max results (default 50, pass higher value to retrieve more)");
 
-        var command = new Command("search", "Search across a library")
+        var command = new Command("search", "Search across a library (defaults to 50 results)")
         {
             queryOption, libraryOption, limitOption
         };
@@ -36,7 +36,7 @@ public static class SearchCommand
             "abs-cli search --query \"978-0\" --limit 20    # search by ISBN prefix",
             "abs-cli search --query \"Fantasy\" | jq '.book[].libraryItem.media.metadata.title'");
 
-        command.SetHandler(async (string query, string? library, int? limit) =>
+        command.SetHandler(async (string query, string? library, int limit) =>
         {
             var (client, config) = CommandHelper.BuildClient(libraryOverride: library);
             var libraryId = CommandHelper.RequireLibrary(config);
