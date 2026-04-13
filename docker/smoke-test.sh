@@ -381,8 +381,10 @@ export ABS_TOKEN="$UPLOAD_TOKEN"
 
 output=$($CLI upload --title "Smoke Test Upload" --author "Test Author" \
     --folder "$FOLDER_ID" --wait --files "$UPLOAD_TMP/test.mp3" 2>/dev/null)
+UPLOADED_ITEM_ID=""
 if echo "$output" | python3 -c "import sys,json; d=json.load(sys.stdin); assert 'id' in d" 2>/dev/null; then
     pass "upload --wait returned item JSON"
+    UPLOADED_ITEM_ID=$(echo "$output" | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
 else
     fail "upload --wait returned item JSON" "no id in response"
     echo "    response: ${output:0:200}"
@@ -390,6 +392,12 @@ fi
 
 export ABS_TOKEN="$SAVE_TOKEN"
 rm -rf "$UPLOAD_TMP"
+
+# Cleanup: hard-delete the uploaded item (also removes orphan author "Test Author")
+if [ -n "$UPLOADED_ITEM_ID" ]; then
+    curl -sf -X DELETE "$ABS_URL/api/items/$UPLOADED_ITEM_ID?hard=1" \
+        -H "Authorization: Bearer $ABS_TOKEN" > /dev/null 2>&1 || true
+fi
 
 # ============================================================
 echo ""
