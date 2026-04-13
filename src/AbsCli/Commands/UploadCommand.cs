@@ -27,9 +27,10 @@ public static class UploadCommand
             "Otherwise pass --folder <id>.",
             "Run 'abs-cli libraries get --id <id>' to see folder IDs.");
         command.AddHelpSection("Folder structure created",
-            "Author/Title            — when --author is given",
-            "Author/Series/Title     — when --author and --series are given",
-            "Title                   — when no --author is given");
+            "Title                              — when no --author is given",
+            "Author/Title                       — when --author is given",
+            "Author/Series/Title                — when --author and --series are given",
+            "Author/Series/{N}. - {Title}       — when --sequence N is also given (requires --series)");
         command.AddExamples(
             "abs-cli upload --title \"The Hobbit\" --author \"J.R.R. Tolkien\" --files hobbit.m4b",
             "abs-cli upload --title \"The Final Empire\" --author \"Brandon Sanderson\" --series \"Mistborn\" --sequence 1 --files part1.mp3 part2.mp3",
