@@ -57,6 +57,11 @@ public static class LoginCommand
                 var loginResponse = await client.LoginAsync(username, password);
 
                 var config = configManager.Load();
+                // Server changed — drop the previous defaultLibrary so we don't
+                // carry a stale ID that doesn't exist on the new server.
+                var serverChanged = !string.Equals(config.Server, server, StringComparison.Ordinal);
+                if (serverChanged)
+                    config.DefaultLibrary = null;
                 config.Server = server;
                 config.AccessToken = loginResponse.User.AccessToken;
                 config.RefreshToken = loginResponse.User.RefreshToken;
