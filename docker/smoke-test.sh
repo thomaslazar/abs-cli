@@ -335,7 +335,7 @@ assert_json_key "backup list has backupLocation" "backupLocation" "$output"
 assert_json_expr "backup list finds our backup" \
     "any(b['id']=='$BACKUP_ID' for b in d['backups'])" "$output"
 
-BACKUP_DL=$(mktemp)
+BACKUP_DL=$(mktemp --suffix=.audiobookshelf)
 $CLI backup download --id "$BACKUP_ID" --output "$BACKUP_DL" 2>/dev/null
 if [ -s "$BACKUP_DL" ]; then
     pass "backup download wrote file"

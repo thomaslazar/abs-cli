@@ -59,6 +59,7 @@ curl -sf -X POST "$ABS_URL/api/users" \
         "username": "testuser",
         "password": "testpass",
         "type": "user",
+        "isActive": true,
         "permissions": {
             "download": true,
             "update": true,
@@ -79,6 +80,7 @@ curl -sf -X POST "$ABS_URL/api/users" \
         "username": "uploaduser",
         "password": "uploadpass",
         "type": "user",
+        "isActive": true,
         "permissions": {
             "download": true,
             "update": true,
