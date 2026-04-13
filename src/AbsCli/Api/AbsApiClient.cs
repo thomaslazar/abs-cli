@@ -49,54 +49,7 @@ public class AbsApiClient
         return JsonSerializer.Deserialize(json, AppJsonContext.Default.LoginResponse)!;
     }
 
-    public async Task<string> GetAsync(string endpoint)
-    {
-        await EnsureValidTokenAsync();
-        var response = await _http.GetAsync(endpoint);
-        await EnsureSuccessOrHandleAuthAsync(response, HttpMethod.Get, endpoint);
-        return await response.Content.ReadAsStringAsync();
-    }
-
-    public async Task<T> GetAsync<T>(string endpoint, JsonTypeInfo<T> typeInfo)
-    {
-        var json = await GetAsync(endpoint);
-        return JsonSerializer.Deserialize(json, typeInfo)
-            ?? throw new InvalidOperationException($"Failed to deserialize response from {endpoint}");
-    }
-
-    public async Task<string> PatchAsync(string endpoint, string jsonBody)
-    {
-        await EnsureValidTokenAsync();
-        var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
-        var response = await _http.PatchAsync(endpoint, content);
-        await EnsureSuccessOrHandleAuthAsync(response, HttpMethod.Patch, endpoint);
-        return await response.Content.ReadAsStringAsync();
-    }
-
-    public async Task<T> PatchAsync<T>(string endpoint, string jsonBody, JsonTypeInfo<T> typeInfo)
-    {
-        var json = await PatchAsync(endpoint, jsonBody);
-        return JsonSerializer.Deserialize(json, typeInfo)
-            ?? throw new InvalidOperationException($"Failed to deserialize response from {endpoint}");
-    }
-
-    public async Task<string> PostAsync(string endpoint, string jsonBody)
-    {
-        await EnsureValidTokenAsync();
-        var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
-        var response = await _http.PostAsync(endpoint, content);
-        await EnsureSuccessOrHandleAuthAsync(response, HttpMethod.Post, endpoint);
-        return await response.Content.ReadAsStringAsync();
-    }
-
-    public async Task<T> PostAsync<T>(string endpoint, string jsonBody, JsonTypeInfo<T> typeInfo)
-    {
-        var json = await PostAsync(endpoint, jsonBody);
-        return JsonSerializer.Deserialize(json, typeInfo)
-            ?? throw new InvalidOperationException($"Failed to deserialize response from {endpoint}");
-    }
-
-    public async Task<string> GetAsync(string endpoint, string? permissionHint)
+    public async Task<string> GetAsync(string endpoint, string? permissionHint = null)
     {
         await EnsureValidTokenAsync();
         var response = await _http.GetAsync(endpoint);
@@ -104,14 +57,14 @@ public class AbsApiClient
         return await response.Content.ReadAsStringAsync();
     }
 
-    public async Task<T> GetAsync<T>(string endpoint, JsonTypeInfo<T> typeInfo, string? permissionHint)
+    public async Task<T> GetAsync<T>(string endpoint, JsonTypeInfo<T> typeInfo, string? permissionHint = null)
     {
         var json = await GetAsync(endpoint, permissionHint);
         return JsonSerializer.Deserialize(json, typeInfo)
             ?? throw new InvalidOperationException($"Failed to deserialize response from {endpoint}");
     }
 
-    public async Task<string> PatchAsync(string endpoint, string jsonBody, string? permissionHint)
+    public async Task<string> PatchAsync(string endpoint, string jsonBody, string? permissionHint = null)
     {
         await EnsureValidTokenAsync();
         var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
@@ -120,14 +73,14 @@ public class AbsApiClient
         return await response.Content.ReadAsStringAsync();
     }
 
-    public async Task<T> PatchAsync<T>(string endpoint, string jsonBody, JsonTypeInfo<T> typeInfo, string? permissionHint)
+    public async Task<T> PatchAsync<T>(string endpoint, string jsonBody, JsonTypeInfo<T> typeInfo, string? permissionHint = null)
     {
         var json = await PatchAsync(endpoint, jsonBody, permissionHint);
         return JsonSerializer.Deserialize(json, typeInfo)
             ?? throw new InvalidOperationException($"Failed to deserialize response from {endpoint}");
     }
 
-    public async Task<string> PostAsync(string endpoint, string jsonBody, string? permissionHint)
+    public async Task<string> PostAsync(string endpoint, string jsonBody, string? permissionHint = null)
     {
         await EnsureValidTokenAsync();
         var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
@@ -136,7 +89,7 @@ public class AbsApiClient
         return await response.Content.ReadAsStringAsync();
     }
 
-    public async Task<T> PostAsync<T>(string endpoint, string jsonBody, JsonTypeInfo<T> typeInfo, string? permissionHint)
+    public async Task<T> PostAsync<T>(string endpoint, string jsonBody, JsonTypeInfo<T> typeInfo, string? permissionHint = null)
     {
         var json = await PostAsync(endpoint, jsonBody, permissionHint);
         return JsonSerializer.Deserialize(json, typeInfo)
