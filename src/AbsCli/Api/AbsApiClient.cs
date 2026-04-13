@@ -14,13 +14,19 @@ public class AbsApiClient
     private readonly ConfigManager _configManager;
     private AppConfig _config;
 
+    public static readonly TimeSpan DefaultRequestTimeout = TimeSpan.FromSeconds(100);
+
     public AbsApiClient(AppConfig config, ConfigManager configManager)
     {
         _config = config;
         _configManager = configManager;
         _http = new HttpClient
         {
-            BaseAddress = new Uri(config.Server!.TrimEnd('/'))
+            BaseAddress = new Uri(config.Server!.TrimEnd('/')),
+            // We manage timeouts per-request via CancellationTokenSource so that
+            // long operations (backup create/apply/download/upload) can opt into
+            // longer timeouts. Setting this to Infinite disables the global cap.
+            Timeout = Timeout.InfiniteTimeSpan
         };
         _http.DefaultRequestHeaders.UserAgent.ParseAdd($"abs-cli/{AssemblyVersion}");
 
@@ -49,97 +55,104 @@ public class AbsApiClient
         return JsonSerializer.Deserialize(json, AppJsonContext.Default.LoginResponse)!;
     }
 
-    public async Task<string> GetAsync(string endpoint, string? permissionHint = null)
+    public async Task<string> GetAsync(string endpoint, string? permissionHint = null, TimeSpan? timeout = null)
     {
         await EnsureValidTokenAsync();
-        var response = await _http.GetAsync(endpoint);
+        using var cts = new CancellationTokenSource(timeout ?? DefaultRequestTimeout);
+        var response = await _http.GetAsync(endpoint, cts.Token);
         await EnsureSuccessOrHandleAuthAsync(response, HttpMethod.Get, endpoint, permissionHint);
         return await response.Content.ReadAsStringAsync();
     }
 
-    public async Task<T> GetAsync<T>(string endpoint, JsonTypeInfo<T> typeInfo, string? permissionHint = null)
+    public async Task<T> GetAsync<T>(string endpoint, JsonTypeInfo<T> typeInfo, string? permissionHint = null, TimeSpan? timeout = null)
     {
-        var json = await GetAsync(endpoint, permissionHint);
+        var json = await GetAsync(endpoint, permissionHint, timeout);
         return JsonSerializer.Deserialize(json, typeInfo)
             ?? throw new InvalidOperationException($"Failed to deserialize response from {endpoint}");
     }
 
-    public async Task<string> PatchAsync(string endpoint, string jsonBody, string? permissionHint = null)
+    public async Task<string> PatchAsync(string endpoint, string jsonBody, string? permissionHint = null, TimeSpan? timeout = null)
     {
         await EnsureValidTokenAsync();
+        using var cts = new CancellationTokenSource(timeout ?? DefaultRequestTimeout);
         var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
-        var response = await _http.PatchAsync(endpoint, content);
+        var response = await _http.PatchAsync(endpoint, content, cts.Token);
         await EnsureSuccessOrHandleAuthAsync(response, HttpMethod.Patch, endpoint, permissionHint);
         return await response.Content.ReadAsStringAsync();
     }
 
-    public async Task<T> PatchAsync<T>(string endpoint, string jsonBody, JsonTypeInfo<T> typeInfo, string? permissionHint = null)
+    public async Task<T> PatchAsync<T>(string endpoint, string jsonBody, JsonTypeInfo<T> typeInfo, string? permissionHint = null, TimeSpan? timeout = null)
     {
-        var json = await PatchAsync(endpoint, jsonBody, permissionHint);
+        var json = await PatchAsync(endpoint, jsonBody, permissionHint, timeout);
         return JsonSerializer.Deserialize(json, typeInfo)
             ?? throw new InvalidOperationException($"Failed to deserialize response from {endpoint}");
     }
 
-    public async Task<string> PostAsync(string endpoint, string jsonBody, string? permissionHint = null)
+    public async Task<string> PostAsync(string endpoint, string jsonBody, string? permissionHint = null, TimeSpan? timeout = null)
     {
         await EnsureValidTokenAsync();
+        using var cts = new CancellationTokenSource(timeout ?? DefaultRequestTimeout);
         var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
-        var response = await _http.PostAsync(endpoint, content);
+        var response = await _http.PostAsync(endpoint, content, cts.Token);
         await EnsureSuccessOrHandleAuthAsync(response, HttpMethod.Post, endpoint, permissionHint);
         return await response.Content.ReadAsStringAsync();
     }
 
-    public async Task<T> PostAsync<T>(string endpoint, string jsonBody, JsonTypeInfo<T> typeInfo, string? permissionHint = null)
+    public async Task<T> PostAsync<T>(string endpoint, string jsonBody, JsonTypeInfo<T> typeInfo, string? permissionHint = null, TimeSpan? timeout = null)
     {
-        var json = await PostAsync(endpoint, jsonBody, permissionHint);
+        var json = await PostAsync(endpoint, jsonBody, permissionHint, timeout);
         return JsonSerializer.Deserialize(json, typeInfo)
             ?? throw new InvalidOperationException($"Failed to deserialize response from {endpoint}");
     }
 
-    public async Task<string> DeleteAsync(string endpoint, string? permissionHint = null)
+    public async Task<string> DeleteAsync(string endpoint, string? permissionHint = null, TimeSpan? timeout = null)
     {
         await EnsureValidTokenAsync();
-        var response = await _http.DeleteAsync(endpoint);
+        using var cts = new CancellationTokenSource(timeout ?? DefaultRequestTimeout);
+        var response = await _http.DeleteAsync(endpoint, cts.Token);
         await EnsureSuccessOrHandleAuthAsync(response, HttpMethod.Delete, endpoint, permissionHint);
         return await response.Content.ReadAsStringAsync();
     }
 
-    public async Task<T> DeleteAsync<T>(string endpoint, JsonTypeInfo<T> typeInfo, string? permissionHint = null)
+    public async Task<T> DeleteAsync<T>(string endpoint, JsonTypeInfo<T> typeInfo, string? permissionHint = null, TimeSpan? timeout = null)
     {
-        var json = await DeleteAsync(endpoint, permissionHint);
+        var json = await DeleteAsync(endpoint, permissionHint, timeout);
         return JsonSerializer.Deserialize(json, typeInfo)
             ?? throw new InvalidOperationException($"Failed to deserialize response from {endpoint}");
     }
 
     public async Task PostMultipartAsync(string endpoint, MultipartFormDataContent content,
-        string? permissionHint = null)
+        string? permissionHint = null, TimeSpan? timeout = null)
     {
         await EnsureValidTokenAsync();
-        var response = await _http.PostAsync(endpoint, content);
+        using var cts = new CancellationTokenSource(timeout ?? DefaultRequestTimeout);
+        var response = await _http.PostAsync(endpoint, content, cts.Token);
         await EnsureSuccessOrHandleAuthAsync(response, HttpMethod.Post, endpoint, permissionHint);
     }
 
-    public async Task DownloadFileAsync(string endpoint, string outputPath, string? permissionHint = null)
+    public async Task DownloadFileAsync(string endpoint, string outputPath, string? permissionHint = null, TimeSpan? timeout = null)
     {
         await EnsureValidTokenAsync();
-        var response = await _http.GetAsync(endpoint, HttpCompletionOption.ResponseHeadersRead);
+        using var cts = new CancellationTokenSource(timeout ?? DefaultRequestTimeout);
+        var response = await _http.GetAsync(endpoint, HttpCompletionOption.ResponseHeadersRead, cts.Token);
         await EnsureSuccessOrHandleAuthAsync(response, HttpMethod.Get, endpoint, permissionHint);
-        await using var stream = await response.Content.ReadAsStreamAsync();
+        await using var stream = await response.Content.ReadAsStreamAsync(cts.Token);
         await using var fileStream = new FileStream(outputPath, FileMode.Create, FileAccess.Write);
-        await stream.CopyToAsync(fileStream);
+        await stream.CopyToAsync(fileStream, cts.Token);
     }
 
-    public async Task<string> PostEmptyAsync(string endpoint, string? permissionHint = null)
+    public async Task<string> PostEmptyAsync(string endpoint, string? permissionHint = null, TimeSpan? timeout = null)
     {
         await EnsureValidTokenAsync();
-        var response = await _http.PostAsync(endpoint, null);
+        using var cts = new CancellationTokenSource(timeout ?? DefaultRequestTimeout);
+        var response = await _http.PostAsync(endpoint, null, cts.Token);
         await EnsureSuccessOrHandleAuthAsync(response, HttpMethod.Post, endpoint, permissionHint);
         return await response.Content.ReadAsStringAsync();
     }
 
-    public async Task<T> PostEmptyAsync<T>(string endpoint, JsonTypeInfo<T> typeInfo, string? permissionHint = null)
+    public async Task<T> PostEmptyAsync<T>(string endpoint, JsonTypeInfo<T> typeInfo, string? permissionHint = null, TimeSpan? timeout = null)
     {
-        var json = await PostEmptyAsync(endpoint, permissionHint);
+        var json = await PostEmptyAsync(endpoint, permissionHint, timeout);
         return JsonSerializer.Deserialize(json, typeInfo)
             ?? throw new InvalidOperationException($"Failed to deserialize response from {endpoint}");
     }
