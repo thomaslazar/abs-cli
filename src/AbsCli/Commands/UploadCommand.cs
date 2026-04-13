@@ -1,4 +1,5 @@
 using System.CommandLine;
+using System.Text.Json;
 using AbsCli.Models;
 using AbsCli.Output;
 using AbsCli.Services;
@@ -16,11 +17,16 @@ public static class UploadCommand
         var seriesOption = new Option<string?>("--series", "Series name");
         var sequenceOption = new Option<int?>("--sequence", "Series sequence number (requires --series)");
         var waitOption = new Option<bool>("--wait", "Poll until the uploaded item appears in the library");
-        var filesOption = new Option<string[]>("--files", "File paths to upload") { IsRequired = true, AllowMultipleArgumentsPerToken = true };
+        var filesOption = new Option<string[]>("--files", "File paths to upload (mutually exclusive with --files-manifest)") { AllowMultipleArgumentsPerToken = true };
+        var prefixSourceDirOption = new Option<bool>("--prefix-source-dir",
+            "Prefix each upload filename with its parent directory name (avoids collisions when files from multiple source dirs share basenames)");
+        var manifestOption = new Option<string?>("--files-manifest",
+            "Path to JSON manifest mapping {src, as} pairs (or '-' for stdin). Mutually exclusive with --files and --prefix-source-dir.");
         var command = new Command("upload", "Upload audiobook files to a library")
         {
             libraryOption, folderOption, titleOption, authorOption,
-            seriesOption, sequenceOption, waitOption, filesOption
+            seriesOption, sequenceOption, waitOption, filesOption,
+            prefixSourceDirOption, manifestOption
         };
         command.AddHelpSection("Folder ID",
             "If the library has a single folder, it is auto-resolved.",
@@ -31,33 +37,78 @@ public static class UploadCommand
             "Author/Title                       — when --author is given",
             "Author/Series/Title                — when --author and --series are given",
             "Author/Series/{N}. - {Title}       — when --sequence N is also given (requires --series)");
+        command.AddHelpSection("Filename collisions",
+            "ABS silently overwrites files with the same name in one upload — the CLI",
+            "refuses to do this. By default duplicate basenames in --files cause an error.",
+            "",
+            "--prefix-source-dir   Prepend each file's parent directory name to the",
+            "                      uploaded filename. Good for multi-disc / multi-part",
+            "                      audiobooks where parent dir names sort correctly",
+            "                      (e.g. \"Part 1-2\" before \"Part 3\").",
+            "",
+            "--files-manifest <p>  JSON file (or '-' for stdin) mapping each source path",
+            "                      to the name ABS should save it as. Use when you need",
+            "                      explicit per-file naming. Schema: [{\"src\":\"path\",\"as\":\"name\"}, ...]");
         command.AddExamples(
             "abs-cli upload --title \"The Hobbit\" --author \"J.R.R. Tolkien\" --files hobbit.m4b",
             "abs-cli upload --title \"The Final Empire\" --author \"Brandon Sanderson\" --series \"Mistborn\" --sequence 1 --files part1.mp3 part2.mp3",
-            "abs-cli upload --title \"My Audiobook\" --files ch1.mp3 ch2.mp3 ch3.mp3 --wait");
-        command.SetHandler(async (string? library, string? folder, string title,
-            string? author, string? series, int? sequence, bool wait, string[] files) =>
+            "abs-cli upload --title \"Morning Star\" --author \"Pierce Brown\" --series \"Red Rising\" --sequence 3 --prefix-source-dir --files \"Part 1-2\"/*.mp3 \"Part 3\"/*.mp3",
+            "abs-cli upload --title \"My Audiobook\" --files-manifest manifest.json",
+            "cat manifest.json | abs-cli upload --title \"My Audiobook\" --files-manifest -");
+        command.SetHandler(async (context) =>
         {
+            var library = context.ParseResult.GetValueForOption(libraryOption);
+            var folder = context.ParseResult.GetValueForOption(folderOption);
+            var title = context.ParseResult.GetValueForOption(titleOption)!;
+            var author = context.ParseResult.GetValueForOption(authorOption);
+            var series = context.ParseResult.GetValueForOption(seriesOption);
+            var sequence = context.ParseResult.GetValueForOption(sequenceOption);
+            var wait = context.ParseResult.GetValueForOption(waitOption);
+            var files = context.ParseResult.GetValueForOption(filesOption) ?? Array.Empty<string>();
+            var prefixSourceDir = context.ParseResult.GetValueForOption(prefixSourceDirOption);
+            var manifestPath = context.ParseResult.GetValueForOption(manifestOption);
             if (sequence.HasValue && series == null)
             {
                 ConsoleOutput.WriteError("--sequence requires --series.");
                 Environment.Exit(1);
                 return;
             }
-            foreach (var file in files)
+            if (manifestPath != null && files.Length > 0)
             {
-                if (!File.Exists(file))
+                ConsoleOutput.WriteError("--files and --files-manifest are mutually exclusive.");
+                Environment.Exit(1);
+                return;
+            }
+            if (manifestPath != null && prefixSourceDir)
+            {
+                ConsoleOutput.WriteError("--prefix-source-dir and --files-manifest are mutually exclusive.");
+                Environment.Exit(1);
+                return;
+            }
+            if (manifestPath == null && files.Length == 0)
+            {
+                ConsoleOutput.WriteError("Pass --files <path>... or --files-manifest <path|->.");
+                Environment.Exit(1);
+                return;
+            }
+            var uploadList = manifestPath != null
+                ? await BuildFromManifestAsync(manifestPath)
+                : BuildFromFiles(files, prefixSourceDir);
+            foreach (var entry in uploadList)
+            {
+                if (!File.Exists(entry.LocalPath))
                 {
-                    ConsoleOutput.WriteError($"File not found: {file}");
+                    ConsoleOutput.WriteError($"File not found: {entry.LocalPath}");
                     Environment.Exit(1);
                     return;
                 }
             }
+            CheckForDuplicates(uploadList);
             var (client, config) = CommandHelper.BuildClient(libraryOverride: library);
             var libraryId = CommandHelper.RequireLibrary(config);
             var service = new UploadService(client);
             var folderId = folder ?? await service.ResolveFolderIdAsync(libraryId);
-            await service.UploadAsync(libraryId, folderId, title, author, series, sequence, files);
+            await service.UploadAsync(libraryId, folderId, title, author, series, sequence, uploadList);
             if (wait)
             {
                 var searchTitle = sequence.HasValue ? $"{sequence.Value}. - {title}" : title;
@@ -70,8 +121,95 @@ public static class UploadCommand
                 }
                 ConsoleOutput.WriteJson(item, AppJsonContext.Default.LibraryItemMinified);
             }
-        }, libraryOption, folderOption, titleOption, authorOption,
-            seriesOption, sequenceOption, waitOption, filesOption);
+        });
         return command;
+    }
+
+    private static List<(string LocalPath, string UploadName)> BuildFromFiles(string[] files, bool prefixSourceDir)
+    {
+        var result = new List<(string LocalPath, string UploadName)>(files.Length);
+        foreach (var file in files)
+        {
+            var basename = Path.GetFileName(file);
+            string uploadName;
+            if (prefixSourceDir)
+            {
+                var parentDir = Path.GetFileName(Path.GetDirectoryName(Path.GetFullPath(file)) ?? "");
+                uploadName = string.IsNullOrEmpty(parentDir) ? basename : $"{parentDir} - {basename}";
+            }
+            else
+            {
+                uploadName = basename;
+            }
+            result.Add((file, uploadName));
+        }
+        return result;
+    }
+
+    private static async Task<List<(string LocalPath, string UploadName)>> BuildFromManifestAsync(string manifestPath)
+    {
+        string json;
+        if (manifestPath == "-")
+        {
+            json = await Console.In.ReadToEndAsync();
+        }
+        else
+        {
+            if (!File.Exists(manifestPath))
+            {
+                ConsoleOutput.WriteError($"Manifest file not found: {manifestPath}");
+                Environment.Exit(1);
+            }
+            json = await File.ReadAllTextAsync(manifestPath);
+        }
+        List<UploadManifestEntry>? entries = null;
+        try
+        {
+            entries = JsonSerializer.Deserialize(json, AppJsonContext.Default.ListUploadManifestEntry);
+        }
+        catch (JsonException ex)
+        {
+            ConsoleOutput.WriteError($"Manifest is not valid JSON: {ex.Message}");
+            Environment.Exit(1);
+        }
+        if (entries == null || entries.Count == 0)
+        {
+            ConsoleOutput.WriteError("Manifest is empty or null. Provide a non-empty array of {src, as} entries.");
+            Environment.Exit(1);
+        }
+        var result = new List<(string LocalPath, string UploadName)>(entries!.Count);
+        foreach (var entry in entries)
+        {
+            if (string.IsNullOrWhiteSpace(entry.Src) || string.IsNullOrWhiteSpace(entry.TargetName))
+            {
+                ConsoleOutput.WriteError("Manifest entry missing 'src' or 'as'. Each entry must have both.");
+                Environment.Exit(1);
+            }
+            result.Add((entry.Src, entry.TargetName));
+        }
+        return result;
+    }
+
+    private static void CheckForDuplicates(IReadOnlyList<(string LocalPath, string UploadName)> uploadList)
+    {
+        var groups = uploadList
+            .GroupBy(e => e.UploadName, StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Count() > 1)
+            .ToList();
+        if (groups.Count == 0) return;
+        var lines = new List<string> { "Duplicate filenames in upload — ABS would silently overwrite:" };
+        foreach (var group in groups)
+        {
+            lines.Add($"  \"{group.Key}\" maps to {group.Count()} source files:");
+            foreach (var entry in group)
+            {
+                lines.Add($"    {entry.LocalPath}");
+            }
+        }
+        lines.Add("");
+        lines.Add("Pass --prefix-source-dir to prefix each upload filename with its parent");
+        lines.Add("directory name, or --files-manifest <path> for explicit per-file naming.");
+        ConsoleOutput.WriteError(string.Join("\n", lines));
+        Environment.Exit(1);
     }
 }

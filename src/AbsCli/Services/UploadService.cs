@@ -15,7 +15,8 @@ public class UploadService
     }
 
     public async Task UploadAsync(string libraryId, string folderId, string title,
-        string? author, string? series, int? sequence, string[] filePaths)
+        string? author, string? series, int? sequence,
+        IReadOnlyList<(string LocalPath, string UploadName)> files)
     {
         var uploadTitle = sequence.HasValue ? $"{sequence.Value}. - {title}" : title;
         var content = new MultipartFormDataContent();
@@ -26,11 +27,11 @@ public class UploadService
             content.Add(new StringContent(author), "author");
         if (series != null)
             content.Add(new StringContent(series), "series");
-        for (int i = 0; i < filePaths.Length; i++)
+        for (int i = 0; i < files.Count; i++)
         {
-            var fileBytes = await File.ReadAllBytesAsync(filePaths[i]);
+            var fileBytes = await File.ReadAllBytesAsync(files[i].LocalPath);
             var fileContent = new ByteArrayContent(fileBytes);
-            content.Add(fileContent, i.ToString(), Path.GetFileName(filePaths[i]));
+            content.Add(fileContent, i.ToString(), files[i].UploadName);
         }
         await _client.PostMultipartAsync(ApiEndpoints.Upload, content, "'upload' permission");
     }

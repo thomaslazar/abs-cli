@@ -317,6 +317,19 @@ public static class SelfTestCommand
                 Assert(back.Results[0] == "https://example.com/cover1.jpg", $"url: {back.Results[0]}");
             });
 
+            Check("UploadManifestEntry list round-trip", () =>
+            {
+                var json = """[{"src":"Part 1-2/foo.mp3","as":"001-foo.mp3"},{"src":"Part 3/foo.mp3","as":"002-foo.mp3"}]""";
+                var entries = JsonSerializer.Deserialize(json, AppJsonContext.Default.ListUploadManifestEntry)!;
+                Assert(entries.Count == 2, $"count: {entries.Count}");
+                Assert(entries[0].Src == "Part 1-2/foo.mp3", $"src: {entries[0].Src}");
+                Assert(entries[0].TargetName == "001-foo.mp3", $"as: {entries[0].TargetName}");
+                Assert(entries[1].TargetName == "002-foo.mp3", $"as: {entries[1].TargetName}");
+                var roundTrip = JsonSerializer.Serialize(entries, AppJsonContext.Default.ListUploadManifestEntry);
+                Assert(roundTrip.Contains("\"src\""), "src key missing in output");
+                Assert(roundTrip.Contains("\"as\""), "as key missing in output");
+            });
+
             Console.Error.WriteLine("");
             Console.Error.WriteLine("=== Configuration ===");
 

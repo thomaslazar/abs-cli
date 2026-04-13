@@ -399,6 +399,73 @@ if [ -n "$UPLOADED_ITEM_ID" ]; then
         -H "Authorization: Bearer $ABS_TOKEN" > /dev/null 2>&1 || true
 fi
 
+# Filename-collision tests: build a 2-dir source tree where both dirs have a file
+# called "01.mp3". Confirm default errors, --prefix-source-dir succeeds, and
+# --files-manifest succeeds. All three uploads run as uploaduser and clean up.
+
+COLLIDE_TMP=$(mktemp -d)
+mkdir -p "$COLLIDE_TMP/Part1" "$COLLIDE_TMP/Part2"
+python3 -c "
+header = bytes([0xFF, 0xFB, 0x90, 0x00])
+frame = header + b'\x00' * 413
+for d in ['$COLLIDE_TMP/Part1', '$COLLIDE_TMP/Part2']:
+    for n in ['01.mp3', '02.mp3']:
+        with open(f'{d}/{n}', 'wb') as f:
+            for _ in range(10):
+                f.write(frame)
+"
+
+export ABS_TOKEN="$UPLOAD_TOKEN"
+
+# Default: collision detected, error, no upload
+collide_out=$($CLI upload --title "Collision Default" --author "Collide Author" \
+    --folder "$FOLDER_ID" --files "$COLLIDE_TMP"/Part1/*.mp3 "$COLLIDE_TMP"/Part2/*.mp3 2>&1 || true)
+if echo "$collide_out" | grep -qi "Duplicate filenames"; then
+    pass "upload errors on duplicate basenames by default"
+else
+    fail "upload errors on duplicate basenames by default" "got: ${collide_out:0:200}"
+fi
+
+# --prefix-source-dir: succeeds, all 4 files land on server with prefixed names
+prefix_out=$($CLI upload --title "Collision Prefix" --author "Collide Author Prefix" \
+    --folder "$FOLDER_ID" --prefix-source-dir --wait \
+    --files "$COLLIDE_TMP"/Part1/*.mp3 "$COLLIDE_TMP"/Part2/*.mp3 2>/dev/null)
+PREFIX_ITEM=$(echo "$prefix_out" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))" 2>/dev/null || echo "")
+if [ -n "$PREFIX_ITEM" ]; then
+    pass "upload --prefix-source-dir created item"
+    export ABS_TOKEN="$SAVE_TOKEN"
+    curl -sf -X DELETE "$ABS_URL/api/items/$PREFIX_ITEM?hard=1" \
+        -H "Authorization: Bearer $ABS_TOKEN" > /dev/null 2>&1 || true
+    export ABS_TOKEN="$UPLOAD_TOKEN"
+else
+    fail "upload --prefix-source-dir created item" "item not found in library"
+fi
+
+# --files-manifest: succeeds with explicit per-file naming
+cat > "$COLLIDE_TMP/manifest.json" <<EOF
+[
+  {"src": "$COLLIDE_TMP/Part1/01.mp3", "as": "001-track.mp3"},
+  {"src": "$COLLIDE_TMP/Part1/02.mp3", "as": "002-track.mp3"},
+  {"src": "$COLLIDE_TMP/Part2/01.mp3", "as": "003-track.mp3"},
+  {"src": "$COLLIDE_TMP/Part2/02.mp3", "as": "004-track.mp3"}
+]
+EOF
+manifest_out=$($CLI upload --title "Collision Manifest" --author "Collide Author Manifest" \
+    --folder "$FOLDER_ID" --files-manifest "$COLLIDE_TMP/manifest.json" --wait 2>/dev/null)
+MANIFEST_ITEM=$(echo "$manifest_out" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))" 2>/dev/null || echo "")
+if [ -n "$MANIFEST_ITEM" ]; then
+    pass "upload --files-manifest created item"
+    export ABS_TOKEN="$SAVE_TOKEN"
+    curl -sf -X DELETE "$ABS_URL/api/items/$MANIFEST_ITEM?hard=1" \
+        -H "Authorization: Bearer $ABS_TOKEN" > /dev/null 2>&1 || true
+    export ABS_TOKEN="$UPLOAD_TOKEN"
+else
+    fail "upload --files-manifest created item" "item not found in library"
+fi
+
+export ABS_TOKEN="$SAVE_TOKEN"
+rm -rf "$COLLIDE_TMP"
+
 # ============================================================
 echo ""
 echo "=== Permission Errors ==="
