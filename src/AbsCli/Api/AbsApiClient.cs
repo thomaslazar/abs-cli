@@ -22,7 +22,7 @@ public class AbsApiClient
         {
             BaseAddress = new Uri(config.Server!.TrimEnd('/'))
         };
-        _http.DefaultRequestHeaders.UserAgent.ParseAdd("abs-cli/0.1.0");
+        _http.DefaultRequestHeaders.UserAgent.ParseAdd($"abs-cli/{AssemblyVersion}");
 
         if (config.AccessToken != null)
             _http.DefaultRequestHeaders.Authorization =
@@ -137,6 +137,9 @@ public class AbsApiClient
 
     private static readonly string MinSupportedVersion = "2.33.1";
     private static readonly string MaxTestedVersion = "2.33.1";
+
+    private static readonly string AssemblyVersion =
+        typeof(AbsApiClient).Assembly.GetName().Version?.ToString(3) ?? "0.0.0";
 
     public static void CheckServerVersion(string? version)
     {

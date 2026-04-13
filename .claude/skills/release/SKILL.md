@@ -69,11 +69,44 @@ Determine the version number:
 **GATE: Ask the human to confirm the version number.** Show them the proposed
 version and the commit summary. Wait for their response.
 
-## Step 2: Create Release Branch
+## Step 2: Create Release Branch and Bump Version
 
 ```bash
 VERSION="v{version}"  # from step 1, e.g. "v0.1.0"
+VERSION_NUM="${VERSION#v}"  # strip leading "v" — csproj wants "0.1.0", not "v0.1.0"
 git checkout -b "release/${VERSION}"
+```
+
+Bump `<Version>` in `src/AbsCli/AbsCli.csproj` to `${VERSION_NUM}`. This is
+what `abs-cli --version` reports and what the binary sends in its HTTP
+`User-Agent` header. Forgetting this leaves the binary self-reporting the
+previous version.
+
+Use `Edit` to change the line `<Version>OLD</Version>` to `<Version>NEW</Version>`
+in `src/AbsCli/AbsCli.csproj`. Verify with grep:
+
+```bash
+grep "<Version>" src/AbsCli/AbsCli.csproj
+# Should print:   <Version>{VERSION_NUM}</Version>
+```
+
+Rebuild the AOT binary and confirm `--version` reports the new number:
+
+```bash
+dotnet publish src/AbsCli/AbsCli.csproj -c Release -r linux-x64 --self-contained true /p:PublishAot=true -o ./publish
+./publish/abs-cli --version
+# Must print exactly: {VERSION_NUM}
+rm -rf publish/
+```
+
+If the printed version does not match, stop — something is wrong with
+the csproj or the build.
+
+Commit the bump:
+
+```bash
+git add src/AbsCli/AbsCli.csproj
+git commit -m "chore: bump version to ${VERSION_NUM}"
 ```
 
 ## Step 3: Generate Release Notes

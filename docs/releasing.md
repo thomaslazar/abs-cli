@@ -26,10 +26,25 @@ Agent verifies prerequisites:
 
 **Human gate:** Confirm the version number.
 
-### Step 2: Create release branch (agent)
+### Step 2: Create release branch and bump version (agent)
 
 ```bash
 git checkout -b release/v{version}
+```
+
+Update `<Version>` in `src/AbsCli/AbsCli.csproj` to match the new version.
+This is what `abs-cli --version` reports and what gets sent in the
+HTTP `User-Agent` header. Forgetting this leaves the binary self-reporting
+the previous version.
+
+After editing, rebuild the AOT binary and confirm `abs-cli --version`
+prints exactly the new version (no `+sha` suffix — that is suppressed
+in the csproj). If it doesn't match, stop and investigate before
+committing.
+
+```bash
+git add src/AbsCli/AbsCli.csproj
+git commit -m "chore: bump version to {version}"
 ```
 
 ### Step 3: Generate release notes (agent)
