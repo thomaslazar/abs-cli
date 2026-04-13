@@ -56,7 +56,7 @@ public class UploadService
     }
 
     public async Task<LibraryItemMinified?> WaitForItemAsync(string libraryId, string title,
-        int timeoutSeconds = 60, int pollIntervalMs = 3000)
+        int timeoutSeconds = 300, int pollIntervalMs = 3000)
     {
         var deadline = DateTime.UtcNow.AddSeconds(timeoutSeconds);
         while (DateTime.UtcNow < deadline)

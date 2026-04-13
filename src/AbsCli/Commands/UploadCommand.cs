@@ -16,7 +16,8 @@ public static class UploadCommand
         var authorOption = new Option<string?>("--author", "Book author");
         var seriesOption = new Option<string?>("--series", "Series name");
         var sequenceOption = new Option<int?>("--sequence", "Series sequence number (requires --series)");
-        var waitOption = new Option<bool>("--wait", "Poll until the uploaded item appears in the library");
+        var waitOption = new Option<bool>("--wait", "Poll until the uploaded item appears in the library (default 5min timeout)");
+        var waitTimeoutOption = new Option<int>("--wait-timeout", () => 300, "Seconds to wait for the item to appear (with --wait). Defaults to 300.");
         var filesOption = new Option<string[]>("--files", "File paths to upload (mutually exclusive with --files-manifest)") { AllowMultipleArgumentsPerToken = true };
         var prefixSourceDirOption = new Option<bool>("--prefix-source-dir",
             "Prefix each upload filename with its parent directory name (avoids collisions when files from multiple source dirs share basenames)");
@@ -25,7 +26,7 @@ public static class UploadCommand
         var command = new Command("upload", "Upload audiobook files to a library")
         {
             libraryOption, folderOption, titleOption, authorOption,
-            seriesOption, sequenceOption, waitOption, filesOption,
+            seriesOption, sequenceOption, waitOption, waitTimeoutOption, filesOption,
             prefixSourceDirOption, manifestOption
         };
         command.AddHelpSection("Folder ID",
@@ -64,6 +65,7 @@ public static class UploadCommand
             var series = context.ParseResult.GetValueForOption(seriesOption);
             var sequence = context.ParseResult.GetValueForOption(sequenceOption);
             var wait = context.ParseResult.GetValueForOption(waitOption);
+            var waitTimeout = context.ParseResult.GetValueForOption(waitTimeoutOption);
             var files = context.ParseResult.GetValueForOption(filesOption) ?? Array.Empty<string>();
             var prefixSourceDir = context.ParseResult.GetValueForOption(prefixSourceDirOption);
             var manifestPath = context.ParseResult.GetValueForOption(manifestOption);
@@ -112,10 +114,10 @@ public static class UploadCommand
             if (wait)
             {
                 var searchTitle = sequence.HasValue ? $"{sequence.Value}. - {title}" : title;
-                var item = await service.WaitForItemAsync(libraryId, searchTitle);
+                var item = await service.WaitForItemAsync(libraryId, searchTitle, timeoutSeconds: waitTimeout);
                 if (item == null)
                 {
-                    ConsoleOutput.WriteError("Timed out waiting for item to appear in library.");
+                    ConsoleOutput.WriteError($"Timed out after {waitTimeout}s waiting for item to appear in library. The upload may still be processing — check 'abs-cli items search --query <title>' or pass --wait-timeout <seconds> to wait longer.");
                     Environment.Exit(1);
                     return;
                 }
