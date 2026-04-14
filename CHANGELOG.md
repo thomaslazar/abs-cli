@@ -3,6 +3,36 @@
 All notable changes to abs-cli are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## v0.2.0 — 2026-04-14
+
+### Highlights
+- New **backup** commands — create, list, apply, download, delete, upload server backups (admin-only). Safety net before bulk metadata changes.
+- New **upload** command — upload audiobook/ebook files with author/series/sequence folder naming, `--wait` polling, auto-folder resolution, and duplicate filename protection (`--prefix-source-dir`, `--files-manifest`).
+- New **scan** commands — trigger library scans (`libraries scan`) or single-item rescans (`items scan`).
+- New **metadata** commands — search ABS-configured providers (Audible, Google Books, etc.) for book metadata and covers. Agent picks the match, applies via existing `items update`.
+- New **tasks** command — poll background task status (e.g. scan progress).
+
+### Features
+- feat: add backup create, list, apply, download, delete, upload commands
+- feat: add upload command with sequence prefix and --wait polling
+- feat: add scan, tasks, and metadata commands
+- feat: detect upload filename collisions, add prefix and manifest options
+- feat: default --limit to 50 for all list/search commands
+- feat: add API endpoints, improve error handling, add new HTTP methods
+
+### Fixes
+- fix: per-call HTTP timeout, 10min override for backup operations
+- fix: bump upload --wait default timeout from 60s to 300s, add override
+- fix: config set accepts exact keys from config get output
+- fix: login resets default library on server change
+- fix: smoke test fixes for user login and backup file extension
+
+### Other
+- ci: bump GitHub Actions to Node.js 24 versions (checkout v6, setup-dotnet v5, upload-artifact v7)
+- refactor: consolidate API client methods with optional permissionHint default parameter
+- test: 108 smoke test assertions (up from 71), 33 self-test checks (up from 25), new uploaduser test user
+- docs: spec, implementation plan, ABS source clone instructions in CLAUDE.md
+
 ## v0.1.1 — 2026-04-12
 
 ### Highlights
