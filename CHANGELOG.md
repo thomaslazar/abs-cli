@@ -3,6 +3,17 @@
 All notable changes to abs-cli are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## v0.2.1 — 2026-04-14
+
+### Highlights
+- Fixed upload timing out on large files over slow connections — the 100-second default request timeout now no longer applies to uploads
+
+### Fixes
+- fix: remove request timeout on upload to prevent failures on large files
+
+### Other
+- docs: update README for v0.2.0 commands and agent use cases
+
 ## v0.2.0 — 2026-04-14
 
 ### Highlights

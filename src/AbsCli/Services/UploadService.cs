@@ -33,7 +33,8 @@ public class UploadService
             var fileContent = new ByteArrayContent(fileBytes);
             content.Add(fileContent, i.ToString(), files[i].UploadName);
         }
-        await _client.PostMultipartAsync(ApiEndpoints.Upload, content, "'upload' permission");
+        await _client.PostMultipartAsync(ApiEndpoints.Upload, content, "'upload' permission",
+            timeout: Timeout.InfiniteTimeSpan);
     }
 
     public async Task<string> ResolveFolderIdAsync(string libraryId)
