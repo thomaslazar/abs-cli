@@ -77,11 +77,11 @@ public static class BackupCommand
     private static Command CreateDownloadCommand()
     {
         var idOption = new Option<string>("--id", "Backup ID") { IsRequired = true };
-        var outputOption = new Option<string>("--output", "Output file path") { IsRequired = true };
+        var outputOption = new Option<string>("--output", "Output file path (use .audiobookshelf extension — required for re-upload)") { IsRequired = true };
         var command = new Command("download", "Download a server backup to a local file") { idOption, outputOption };
         command.AddExamples(
-            "abs-cli backup download --id \"2024-01-15T0000\" --output backup.tar",
-            "abs-cli backup download --id \"2024-01-15T0000\" --output /tmp/abs-backup.tar");
+            "abs-cli backup download --id \"2024-01-15T0000\" --output backup.audiobookshelf",
+            "abs-cli backup download --id \"2024-01-15T0000\" --output /tmp/abs-backup.audiobookshelf");
 
         command.SetHandler(async (string id, string output) =>
         {
@@ -114,11 +114,11 @@ public static class BackupCommand
 
     private static Command CreateUploadCommand()
     {
-        var fileOption = new Option<string>("--file", "Path to backup file") { IsRequired = true };
+        var fileOption = new Option<string>("--file", "Path to backup file (must have .audiobookshelf extension)") { IsRequired = true };
         var command = new Command("upload", "Upload a backup file to the server") { fileOption };
         command.AddExamples(
-            "abs-cli backup upload --file backup.tar",
-            "abs-cli backup upload --file /tmp/abs-backup.tar | jq '.backups | length'");
+            "abs-cli backup upload --file backup.audiobookshelf",
+            "abs-cli backup upload --file /tmp/abs-backup.audiobookshelf | jq '.backups | length'");
 
         command.SetHandler(async (string file) =>
         {
