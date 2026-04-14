@@ -19,4 +19,26 @@ public static class ApiEndpoints
 
     public static string SeriesById(string id) => $"/api/series/{id}";
     public static string AuthorById(string id) => $"/api/authors/{id}";
+
+    // Backup
+    public const string Backups = "/api/backups";
+    public static string Backup(string id) => $"/api/backups/{id}";
+    public static string BackupApply(string id) => $"/api/backups/{id}/apply";
+    public static string BackupDownload(string id) => $"/api/backups/{id}/download";
+    public const string BackupUpload = "/api/backups/upload";
+
+    // Upload
+    public const string Upload = "/api/upload";
+
+    // Scan
+    public static string LibraryScan(string libraryId) => $"/api/libraries/{libraryId}/scan";
+    public static string ItemScan(string id) => $"/api/items/{id}/scan";
+
+    // Metadata search
+    public const string SearchBooks = "/api/search/books";
+    public const string SearchProviders = "/api/search/providers";
+    public const string SearchCovers = "/api/search/covers";
+
+    // Tasks
+    public const string Tasks = "/api/tasks";
 }

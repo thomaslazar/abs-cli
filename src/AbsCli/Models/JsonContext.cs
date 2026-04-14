@@ -18,6 +18,17 @@ namespace AbsCli.Models;
 [JsonSerializable(typeof(SeriesItem))]
 [JsonSerializable(typeof(AuthorItem))]
 [JsonSerializable(typeof(AuthorListResponse))]
+[JsonSerializable(typeof(BackupItem))]
+[JsonSerializable(typeof(BackupListResponse))]
+[JsonSerializable(typeof(ScanResult))]
+[JsonSerializable(typeof(TaskItem))]
+[JsonSerializable(typeof(TaskListResponse))]
+[JsonSerializable(typeof(ProviderEntry))]
+[JsonSerializable(typeof(MetadataProviderGroups))]
+[JsonSerializable(typeof(MetadataProvidersResponse))]
+[JsonSerializable(typeof(CoverSearchResponse))]
+[JsonSerializable(typeof(UploadManifestEntry))]
+[JsonSerializable(typeof(List<UploadManifestEntry>))]
 [JsonSourceGenerationOptions(WriteIndented = true)]
 public partial class AppJsonContext : JsonSerializerContext;
 

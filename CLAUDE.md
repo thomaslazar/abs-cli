@@ -25,6 +25,17 @@ test: add metadata update assertion to smoke tests
 - If formatting check fails in CI, run the format command and commit the fix.
 - **No unnecessary blank lines** inside method bodies: no blanks between consecutive `AddCommand`/`AddOption` calls, no blank before `return` after setup calls, no blanks between consecutive variable declarations of the same kind. Keep methods compact — see `AuthorsCommand.cs` as reference.
 
+## ABS Source Reference
+
+- The ABS server source is the authoritative reference for API behavior, request/response shapes, and routing — `https://api.audiobookshelf.org` is **stale** and unreliable.
+- Expected location: `temp/audiobookshelf/` (gitignored). If missing, clone the currently supported version before referencing API code:
+  ```bash
+  # Supported version is set in src/AbsCli/Api/AbsApiClient.cs (MinSupportedVersion / MaxTestedVersion)
+  git clone --depth 1 --branch v2.33.1 https://github.com/advplyr/audiobookshelf.git temp/audiobookshelf
+  ```
+- Replace the version tag with whatever `MinSupportedVersion` is currently set to.
+- Use this checkout to verify endpoints, controllers, request/response shapes, and permission checks before designing or changing CLI commands.
+
 ## MemPalace
 
 - A project-local memory palace is available via MCP at `.mempalace/`

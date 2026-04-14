@@ -43,7 +43,7 @@ public static class ConfigCommand
 
     private static Command CreateSetCommand()
     {
-        var keyArg = new Argument<string>("key", "Configuration key (server, default-library)");
+        var keyArg = new Argument<string>("key", "Configuration key (server, defaultLibrary)");
         var valueArg = new Argument<string>("value", "Configuration value");
 
         var command = new Command("set", "Set a configuration value")
@@ -53,23 +53,23 @@ public static class ConfigCommand
         };
         command.AddExamples(
             "abs-cli config set server https://abs.example.com",
-            "abs-cli config set default-library \"lib_abc123\"");
+            "abs-cli config set defaultLibrary \"lib_abc123\"");
 
         command.SetHandler((string key, string value) =>
         {
             var configManager = new ConfigManager();
             var config = configManager.Load();
 
-            switch (key.ToLower())
+            switch (key)
             {
                 case "server":
                     config.Server = value;
                     break;
-                case "default-library":
+                case "defaultLibrary":
                     config.DefaultLibrary = value;
                     break;
                 default:
-                    ConsoleOutput.WriteError($"Unknown config key: '{key}'. Valid keys: server, default-library");
+                    ConsoleOutput.WriteError($"Unknown config key: '{key}'. Valid keys: server, defaultLibrary");
                     Environment.Exit(1);
                     return;
             }

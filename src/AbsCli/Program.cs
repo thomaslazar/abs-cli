@@ -12,6 +12,10 @@ rootCommand.AddCommand(ItemsCommand.Create());
 rootCommand.AddCommand(SeriesCommand.Create());
 rootCommand.AddCommand(AuthorsCommand.Create());
 rootCommand.AddCommand(SearchCommand.Create());
+rootCommand.AddCommand(BackupCommand.Create());
+rootCommand.AddCommand(UploadCommand.Create());
+rootCommand.AddCommand(TasksCommand.Create());
+rootCommand.AddCommand(MetadataCommand.Create());
 rootCommand.AddCommand(SelfTestCommand.Create());
 
 var parser = new CommandLineBuilder(rootCommand)

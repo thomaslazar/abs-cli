@@ -16,6 +16,7 @@ public static class ItemsCommand
         command.AddCommand(CreateUpdateCommand());
         command.AddCommand(CreateBatchUpdateCommand());
         command.AddCommand(CreateBatchGetCommand());
+        command.AddCommand(CreateScanCommand());
         return command;
     }
 
@@ -25,11 +26,11 @@ public static class ItemsCommand
         var filterOption = new Option<string?>("--filter", "Filter expression (e.g. 'genres=Sci Fi')");
         var sortOption = new Option<string?>("--sort", "Sort field (e.g. 'media.metadata.title')");
         var descOption = new Option<bool>("--desc", "Sort descending");
-        var limitOption = new Option<int?>("--limit", "Results per page");
+        var limitOption = new Option<int>("--limit", () => 50, "Results per page (default 50, pass higher value to retrieve more)");
         var pageOption = new Option<int?>("--page", "Page number (0-indexed)");
 
         var command = new Command("list",
-            "List library items with optional filtering, sorting, and pagination")
+            "List library items with optional filtering, sorting, and pagination (defaults to 50 results)")
         {
             libraryOption, filterOption, sortOption, descOption, limitOption, pageOption
         };
@@ -54,7 +55,7 @@ public static class ItemsCommand
             "abs-cli items list | jq '.results[] | select(.media.metadata.isbn == null)'");
 
         command.SetHandler(async (string? library, string? filter, string? sort,
-            bool desc, int? limit, int? page) =>
+            bool desc, int limit, int? page) =>
         {
             var (client, config) = CommandHelper.BuildClient(libraryOverride: library);
             var libraryId = CommandHelper.RequireLibrary(config);
@@ -89,10 +90,10 @@ public static class ItemsCommand
     {
         var queryOption = new Option<string>("--query", "Search text") { IsRequired = true };
         var libraryOption = new Option<string?>("--library", "Library ID or name");
-        var limitOption = new Option<int?>("--limit", "Max results");
+        var limitOption = new Option<int>("--limit", () => 50, "Max results (default 50, pass higher value to retrieve more)");
 
         var command = new Command("search",
-            "Search items in a library (substring match, case-insensitive, searches title/subtitle/ASIN/ISBN)")
+            "Search items in a library (substring match, case-insensitive, searches title/subtitle/ASIN/ISBN, defaults to 50 results)")
         {
             queryOption, libraryOption, limitOption
         };
@@ -100,7 +101,7 @@ public static class ItemsCommand
             "abs-cli items search --query \"Mistborn\"",
             "abs-cli items search --query \"978-0\" --limit 20");
 
-        command.SetHandler(async (string query, string? library, int? limit) =>
+        command.SetHandler(async (string query, string? library, int limit) =>
         {
             var (client, config) = CommandHelper.BuildClient(libraryOverride: library);
             var libraryId = CommandHelper.RequireLibrary(config);
@@ -194,6 +195,23 @@ public static class ItemsCommand
             ConsoleOutput.WriteJson(result, AppJsonContext.Default.BatchGetResponse);
         }, inputOption, stdinOption);
 
+        return command;
+    }
+
+    private static Command CreateScanCommand()
+    {
+        var idOption = new Option<string>("--id", "Item ID") { IsRequired = true };
+        var command = new Command("scan", "Scan a single library item (admin-only, sync)") { idOption };
+        command.AddExamples(
+            "abs-cli items scan --id \"li_abc123\"",
+            "abs-cli items scan --id \"li_abc123\" | jq '.result'");
+        command.SetHandler(async (string id) =>
+        {
+            var (client, _) = CommandHelper.BuildClient();
+            var service = new ItemsService(client);
+            var result = await service.ScanAsync(id);
+            ConsoleOutput.WriteJson(result, AppJsonContext.Default.ScanResult);
+        }, idOption);
         return command;
     }
 }

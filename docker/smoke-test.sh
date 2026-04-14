@@ -88,7 +88,7 @@ echo "=== Help Screens ==="
 # ============================================================
 
 # Parent commands and self-test don't need examples (they just list subcommands)
-for cmd in "" "config" "libraries" "items" "series" "authors" "self-test"; do
+for cmd in "" "config" "libraries" "items" "series" "authors" "backup" "metadata" "tasks" "self-test"; do
     label="help: abs-cli $cmd --help"
     output=$($CLI $cmd --help 2>&1) || true
     if echo "$output" | grep -q "Description:\|Usage:"; then
@@ -100,11 +100,15 @@ done
 
 # Leaf commands must have at least 2 examples (for AI agent usability)
 for cmd in "login" "config get" "config set" \
-           "libraries list" "libraries get" \
+           "libraries list" "libraries get" "libraries scan" \
            "items list" "items get" "items search" \
-           "items update" "items batch-update" "items batch-get" \
+           "items update" "items batch-update" "items batch-get" "items scan" \
            "series list" "series get" \
            "authors list" "authors get" \
+           "backup create" "backup list" "backup apply" "backup download" "backup delete" "backup upload" \
+           "upload" \
+           "metadata search" "metadata providers" "metadata covers" \
+           "tasks list" \
            "search"; do
     label="help+examples: abs-cli $cmd"
     output=$($CLI $cmd --help 2>&1) || true
@@ -313,6 +317,233 @@ assert_json_expr "search finds Storm Front" "len(d.get('book',[]))>0" "$output"
 
 output=$($CLI search --query "Mistborn" 2>/dev/null)
 assert_json_expr "search finds Mistborn series" "len(d.get('series',[]))>0" "$output"
+
+# ============================================================
+echo ""
+echo "=== Backup Commands ==="
+# ============================================================
+
+output=$($CLI backup create 2>/dev/null)
+assert_json_key "backup create returns backups" "backups" "$output"
+assert_json_expr "backup create has at least 1 backup" "len(d['backups'])>=1" "$output"
+
+BACKUP_ID=$(echo "$output" | python3 -c "import sys,json; print(json.load(sys.stdin)['backups'][-1]['id'])")
+
+output=$($CLI backup list 2>/dev/null)
+assert_json_key "backup list has backups" "backups" "$output"
+assert_json_key "backup list has backupLocation" "backupLocation" "$output"
+assert_json_expr "backup list finds our backup" \
+    "any(b['id']=='$BACKUP_ID' for b in d['backups'])" "$output"
+
+BACKUP_DL=$(mktemp --suffix=.audiobookshelf)
+$CLI backup download --id "$BACKUP_ID" --output "$BACKUP_DL" 2>/dev/null
+if [ -s "$BACKUP_DL" ]; then
+    pass "backup download wrote file"
+else
+    fail "backup download wrote file" "file is empty"
+fi
+
+output=$($CLI backup upload --file "$BACKUP_DL" 2>/dev/null)
+assert_json_key "backup upload returns backups" "backups" "$output"
+rm -f "$BACKUP_DL"
+
+output=$($CLI backup apply --id "$BACKUP_ID" 2>/dev/null)
+pass "backup apply completed (exit 0)"
+
+output=$($CLI backup delete --id "$BACKUP_ID" 2>/dev/null)
+assert_json_key "backup delete returns backups" "backups" "$output"
+
+# ============================================================
+echo ""
+echo "=== Upload Command ==="
+# ============================================================
+
+FOLDER_ID=$(echo "$($CLI libraries get --id "$LIB_ID" 2>/dev/null)" \
+    | python3 -c "import sys,json; print(json.load(sys.stdin)['folders'][0]['id'])")
+
+UPLOAD_TMP=$(mktemp -d)
+python3 -c "
+header = bytes([0xFF, 0xFB, 0x90, 0x00])
+frame = header + b'\x00' * 413
+with open('$UPLOAD_TMP/test.mp3', 'wb') as f:
+    for _ in range(38):
+        f.write(frame)
+"
+
+UPLOAD_TOKEN=$(curl -sf -X POST "$ABS_URL/login" \
+    -H 'Content-Type: application/json' \
+    -H 'X-Return-Tokens: true' \
+    -d '{"username":"uploaduser","password":"uploadpass"}' \
+    | python3 -c "import sys,json; print(json.load(sys.stdin)['user']['accessToken'])")
+
+SAVE_TOKEN="$ABS_TOKEN"
+export ABS_TOKEN="$UPLOAD_TOKEN"
+
+output=$($CLI upload --title "Smoke Test Upload" --author "Test Author" \
+    --folder "$FOLDER_ID" --wait --files "$UPLOAD_TMP/test.mp3" 2>/dev/null)
+UPLOADED_ITEM_ID=""
+if echo "$output" | python3 -c "import sys,json; d=json.load(sys.stdin); assert 'id' in d" 2>/dev/null; then
+    pass "upload --wait returned item JSON"
+    UPLOADED_ITEM_ID=$(echo "$output" | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
+else
+    fail "upload --wait returned item JSON" "no id in response"
+    echo "    response: ${output:0:200}"
+fi
+
+export ABS_TOKEN="$SAVE_TOKEN"
+rm -rf "$UPLOAD_TMP"
+
+# Cleanup: hard-delete the uploaded item (also removes orphan author "Test Author")
+if [ -n "$UPLOADED_ITEM_ID" ]; then
+    curl -sf -X DELETE "$ABS_URL/api/items/$UPLOADED_ITEM_ID?hard=1" \
+        -H "Authorization: Bearer $ABS_TOKEN" > /dev/null 2>&1 || true
+fi
+
+# Filename-collision tests: build a 2-dir source tree where both dirs have a file
+# called "01.mp3". Confirm default errors, --prefix-source-dir succeeds, and
+# --files-manifest succeeds. All three uploads run as uploaduser and clean up.
+
+COLLIDE_TMP=$(mktemp -d)
+mkdir -p "$COLLIDE_TMP/Part1" "$COLLIDE_TMP/Part2"
+python3 -c "
+header = bytes([0xFF, 0xFB, 0x90, 0x00])
+frame = header + b'\x00' * 413
+for d in ['$COLLIDE_TMP/Part1', '$COLLIDE_TMP/Part2']:
+    for n in ['01.mp3', '02.mp3']:
+        with open(f'{d}/{n}', 'wb') as f:
+            for _ in range(10):
+                f.write(frame)
+"
+
+export ABS_TOKEN="$UPLOAD_TOKEN"
+
+# Default: collision detected, error, no upload
+collide_out=$($CLI upload --title "Collision Default" --author "Collide Author" \
+    --folder "$FOLDER_ID" --files "$COLLIDE_TMP"/Part1/*.mp3 "$COLLIDE_TMP"/Part2/*.mp3 2>&1 || true)
+if echo "$collide_out" | grep -qi "Duplicate filenames"; then
+    pass "upload errors on duplicate basenames by default"
+else
+    fail "upload errors on duplicate basenames by default" "got: ${collide_out:0:200}"
+fi
+
+# --prefix-source-dir: succeeds, all 4 files land on server with prefixed names
+prefix_out=$($CLI upload --title "Collision Prefix" --author "Collide Author Prefix" \
+    --folder "$FOLDER_ID" --prefix-source-dir --wait \
+    --files "$COLLIDE_TMP"/Part1/*.mp3 "$COLLIDE_TMP"/Part2/*.mp3 2>/dev/null)
+PREFIX_ITEM=$(echo "$prefix_out" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))" 2>/dev/null || echo "")
+if [ -n "$PREFIX_ITEM" ]; then
+    pass "upload --prefix-source-dir created item"
+    export ABS_TOKEN="$SAVE_TOKEN"
+    curl -sf -X DELETE "$ABS_URL/api/items/$PREFIX_ITEM?hard=1" \
+        -H "Authorization: Bearer $ABS_TOKEN" > /dev/null 2>&1 || true
+    export ABS_TOKEN="$UPLOAD_TOKEN"
+else
+    fail "upload --prefix-source-dir created item" "item not found in library"
+fi
+
+# --files-manifest: succeeds with explicit per-file naming
+cat > "$COLLIDE_TMP/manifest.json" <<EOF
+[
+  {"src": "$COLLIDE_TMP/Part1/01.mp3", "as": "001-track.mp3"},
+  {"src": "$COLLIDE_TMP/Part1/02.mp3", "as": "002-track.mp3"},
+  {"src": "$COLLIDE_TMP/Part2/01.mp3", "as": "003-track.mp3"},
+  {"src": "$COLLIDE_TMP/Part2/02.mp3", "as": "004-track.mp3"}
+]
+EOF
+manifest_out=$($CLI upload --title "Collision Manifest" --author "Collide Author Manifest" \
+    --folder "$FOLDER_ID" --files-manifest "$COLLIDE_TMP/manifest.json" --wait 2>/dev/null)
+MANIFEST_ITEM=$(echo "$manifest_out" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))" 2>/dev/null || echo "")
+if [ -n "$MANIFEST_ITEM" ]; then
+    pass "upload --files-manifest created item"
+    export ABS_TOKEN="$SAVE_TOKEN"
+    curl -sf -X DELETE "$ABS_URL/api/items/$MANIFEST_ITEM?hard=1" \
+        -H "Authorization: Bearer $ABS_TOKEN" > /dev/null 2>&1 || true
+    export ABS_TOKEN="$UPLOAD_TOKEN"
+else
+    fail "upload --files-manifest created item" "item not found in library"
+fi
+
+export ABS_TOKEN="$SAVE_TOKEN"
+rm -rf "$COLLIDE_TMP"
+
+# ============================================================
+echo ""
+echo "=== Permission Errors ==="
+# ============================================================
+
+TEST_TOKEN=$(curl -sf -X POST "$ABS_URL/login" \
+    -H 'Content-Type: application/json' \
+    -H 'X-Return-Tokens: true' \
+    -d '{"username":"testuser","password":"testpass"}' \
+    | python3 -c "import sys,json; print(json.load(sys.stdin)['user']['accessToken'])")
+
+SAVE_TOKEN="$ABS_TOKEN"
+export ABS_TOKEN="$TEST_TOKEN"
+
+UPLOAD_TMP2=$(mktemp -d)
+python3 -c "
+with open('$UPLOAD_TMP2/test.mp3', 'wb') as f:
+    f.write(bytes([0xFF, 0xFB, 0x90, 0x00]) + b'\x00' * 413)
+"
+
+error_output=$($CLI upload --title "Should Fail" --author "Test" \
+    --folder "$FOLDER_ID" --files "$UPLOAD_TMP2/test.mp3" 2>&1 || true)
+if echo "$error_output" | grep -qi "permission denied"; then
+    pass "upload as testuser shows permission denied"
+else
+    fail "upload as testuser shows permission denied" "got: ${error_output:0:200}"
+fi
+rm -rf "$UPLOAD_TMP2"
+
+error_output=$($CLI backup list 2>&1 || true)
+if echo "$error_output" | grep -qi "permission denied\|admin"; then
+    pass "backup list as testuser shows permission denied"
+else
+    fail "backup list as testuser shows permission denied" "got: ${error_output:0:200}"
+fi
+
+export ABS_TOKEN="$SAVE_TOKEN"
+
+# ============================================================
+echo ""
+echo "=== Scan Commands ==="
+# ============================================================
+
+$CLI libraries scan 2>/dev/null
+pass "libraries scan completed (exit 0)"
+
+sleep 2
+
+output=$($CLI tasks list 2>/dev/null)
+assert_json_key "tasks list has tasks" "tasks" "$output"
+
+output=$($CLI items scan --id "$FIRST_ITEM_ID" 2>/dev/null)
+assert_json_key "items scan has result" "result" "$output"
+
+# ============================================================
+echo ""
+echo "=== Metadata Commands ==="
+# ============================================================
+
+output=$($CLI metadata providers 2>/dev/null)
+assert_json_key "metadata providers has providers" "providers" "$output"
+assert_json_expr "metadata providers has books" "len(d['providers']['books'])>0" "$output"
+assert_json_expr "metadata providers has google" \
+    "any(p['value']=='google' for p in d['providers']['books'])" "$output"
+
+if [ "${SMOKE_TEST_EXTERNAL:-}" = "1" ]; then
+    echo "  (external provider tests enabled)"
+    output=$($CLI metadata search --provider google --title "Storm Front" --author "Jim Butcher" 2>/dev/null)
+    if echo "$output" | python3 -c "import sys,json; d=json.load(sys.stdin); assert len(d)>0" 2>/dev/null; then
+        pass "metadata search returns results"
+    else
+        fail "metadata search returns results" "empty or invalid response"
+    fi
+    output=$($CLI metadata covers --provider google --title "Storm Front" 2>/dev/null)
+    assert_json_key "metadata covers has results" "results" "$output"
+else
+    echo "  (skipping external provider tests — set SMOKE_TEST_EXTERNAL=1 to enable)"
+fi
 
 # ============================================================
 echo ""

@@ -13,8 +13,8 @@ jobs:
   unit-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '8.0.x'
       - name: Check formatting
@@ -31,8 +31,8 @@ jobs:
         ports:
           - 13378:80
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '8.0.x'
       - name: Build AOT binary
@@ -79,8 +79,8 @@ jobs:
             rid: win-arm64
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '8.0.x'
       - name: Publish
@@ -94,7 +94,7 @@ jobs:
           [ -f "${BIN}.exe" ] && BIN="${BIN}.exe"
           "${BIN}" self-test
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: abs-cli-${{ matrix.rid }}
           path: src/AbsCli/bin/Release/net8.0/${{ matrix.rid }}/publish/

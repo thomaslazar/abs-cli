@@ -18,18 +18,18 @@ public static class SeriesCommand
     private static Command CreateListCommand()
     {
         var libraryOption = new Option<string?>("--library", "Library ID or name");
-        var limitOption = new Option<int?>("--limit", "Results per page");
+        var limitOption = new Option<int>("--limit", () => 50, "Results per page (default 50, pass higher value to retrieve more)");
         var pageOption = new Option<int?>("--page", "Page number (0-indexed)");
 
         var command = new Command("list",
-            "List series in a library (--limit required to return results)")
+            "List series in a library (defaults to 50 results)")
         { libraryOption, limitOption, pageOption };
         command.AddExamples(
-            "abs-cli series list --limit 50",
+            "abs-cli series list",
             "abs-cli series list --limit 10 --page 0",
             "abs-cli series list --limit 100 | jq '.results[].name'");
 
-        command.SetHandler(async (string? library, int? limit, int? page) =>
+        command.SetHandler(async (string? library, int limit, int? page) =>
         {
             var (client, config) = CommandHelper.BuildClient(libraryOverride: library);
             var libraryId = CommandHelper.RequireLibrary(config);

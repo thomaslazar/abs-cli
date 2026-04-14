@@ -59,11 +59,33 @@ curl -sf -X POST "$ABS_URL/api/users" \
         "username": "testuser",
         "password": "testpass",
         "type": "user",
+        "isActive": true,
         "permissions": {
             "download": true,
             "update": true,
             "delete": false,
             "upload": false,
+            "accessAllLibraries": true,
+            "accessAllTags": true,
+            "accessExplicitContent": true
+        }
+    }' > /dev/null 2>&1 || true
+
+# Create upload test user (can upload but not delete)
+echo "Creating upload test user..."
+curl -sf -X POST "$ABS_URL/api/users" \
+    -H "$AUTH" \
+    -H 'Content-Type: application/json' \
+    -d '{
+        "username": "uploaduser",
+        "password": "uploadpass",
+        "type": "user",
+        "isActive": true,
+        "permissions": {
+            "download": true,
+            "update": true,
+            "delete": false,
+            "upload": true,
             "accessAllLibraries": true,
             "accessAllTags": true,
             "accessExplicitContent": true
@@ -160,4 +182,4 @@ echo "ABS_URL=$ABS_URL"
 echo "LIBRARY_ID=$LIBRARY_ID"
 echo "Items: $ITEM_COUNT (6 authors, 3 series, 15 books)"
 echo "Root credentials: root/root"
-echo "Test credentials: testuser/testpass"
+echo "Test credentials: testuser/testpass, uploaduser/uploadpass"
