@@ -25,9 +25,7 @@
       "mcp__mempalace__mempalace_kg_add",
       "mcp__mempalace__mempalace_diary_write"
     ],
-    "additionalDirectories": [
-      "/Users/ibn/Development/abs-cli"
-    ]
+    "additionalDirectories": []
   },
   "spinnerVerbs": {
     "mode": "replace",
