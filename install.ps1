@@ -28,8 +28,10 @@ Invoke-WebRequest -Uri $DownloadUrl -OutFile $BinaryPath -UseBasicParsing
 
 # Add to user PATH if not already present
 $UserPath = [Environment]::GetEnvironmentVariable("Path", "User")
-if ($UserPath -notlike "*$InstallDir*") {
-    [Environment]::SetEnvironmentVariable("Path", "$UserPath;$InstallDir", "User")
+$PathEntries = if ($UserPath) { $UserPath -split ";" } else { @() }
+if ($InstallDir -notin $PathEntries) {
+    $NewPath = if ($UserPath) { "$UserPath;$InstallDir" } else { $InstallDir }
+    [Environment]::SetEnvironmentVariable("Path", $NewPath, "User")
     $env:Path = "$env:Path;$InstallDir"
     Write-Host "Added $InstallDir to user PATH."
 }
