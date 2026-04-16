@@ -224,8 +224,9 @@ Show the release URL.
 
 ## Step 6: Wait for Release CI
 
-The release triggers CI which builds all 6 platforms and **automatically
-attaches binaries** to the GitHub Release. Monitor it:
+The release triggers CI which builds all 6 platforms, **automatically
+attaches binaries and deb packages** to the GitHub Release, and updates
+the Homebrew tap (`thomaslazar/homebrew-abs-cli`). Monitor it:
 
 ```bash
 # Wait for the run to appear
@@ -252,8 +253,17 @@ chmod +x /tmp/release-verify/abs-cli-linux-x64
 rm -rf /tmp/release-verify
 ```
 
+Verify the Homebrew tap was updated:
+
+```bash
+gh api repos/thomaslazar/homebrew-abs-cli/commits --jq '.[0].commit.message'
+# Should contain the new version
+```
+
 **GATE: Ask the human to check the GitHub Release page.** They should verify:
 - All 6 platform binaries are attached
+- Both deb packages are attached (amd64 + arm64)
+- Homebrew tap was updated (confirmed above)
 - Release notes render correctly
 - Everything looks right
 
@@ -262,7 +272,7 @@ rm -rf /tmp/release-verify
 Report:
 - Release URL
 - Version number
-- Number of binaries attached (should be 6)
+- Number of release artifacts (should be 8: 6 binaries + 2 deb packages)
 - Self-test result
 - Changelog committed to repo
 
