@@ -3,6 +3,15 @@
 All notable changes to abs-cli are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## v0.2.2 — 2026-04-16
+
+### Highlights
+- Added support for all ABS filter groups: `missing`, `publishers`, `publishedDecades`, `tracks`, `ebooks`
+- Use `--filter "missing=language"` to find items with empty fields (language, cover, isbn, etc.)
+
+### Fixes
+- fix: add missing filter groups including 'missing' for empty fields
+
 ## v0.2.1 — 2026-04-14
 
 ### Highlights
