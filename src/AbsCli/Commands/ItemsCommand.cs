@@ -35,7 +35,15 @@ public static class ItemsCommand
             libraryOption, filterOption, sortOption, descOption, limitOption, pageOption
         };
         command.AddHelpSection("Filter groups",
-            "authors, genres, tags, series, narrators, languages, progress, issues");
+            "authors, genres, tags, series, narrators, publishers, publishedDecades,",
+            "missing, languages, progress, tracks, ebooks, issues",
+            "",
+            "The 'missing' group finds items with empty fields:",
+            "  --filter \"missing=language\"   — items without a language set",
+            "  --filter \"missing=cover\"      — items without cover art",
+            "  Valid: asin, isbn, subtitle, publishedYear, description,",
+            "         publisher, language, cover, genres, tags, narrators,",
+            "         chapters, authors, series");
         command.AddHelpSection("Sort fields",
             "media.metadata.title          — title (default)",
             "media.metadata.authorName     — author name (first last)",
