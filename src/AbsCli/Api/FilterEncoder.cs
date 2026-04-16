@@ -4,8 +4,9 @@ public static class FilterEncoder
 {
     private static readonly HashSet<string> ValidGroups = new(StringComparer.OrdinalIgnoreCase)
     {
-        "authors", "genres", "tags", "series", "narrators",
-        "languages", "progress", "issues", "feed-open"
+        "authors", "genres", "tags", "series", "narrators", "publishers",
+        "publishedDecades", "missing", "languages", "progress", "tracks",
+        "ebooks", "issues", "feed-open"
     };
 
     public static string Encode(string filter)
