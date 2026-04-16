@@ -20,6 +20,53 @@ Native AOT binary. No runtime required. ~10 MB.
 
 ## Installation
 
+### Homebrew (macOS / Linux)
+
+```bash
+brew tap thomaslazar/abs-cli
+brew install abs-cli
+```
+
+### Install script (macOS / Linux)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/thomaslazar/abs-cli/main/install.sh | bash
+```
+
+Installs to `~/.local/bin/abs-cli`. Override with environment variables:
+
+```bash
+# specific version
+curl -fsSL https://raw.githubusercontent.com/thomaslazar/abs-cli/main/install.sh | ABS_CLI_VERSION=v0.2.2 bash
+
+# custom directory
+curl -fsSL https://raw.githubusercontent.com/thomaslazar/abs-cli/main/install.sh | ABS_CLI_INSTALL_DIR=/usr/local/bin bash
+```
+
+### Install script (Windows)
+
+```powershell
+irm https://raw.githubusercontent.com/thomaslazar/abs-cli/main/install.ps1 | iex
+```
+
+Installs to `%LOCALAPPDATA%\abs-cli\`. Override with environment variables:
+
+```powershell
+# specific version
+$env:ABS_CLI_VERSION = "v0.2.2"; irm https://raw.githubusercontent.com/thomaslazar/abs-cli/main/install.ps1 | iex
+
+# custom directory
+$env:ABS_CLI_INSTALL_DIR = "C:\tools\abs-cli"; irm https://raw.githubusercontent.com/thomaslazar/abs-cli/main/install.ps1 | iex
+```
+
+### Deb package (Debian / Ubuntu)
+
+Download from the [latest release](https://github.com/thomaslazar/abs-cli/releases/latest):
+
+```bash
+sudo dpkg -i abs-cli_0.2.2_amd64.deb
+```
+
 ### Download a release
 
 Grab the binary for your platform from the [latest release](https://github.com/thomaslazar/abs-cli/releases/latest):
@@ -30,8 +77,8 @@ Grab the binary for your platform from the [latest release](https://github.com/t
 | Linux ARM64 | `abs-cli-linux-arm64` |
 | macOS Apple Silicon | `abs-cli-osx-arm64` |
 | macOS Intel | `abs-cli-osx-x64` |
-| Windows x64 | `abs-cli-win-x64` |
-| Windows ARM64 | `abs-cli-win-arm64` |
+| Windows x64 | `abs-cli-win-x64.exe` |
+| Windows ARM64 | `abs-cli-win-arm64.exe` |
 
 ```bash
 chmod +x abs-cli-linux-x64

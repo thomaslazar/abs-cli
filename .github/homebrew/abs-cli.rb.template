@@ -1,0 +1,35 @@
+class AbsCli < Formula
+  desc "Command-line interface for Audiobookshelf"
+  homepage "https://github.com/thomaslazar/abs-cli"
+  version "@@VERSION@@"
+  license "MIT"
+
+  on_macos do
+    if Hardware::CPU.arm?
+      url "https://github.com/thomaslazar/abs-cli/releases/download/v@@VERSION@@/abs-cli-osx-arm64"
+      sha256 "@@SHA256_OSX_ARM64@@"
+    else
+      url "https://github.com/thomaslazar/abs-cli/releases/download/v@@VERSION@@/abs-cli-osx-x64"
+      sha256 "@@SHA256_OSX_X64@@"
+    end
+  end
+
+  on_linux do
+    if Hardware::CPU.arm?
+      url "https://github.com/thomaslazar/abs-cli/releases/download/v@@VERSION@@/abs-cli-linux-arm64"
+      sha256 "@@SHA256_LINUX_ARM64@@"
+    else
+      url "https://github.com/thomaslazar/abs-cli/releases/download/v@@VERSION@@/abs-cli-linux-x64"
+      sha256 "@@SHA256_LINUX_X64@@"
+    end
+  end
+
+  def install
+    binary_name = stable.url.split("/").last
+    bin.install binary_name => "abs-cli"
+  end
+
+  test do
+    assert_match version.to_s, shell_output("#{bin}/abs-cli --version")
+  end
+end
