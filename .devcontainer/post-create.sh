@@ -24,16 +24,6 @@ with open(cfg_path, 'w') as f:
     json.dump(cfg, f, indent=2)
 " 2>/dev/null || true
 
-# --- MemPalace setup ---
-# Register MCP server with Claude Code, pointing to repo-local palace.
-# The palace directory is created automatically on first write.
-claude mcp add mempalace -- python3 -m mempalace.mcp_server --palace "$(pwd)/.mempalace" 2>/dev/null || true
-
-# --- Caveman setup ---
-# Token optimization plugin. Auto-activates via SessionStart hook.
-claude plugin marketplace add JuliusBrussee/caveman 2>/dev/null || true
-claude plugin install caveman@caveman 2>/dev/null || true
-
 # --- Superpowers setup ---
 # Structured development workflow (brainstorming, planning, TDD, debugging, code review).
 claude plugin marketplace add obra/superpowers 2>/dev/null || true

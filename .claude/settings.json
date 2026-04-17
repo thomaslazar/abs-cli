@@ -16,14 +16,7 @@
       "WebFetch(domain:github.com)",
       "WebFetch(domain:raw.githubusercontent.com)",
       "WebFetch(domain:api.github.com)",
-      "mcp__mempalace__mempalace_status",
-      "mcp__mempalace__mempalace_add_drawer",
-      "mcp__mempalace__mempalace_search",
-      "WebFetch(domain:api.audiobookshelf.org)",
-      "mcp__mempalace__mempalace_list_rooms",
-      "mcp__mempalace__mempalace_get_aaak_spec",
-      "mcp__mempalace__mempalace_kg_add",
-      "mcp__mempalace__mempalace_diary_write"
+      "WebFetch(domain:api.audiobookshelf.org)"
     ],
     "additionalDirectories": []
   },
