@@ -10,6 +10,11 @@ public static class SeriesCommand
     public static Command Create()
     {
         var command = new Command("series", "Manage series");
+        command.AddHelpSection("Notes", HelpSectionPosition.Top,
+            "Series are derived from book metadata. A series exists while at least one",
+            "library item references it. When the last referencing item is removed or",
+            "re-tagged, the scanner deletes the series on its next run. To remove a",
+            "series, update the books that reference it.");
         command.AddCommand(CreateListCommand());
         command.AddCommand(CreateGetCommand());
         return command;
@@ -28,6 +33,7 @@ public static class SeriesCommand
             "abs-cli series list",
             "abs-cli series list --limit 10 --page 0",
             "abs-cli series list --limit 100 | jq '.results[].name'");
+        command.AddResponseExample(typeof(PaginatedResponse), typeof(SeriesItem));
 
         command.SetHandler(async (string? library, int limit, int? page) =>
         {
@@ -48,6 +54,7 @@ public static class SeriesCommand
         command.AddExamples(
             "abs-cli series get --id \"se_abc123\"",
             "abs-cli series get --id \"se_abc123\" | jq '.name'");
+        command.AddResponseExample<SeriesItem>();
 
         command.SetHandler(async (string id) =>
         {
