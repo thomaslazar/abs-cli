@@ -129,4 +129,45 @@ public class SampleJsonWalkerTests
         // Matches STJ's default serialisation when no naming policy is set.
         Assert.Equal("<string>", json.GetProperty("CamelMe").GetString());
     }
+
+    private class WithJsonElementScalar
+    {
+        [JsonPropertyName("raw")] public JsonElement Raw { get; set; }
+    }
+
+    [Fact]
+    public void PlaceholderOverride_EmitsStringLiteral()
+    {
+        var overrides = new PropertyOverrides();
+        overrides.Placeholders[(typeof(WithJsonElementScalar), nameof(WithJsonElementScalar.Raw))] = "<custom>";
+        var json = Parse(SampleJsonWalker.Render(typeof(WithJsonElementScalar), overrides));
+        Assert.Equal("<custom>", json.GetProperty("raw").GetString());
+    }
+
+    [Fact]
+    public void TypeSubstitution_ScalarJsonElement_RendersAsTargetType()
+    {
+        var overrides = new PropertyOverrides();
+        overrides.TypeSubstitutions[(typeof(WithJsonElementScalar), nameof(WithJsonElementScalar.Raw))] = typeof(Primitives);
+        var json = Parse(SampleJsonWalker.Render(typeof(WithJsonElementScalar), overrides));
+        // Scalar JsonElement substituted → embedded as an object of target type.
+        Assert.Equal("<string>", json.GetProperty("raw").GetProperty("s").GetString());
+    }
+
+    private class WithJsonElementList
+    {
+        [JsonPropertyName("items")] public List<JsonElement>? Items { get; set; }
+    }
+
+    [Fact]
+    public void TypeSubstitution_JsonElementList_RendersAsArrayOfTargetType()
+    {
+        var overrides = new PropertyOverrides();
+        overrides.TypeSubstitutions[(typeof(WithJsonElementList), nameof(WithJsonElementList.Items))] = typeof(Primitives);
+        var json = Parse(SampleJsonWalker.Render(typeof(WithJsonElementList), overrides));
+        var items = json.GetProperty("items");
+        Assert.Equal(JsonValueKind.Array, items.ValueKind);
+        Assert.Equal(1, items.GetArrayLength());
+        Assert.Equal("<string>", items[0].GetProperty("s").GetString());
+    }
 }

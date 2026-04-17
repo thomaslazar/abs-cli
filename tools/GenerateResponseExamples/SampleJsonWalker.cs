@@ -7,6 +7,19 @@ using System.Text.Json.Serialization;
 namespace AbsCli.Tools.GenerateResponseExamples;
 
 /// <summary>
+/// Per-property overrides the walker applies when rendering a type.
+/// Keyed by (declaring type, C# property name). Overrides are consulted
+/// when the walker writes a property; declared type determines the rendering
+/// strategy (scalar JsonElement → embedded object; List&lt;JsonElement&gt; →
+/// array whose element is the substitute).
+/// </summary>
+public class PropertyOverrides
+{
+    public Dictionary<(Type, string), string> Placeholders { get; } = new();
+    public Dictionary<(Type, string), Type> TypeSubstitutions { get; } = new();
+}
+
+/// <summary>
 /// Reflects over a type and emits a pretty-printed JSON sample payload whose
 /// shape matches what <see cref="JsonSerializer"/> would produce, with synthetic
 /// placeholder values. Used at build time to populate help output.
@@ -21,23 +34,23 @@ public static class SampleJsonWalker
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
     };
 
-    public static string Render(Type type)
+    public static string Render(Type type, PropertyOverrides? overrides = null)
     {
         using var stream = new MemoryStream();
         using (var writer = new Utf8JsonWriter(stream, WriterOptions))
         {
-            WriteValue(writer, type, new HashSet<Type>());
+            WriteValue(writer, type, new HashSet<Type>(), overrides);
         }
         return Encoding.UTF8.GetString(stream.ToArray());
     }
 
-    private static void WriteValue(Utf8JsonWriter writer, Type type, HashSet<Type> visiting)
+    private static void WriteValue(Utf8JsonWriter writer, Type type, HashSet<Type> visiting, PropertyOverrides? overrides = null)
     {
         var underlying = Nullable.GetUnderlyingType(type);
         if (underlying != null)
         {
             // Nullable<T> — render the T branch (sample is representative, not a null).
-            WriteValue(writer, underlying, visiting);
+            WriteValue(writer, underlying, visiting, overrides);
             return;
         }
 
@@ -83,7 +96,7 @@ public static class SampleJsonWalker
         if (type.IsArray)
         {
             writer.WriteStartArray();
-            WriteValue(writer, type.GetElementType()!, visiting);
+            WriteValue(writer, type.GetElementType()!, visiting, overrides);
             writer.WriteEndArray();
             return;
         }
@@ -92,7 +105,7 @@ public static class SampleJsonWalker
         {
             writer.WriteStartObject();
             writer.WritePropertyName("<key>");
-            WriteValue(writer, valueType, visiting);
+            WriteValue(writer, valueType, visiting, overrides);
             writer.WriteEndObject();
             return;
         }
@@ -100,7 +113,7 @@ public static class SampleJsonWalker
         if (TryGetEnumerableElement(type, out var elementType))
         {
             writer.WriteStartArray();
-            WriteValue(writer, elementType, visiting);
+            WriteValue(writer, elementType, visiting, overrides);
             writer.WriteEndArray();
             return;
         }
@@ -119,13 +132,46 @@ public static class SampleJsonWalker
             var name = prop.GetCustomAttribute<JsonPropertyNameAttribute>()?.Name ?? prop.Name;
             writer.WritePropertyName(name);
 
+            var key = (type, prop.Name);
+            if (overrides != null && overrides.Placeholders.TryGetValue(key, out var placeholder))
+            {
+                writer.WriteStringValue(placeholder);
+                continue;
+            }
+            if (overrides != null && overrides.TypeSubstitutions.TryGetValue(key, out var substitute))
+            {
+                if (IsJsonElementList(prop.PropertyType))
+                {
+                    writer.WriteStartArray();
+                    WriteValue(writer, substitute, visiting, overrides);
+                    writer.WriteEndArray();
+                }
+                else
+                {
+                    WriteValue(writer, substitute, visiting, overrides);
+                }
+                continue;
+            }
+
             if (IsNullableString(prop))
                 writer.WriteNullValue();
             else
-                WriteValue(writer, prop.PropertyType, visiting);
+                WriteValue(writer, prop.PropertyType, visiting, overrides);
         }
         writer.WriteEndObject();
         visiting.Remove(type);
+    }
+
+    private static bool IsJsonElementList(Type type)
+    {
+        var underlying = Nullable.GetUnderlyingType(type) ?? type;
+        if (!underlying.IsGenericType) return false;
+        var def = underlying.GetGenericTypeDefinition();
+        if (def != typeof(List<>) && def != typeof(IList<>) &&
+            def != typeof(IEnumerable<>) && def != typeof(ICollection<>) &&
+            def != typeof(IReadOnlyList<>) && def != typeof(IReadOnlyCollection<>)) return false;
+        var arg = underlying.GetGenericArguments()[0];
+        return arg == typeof(JsonElement) || arg == typeof(JsonElement?);
     }
 
     private static bool TryGetEnumerableElement(Type type, out Type elementType)
