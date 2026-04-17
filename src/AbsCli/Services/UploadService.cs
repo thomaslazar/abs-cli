@@ -14,7 +14,7 @@ public class UploadService
         _client = client;
     }
 
-    public async Task UploadAsync(string libraryId, string folderId, string title,
+    public async Task<UploadReceipt> UploadAsync(string libraryId, string folderId, string title,
         string? author, string? series, int? sequence,
         IReadOnlyList<(string LocalPath, string UploadName)> files)
     {
@@ -35,6 +35,21 @@ public class UploadService
         }
         await _client.PostMultipartAsync(ApiEndpoints.Upload, content, "'upload' permission",
             timeout: Timeout.InfiniteTimeSpan);
+
+        // ABS's upload endpoint returns HTTP 200 with an empty body (see
+        // server/controllers/MiscController.js handleUpload → res.sendStatus(200)).
+        // Synthesise a receipt from the request so callers have a concrete
+        // success signal instead of empty stdout.
+        return new UploadReceipt
+        {
+            Uploaded = true,
+            Title = uploadTitle,
+            Author = author,
+            Series = series,
+            LibraryId = libraryId,
+            FolderId = folderId,
+            Files = files.Select(f => f.UploadName).ToList(),
+        };
     }
 
     public async Task<string> ResolveFolderIdAsync(string libraryId)
