@@ -96,4 +96,38 @@ public class HelpOutputTests
         var output = RenderHelp("items", sub);
         Assert.Contains("Response shape:", output);
     }
+
+    [Theory]
+    [InlineData("libraries", "list")]
+    [InlineData("libraries", "get")]
+    [InlineData("backup", "create")]
+    [InlineData("backup", "list")]
+    [InlineData("backup", "delete")]
+    [InlineData("backup", "upload")]
+    [InlineData("tasks", "list")]
+    [InlineData("metadata", "providers")]
+    [InlineData("metadata", "covers")]
+    public void Command_Help_IncludesResponseShape(string group, string sub)
+    {
+        var output = RenderHelp(group, sub);
+        Assert.Contains("Response shape:", output);
+    }
+
+    [Fact]
+    public void SearchCommand_Help_IncludesResponseShape()
+    {
+        var output = RenderHelp("search");
+        Assert.Contains("Response shape:", output);
+    }
+
+    [Theory]
+    [InlineData("metadata", "search")]
+    [InlineData("backup", "apply")]
+    [InlineData("backup", "download")]
+    [InlineData("libraries", "scan")]
+    public void WriteRawJsonCommands_DoNotHaveResponseShape(string group, string sub)
+    {
+        var output = RenderHelp(group, sub);
+        Assert.DoesNotContain("Response shape:", output);
+    }
 }

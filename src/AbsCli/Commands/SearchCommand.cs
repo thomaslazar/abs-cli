@@ -35,6 +35,7 @@ public static class SearchCommand
             "abs-cli search --query \"Mistborn\" --limit 5",
             "abs-cli search --query \"978-0\" --limit 20    # search by ISBN prefix",
             "abs-cli search --query \"Fantasy\" | jq '.book[].libraryItem.media.metadata.title'");
+        command.AddResponseExample<SearchResult>();
 
         command.SetHandler(async (string query, string? library, int limit) =>
         {

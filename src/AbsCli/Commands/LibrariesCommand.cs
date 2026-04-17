@@ -25,6 +25,7 @@ public static class LibrariesCommand
         command.AddExamples(
             "abs-cli libraries list",
             "abs-cli libraries list | jq '.libraries[].name'");
+        command.AddResponseExample<LibraryListResponse>();
 
         command.SetHandler(async (string? server, string? token) =>
         {
@@ -47,6 +48,7 @@ public static class LibrariesCommand
         command.AddExamples(
             "abs-cli libraries get --id \"lib_abc123\"",
             "abs-cli libraries get --id \"lib_abc123\" | jq '.name'");
+        command.AddResponseExample<Library>();
 
         command.SetHandler(async (string id, string? server, string? token) =>
         {
