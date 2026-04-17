@@ -11,6 +11,8 @@ namespace AbsCli.Models;
 [JsonSerializable(typeof(Library))]
 [JsonSerializable(typeof(PaginatedResponse))]
 [JsonSerializable(typeof(LibraryItemMinified))]
+[JsonSerializable(typeof(BookMediaMinified))]
+[JsonSerializable(typeof(PodcastMedia))]
 [JsonSerializable(typeof(SearchResult))]
 [JsonSerializable(typeof(UpdateMediaResponse))]
 [JsonSerializable(typeof(BatchUpdateResponse))]
