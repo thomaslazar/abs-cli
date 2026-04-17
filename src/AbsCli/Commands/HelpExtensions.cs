@@ -4,38 +4,35 @@ using System.CommandLine.Help;
 
 namespace AbsCli.Commands;
 
+public enum HelpSectionPosition { Top, Bottom }
+
 /// <summary>
-/// Adds custom sections (Examples, Filter groups, Sort fields, etc.) to help output.
-/// Sections render after the default Options section, in registration order.
+/// Adds custom sections (Notes, Examples, Filter groups, etc.) to help output.
+/// Top-positioned sections render before the default layout; Bottom-positioned
+/// sections render after Options in registration order.
 /// </summary>
 public static class HelpExtensions
 {
-    private static readonly Dictionary<Command, List<(string Title, string[] Lines)>> CommandSections = new();
+    private record Section(string Title, string[] Lines, HelpSectionPosition Position);
 
-    /// <summary>
-    /// Add a named section to a command's help output.
-    /// </summary>
+    private static readonly Dictionary<Command, List<Section>> CommandSections = new();
+
     public static void AddHelpSection(this Command command, string title, params string[] lines)
+        => command.AddHelpSection(title, HelpSectionPosition.Bottom, lines);
+
+    public static void AddHelpSection(this Command command, string title, HelpSectionPosition position, params string[] lines)
     {
         if (!CommandSections.TryGetValue(command, out var sections))
         {
-            sections = new List<(string, string[])>();
+            sections = new List<Section>();
             CommandSections[command] = sections;
         }
-        sections.Add((title, lines));
+        sections.Add(new Section(title, lines, position));
     }
 
-    /// <summary>
-    /// Shorthand for adding an "Examples" section.
-    /// </summary>
     public static void AddExamples(this Command command, params string[] examples)
-    {
-        command.AddHelpSection("Examples", examples);
-    }
+        => command.AddHelpSection("Examples", HelpSectionPosition.Bottom, examples);
 
-    /// <summary>
-    /// Get the number of examples registered for a command (used by tests).
-    /// </summary>
     public static int GetExampleCount(this Command command)
     {
         if (!CommandSections.TryGetValue(command, out var sections))
@@ -46,34 +43,32 @@ public static class HelpExtensions
             .Count();
     }
 
-    /// <summary>
-    /// Configure the CommandLineBuilder to render custom help sections.
-    /// </summary>
     public static CommandLineBuilder UseCustomHelpSections(this CommandLineBuilder builder)
     {
         builder.UseHelp(ctx =>
         {
             ctx.HelpBuilder.CustomizeLayout(_ =>
-                HelpBuilder.Default.GetLayout()
-                    .Append(helpCtx => WriteSections(helpCtx)));
+            {
+                var defaultLayout = HelpBuilder.Default.GetLayout().ToList();
+                var withTop = new List<HelpSectionDelegate> { helpCtx => WriteSections(helpCtx, HelpSectionPosition.Top) };
+                withTop.AddRange(defaultLayout);
+                withTop.Add(helpCtx => WriteSections(helpCtx, HelpSectionPosition.Bottom));
+                return withTop;
+            });
         });
         return builder;
     }
 
-    private static void WriteSections(HelpContext ctx)
+    private static void WriteSections(HelpContext ctx, HelpSectionPosition position)
     {
-        if (ctx.Command is not Command command)
-            return;
-        if (!CommandSections.TryGetValue(command, out var sections))
-            return;
+        if (ctx.Command is not Command command) return;
+        if (!CommandSections.TryGetValue(command, out var sections)) return;
 
-        foreach (var (title, lines) in sections)
+        foreach (var section in sections.Where(s => s.Position == position))
         {
-            ctx.Output.WriteLine($"{title}:");
-            foreach (var line in lines)
-            {
+            ctx.Output.WriteLine($"{section.Title}:");
+            foreach (var line in section.Lines)
                 ctx.Output.WriteLine($"  {line}");
-            }
             ctx.Output.WriteLine();
         }
     }
