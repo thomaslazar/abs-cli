@@ -79,16 +79,17 @@ public static class SampleJsonWalker
             return;
         }
 
+        if (TryGetDictionaryValue(type, out var valueType))
+        {
+            writer.WriteStartObject();
+            writer.WritePropertyName("<key>");
+            WriteValue(writer, valueType, visiting);
+            writer.WriteEndObject();
+            return;
+        }
+
         if (TryGetEnumerableElement(type, out var elementType))
         {
-            if (TryGetDictionaryValue(type, out var valueType))
-            {
-                writer.WriteStartObject();
-                writer.WritePropertyName("<key>");
-                WriteValue(writer, valueType, visiting);
-                writer.WriteEndObject();
-                return;
-            }
             writer.WriteStartArray();
             WriteValue(writer, elementType, visiting);
             writer.WriteEndArray();
@@ -128,12 +129,6 @@ public static class SampleJsonWalker
                 def == typeof(IReadOnlyList<>) || def == typeof(IReadOnlyCollection<>))
             {
                 elementType = type.GetGenericArguments()[0];
-                return true;
-            }
-            if (def == typeof(Dictionary<,>) || def == typeof(IDictionary<,>) ||
-                def == typeof(IReadOnlyDictionary<,>))
-            {
-                elementType = type.GetGenericArguments()[1];
                 return true;
             }
         }

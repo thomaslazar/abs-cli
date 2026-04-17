@@ -110,12 +110,11 @@ public class SampleJsonWalkerTests
     }
 
     [Fact]
-    public void WithoutAttribute_UsesCamelCasedPropertyName()
+    public void WithoutAttribute_UsesRawPropertyName()
     {
         var json = Parse(SampleJsonWalker.Render(typeof(NoJsonPropertyName)));
-        // AppJsonContext uses default STJ naming (PascalCase) only when no
-        // naming policy is set. Our walker mirrors that: if no [JsonPropertyName],
-        // emit the raw property name. This matches what STJ would serialise.
+        // No [JsonPropertyName] → emit the raw C# property name verbatim.
+        // Matches STJ's default serialisation when no naming policy is set.
         Assert.Equal("<string>", json.GetProperty("CamelMe").GetString());
     }
 }
