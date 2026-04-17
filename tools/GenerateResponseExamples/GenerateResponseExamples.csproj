@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>AbsCli.Tools.GenerateResponseExamples</RootNamespace>
+    <AssemblyName>GenerateResponseExamples</AssemblyName>
+    <IsPackable>false</IsPackable>
+    <IsPublishable>false</IsPublishable>
+  </PropertyGroup>
+  <!--
+    Source-link model files instead of ProjectReference'ing AbsCli. A ProjectReference
+    would cause build recursion: AbsCli's BeforeBuild target runs this tool, which
+    would then trigger AbsCli's build again.
+  -->
+  <ItemGroup>
+    <Compile Include="..\..\src\AbsCli\Models\*.cs" LinkBase="Models" />
+    <Compile Include="..\..\src\AbsCli\Configuration\AppConfig.cs" LinkBase="Configuration" />
+  </ItemGroup>
+</Project>

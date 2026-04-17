@@ -44,6 +44,7 @@ public static class MetadataCommand
         command.AddExamples(
             "abs-cli metadata providers",
             "abs-cli metadata providers | jq '.providers.books[].value'");
+        command.AddResponseExample<MetadataProvidersResponse>();
         command.SetHandler(async () =>
         {
             var (client, _) = CommandHelper.BuildClient();
@@ -66,6 +67,7 @@ public static class MetadataCommand
         command.AddExamples(
             "abs-cli metadata covers --provider audible --title \"The Way of Kings\"",
             "abs-cli metadata covers --provider audible --title \"Mistborn\" --author \"Brandon Sanderson\"");
+        command.AddResponseExample<CoverSearchResponse>();
         command.SetHandler(async (string provider, string title, string? author) =>
         {
             var (client, _) = CommandHelper.BuildClient();

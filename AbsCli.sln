@@ -11,6 +11,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{12E66709
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AbsCli.Tests", "tests\AbsCli.Tests\AbsCli.Tests.csproj", "{97F0C646-53E2-4653-B451-0184949AC975}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{C51BD391-03B0-456A-A01B-41957DBD0425}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GenerateResponseExamples", "tools\GenerateResponseExamples\GenerateResponseExamples.csproj", "{90BDCC72-1D24-48A6-9674-0F8D7F82C4C4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -28,9 +32,14 @@ Global
 		{97F0C646-53E2-4653-B451-0184949AC975}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{97F0C646-53E2-4653-B451-0184949AC975}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{97F0C646-53E2-4653-B451-0184949AC975}.Release|Any CPU.Build.0 = Release|Any CPU
+		{90BDCC72-1D24-48A6-9674-0F8D7F82C4C4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{90BDCC72-1D24-48A6-9674-0F8D7F82C4C4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{90BDCC72-1D24-48A6-9674-0F8D7F82C4C4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{90BDCC72-1D24-48A6-9674-0F8D7F82C4C4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{0859C433-FB4C-4F3F-AF30-9BC4548B9796} = {08337851-B3AF-44D1-8A03-0200576E4E4E}
 		{97F0C646-53E2-4653-B451-0184949AC975} = {12E66709-544C-4473-BFEC-89C40F93C851}
+		{90BDCC72-1D24-48A6-9674-0F8D7F82C4C4} = {C51BD391-03B0-456A-A01B-41957DBD0425}
 	EndGlobalSection
 EndGlobal

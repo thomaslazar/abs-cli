@@ -24,4 +24,15 @@
     <ProjectReference Include="..\..\src\AbsCli\AbsCli.csproj" />
   </ItemGroup>
 
+  <!--
+    Source-link SampleJsonWalker so walker unit tests can exercise it directly
+    without ProjectReference'ing the codegen tool (which would compile-in a
+    duplicate AppConfig.cs and collide with AbsCli). Drift test shells out to
+    `dotnet run` for end-to-end validation of the tool binary.
+  -->
+  <ItemGroup>
+    <Compile Include="..\..\tools\GenerateResponseExamples\SampleJsonWalker.cs"
+             Link="Commands\SampleJsonWalker.cs" />
+  </ItemGroup>
+
 </Project>

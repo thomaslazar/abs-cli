@@ -17,4 +17,23 @@
     <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="AbsCli.Tests" />
+  </ItemGroup>
+
+  <!--
+    Regenerates Commands/ResponseExamples.g.cs when any Models/*.cs or codegen
+    tool source changes. Forward slashes only — MSBuild normalises them on
+    Windows, but backslashes are treated as literal chars on Linux/macOS.
+    The tool project does NOT reference AbsCli (it source-links Models/* via
+    <Compile Include>), so this Exec does not recurse into AbsCli's build.
+  -->
+  <Target Name="RegenerateResponseExamples"
+          BeforeTargets="CoreCompile"
+          Inputs="$(MSBuildProjectDirectory)/Models/**/*.cs;$(MSBuildThisFileFullPath);$(MSBuildProjectDirectory)/../../tools/GenerateResponseExamples/**/*.cs"
+          Outputs="$(MSBuildProjectDirectory)/Commands/ResponseExamples.g.cs">
+    <Exec Command="dotnet run --project &quot;$(MSBuildProjectDirectory)/../../tools/GenerateResponseExamples/GenerateResponseExamples.csproj&quot; -- &quot;$(MSBuildProjectDirectory)/Commands/ResponseExamples.g.cs&quot;"
+          ConsoleToMSBuild="true" />
+  </Target>
+
 </Project>

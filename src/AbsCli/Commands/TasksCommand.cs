@@ -21,6 +21,7 @@ public static class TasksCommand
             "abs-cli tasks list",
             "abs-cli tasks list | jq '.tasks[] | select(.isFinished==false)'",
             "abs-cli tasks list | jq '.tasks[] | {action, title, isFinished}'");
+        command.AddResponseExample<TaskListResponse>();
         command.SetHandler(async () =>
         {
             var (client, _) = CommandHelper.BuildClient();

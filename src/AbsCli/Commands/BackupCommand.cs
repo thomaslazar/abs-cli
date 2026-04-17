@@ -25,6 +25,7 @@ public static class BackupCommand
         command.AddExamples(
             "abs-cli backup create",
             "abs-cli backup create | jq '.backups | length'");
+        command.AddResponseExample<BackupListResponse>();
 
         command.SetHandler(async () =>
         {
@@ -43,6 +44,7 @@ public static class BackupCommand
         command.AddExamples(
             "abs-cli backup list",
             "abs-cli backup list | jq '.backups[] | {id, filename, datePretty}'");
+        command.AddResponseExample<BackupListResponse>();
 
         command.SetHandler(async () =>
         {
@@ -100,6 +102,7 @@ public static class BackupCommand
         command.AddExamples(
             "abs-cli backup delete --id \"2024-01-15T0000\"",
             "abs-cli backup delete --id \"2024-01-15T0000\" | jq '.backups | length'");
+        command.AddResponseExample<BackupListResponse>();
 
         command.SetHandler(async (string id) =>
         {
@@ -119,6 +122,7 @@ public static class BackupCommand
         command.AddExamples(
             "abs-cli backup upload --file backup.audiobookshelf",
             "abs-cli backup upload --file /tmp/abs-backup.audiobookshelf | jq '.backups | length'");
+        command.AddResponseExample<BackupListResponse>();
 
         command.SetHandler(async (string file) =>
         {

@@ -10,6 +10,12 @@ public static class AuthorsCommand
     public static Command Create()
     {
         var command = new Command("authors", "Manage authors");
+        command.AddHelpSection("Notes", HelpSectionPosition.Top,
+            "Authors are derived from book metadata. An author record exists while at",
+            "least one library item references it. When the last referencing item is",
+            "removed or re-tagged, the scanner deletes the author on its next run",
+            "(unless a custom image is set). To remove an author, update the books",
+            "that reference it.");
         command.AddCommand(CreateListCommand());
         command.AddCommand(CreateGetCommand());
         return command;
@@ -24,6 +30,7 @@ public static class AuthorsCommand
             "abs-cli authors list",
             "abs-cli authors list | jq '.authors[] | {name, numBooks}'",
             "abs-cli authors list | jq '.authors | sort_by(.numBooks) | reverse | .[:5]'");
+        command.AddResponseExample<AuthorListResponse>();
 
         command.SetHandler(async (string? library) =>
         {
@@ -44,6 +51,7 @@ public static class AuthorsCommand
         command.AddExamples(
             "abs-cli authors get --id \"aut_abc123\"",
             "abs-cli authors get --id \"aut_abc123\" | jq '.name'");
+        command.AddResponseExample<AuthorItem>();
 
         command.SetHandler(async (string id) =>
         {

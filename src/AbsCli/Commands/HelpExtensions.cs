@@ -4,38 +4,35 @@ using System.CommandLine.Help;
 
 namespace AbsCli.Commands;
 
+public enum HelpSectionPosition { Top, Bottom }
+
 /// <summary>
-/// Adds custom sections (Examples, Filter groups, Sort fields, etc.) to help output.
-/// Sections render after the default Options section, in registration order.
+/// Adds custom sections (Notes, Examples, Filter groups, etc.) to help output.
+/// Top-positioned sections render before the default layout; Bottom-positioned
+/// sections render after Options in registration order.
 /// </summary>
 public static class HelpExtensions
 {
-    private static readonly Dictionary<Command, List<(string Title, string[] Lines)>> CommandSections = new();
+    private record Section(string Title, string[] Lines, HelpSectionPosition Position);
 
-    /// <summary>
-    /// Add a named section to a command's help output.
-    /// </summary>
+    private static readonly Dictionary<Command, List<Section>> CommandSections = new();
+
     public static void AddHelpSection(this Command command, string title, params string[] lines)
+        => command.AddHelpSection(title, HelpSectionPosition.Bottom, lines);
+
+    public static void AddHelpSection(this Command command, string title, HelpSectionPosition position, params string[] lines)
     {
         if (!CommandSections.TryGetValue(command, out var sections))
         {
-            sections = new List<(string, string[])>();
+            sections = new List<Section>();
             CommandSections[command] = sections;
         }
-        sections.Add((title, lines));
+        sections.Add(new Section(title, lines, position));
     }
 
-    /// <summary>
-    /// Shorthand for adding an "Examples" section.
-    /// </summary>
     public static void AddExamples(this Command command, params string[] examples)
-    {
-        command.AddHelpSection("Examples", examples);
-    }
+        => command.AddHelpSection("Examples", HelpSectionPosition.Bottom, examples);
 
-    /// <summary>
-    /// Get the number of examples registered for a command (used by tests).
-    /// </summary>
     public static int GetExampleCount(this Command command)
     {
         if (!CommandSections.TryGetValue(command, out var sections))
@@ -46,34 +43,100 @@ public static class HelpExtensions
             .Count();
     }
 
+    public static void AddResponseExample<T>(this Command command)
+        => AddResponseExampleSection(command, ResponseExamples.For(typeof(T)));
+
     /// <summary>
-    /// Configure the CommandLineBuilder to render custom help sections.
+    /// Appends two extra sections describing the concrete shapes of
+    /// <c>LibraryItemMinified.media</c>. The main response-shape sample emits a
+    /// placeholder there because the field is a union of book and podcast.
+    /// Call after <see cref="AddResponseExample{T}"/> whenever the command
+    /// surface includes a library item.
     /// </summary>
+    public static void AddMediaUnionShapes(this Command command)
+    {
+        command.AddHelpSection(
+            "Book media shape (when mediaType is \"book\")",
+            HelpSectionPosition.Bottom,
+            ResponseExamples.For(typeof(AbsCli.Models.BookMediaMinified)).Split('\n'));
+        command.AddHelpSection(
+            "Podcast media shape (when mediaType is \"podcast\")",
+            HelpSectionPosition.Bottom,
+            ResponseExamples.For(typeof(AbsCli.Models.PodcastMedia)).Split('\n'));
+    }
+
+    /// <summary>
+    /// Registers a response-shape sample for a paginated envelope whose
+    /// <c>results</c> array is typed as <c>List&lt;JsonElement&gt;</c>. The
+    /// element sample is spliced into the envelope's results array.
+    /// </summary>
+    public static void AddResponseExample(this Command command, Type envelopeType, Type elementType)
+    {
+        var envelopeJson = ResponseExamples.For(envelopeType);
+        var elementJson = ResponseExamples.For(elementType);
+        var spliced = SpliceResultsArray(envelopeJson, elementJson);
+        AddResponseExampleSection(command, spliced);
+    }
+
+    private static void AddResponseExampleSection(Command command, string json)
+        => command.AddHelpSection("Response shape", HelpSectionPosition.Bottom, json.Split('\n'));
+
+    private static string SpliceResultsArray(string envelopeJson, string elementJson)
+    {
+        var lines = envelopeJson.Split('\n');
+        for (int i = 0; i < lines.Length; i++)
+        {
+            var trimmed = lines[i].TrimStart();
+            if (!trimmed.StartsWith("\"results\":", StringComparison.Ordinal)) continue;
+
+            var indent = new string(' ', lines[i].Length - trimmed.Length);
+
+            int closeIdx = i;
+            while (closeIdx < lines.Length &&
+                   !lines[closeIdx].TrimStart().StartsWith("]", StringComparison.Ordinal))
+                closeIdx++;
+            if (closeIdx == lines.Length) break;
+
+            var elementIndented = string.Join("\n",
+                elementJson.Split('\n').Select(l => indent + "  " + l));
+            var trailing = lines[closeIdx].TrimStart().StartsWith("],", StringComparison.Ordinal) ? "]," : "]";
+
+            var output = new List<string>();
+            output.AddRange(lines.Take(i));
+            output.Add($"{indent}\"results\": [");
+            output.Add(elementIndented);
+            output.Add($"{indent}{trailing}");
+            output.AddRange(lines.Skip(closeIdx + 1));
+            return string.Join('\n', output);
+        }
+        return envelopeJson;
+    }
+
     public static CommandLineBuilder UseCustomHelpSections(this CommandLineBuilder builder)
     {
         builder.UseHelp(ctx =>
         {
             ctx.HelpBuilder.CustomizeLayout(_ =>
-                HelpBuilder.Default.GetLayout()
-                    .Append(helpCtx => WriteSections(helpCtx)));
+            {
+                var defaultLayout = HelpBuilder.Default.GetLayout().ToList();
+                var withTop = new List<HelpSectionDelegate> { helpCtx => WriteSections(helpCtx, HelpSectionPosition.Top) };
+                withTop.AddRange(defaultLayout);
+                withTop.Add(helpCtx => WriteSections(helpCtx, HelpSectionPosition.Bottom));
+                return withTop;
+            });
         });
         return builder;
     }
 
-    private static void WriteSections(HelpContext ctx)
+    private static void WriteSections(HelpContext ctx, HelpSectionPosition position)
     {
-        if (ctx.Command is not Command command)
-            return;
-        if (!CommandSections.TryGetValue(command, out var sections))
-            return;
+        if (!CommandSections.TryGetValue(ctx.Command, out var sections)) return;
 
-        foreach (var (title, lines) in sections)
+        foreach (var section in sections.Where(s => s.Position == position))
         {
-            ctx.Output.WriteLine($"{title}:");
-            foreach (var line in lines)
-            {
+            ctx.Output.WriteLine($"{section.Title}:");
+            foreach (var line in section.Lines)
                 ctx.Output.WriteLine($"  {line}");
-            }
             ctx.Output.WriteLine();
         }
     }
