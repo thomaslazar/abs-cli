@@ -9,6 +9,7 @@
 - Body (optional): explain *why*, not *what*. Wrap at 72 chars.
 - Do NOT include `Co-Authored-By:` lines in commit messages.
 - Do NOT add "Generated with Claude Code" or similar attribution lines to PRs, commits, or any auto-generated content.
+- After creating a pull request, always present the PR URL as a clickable link (plain URL on its own line or markdown link format) so the user can open it directly.
 
 Examples:
 ```
