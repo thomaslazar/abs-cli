@@ -60,4 +60,29 @@ public class HelpExtensionsTests
         var optionsIdx = output.IndexOf("Options:", StringComparison.Ordinal);
         Assert.True(examplesIdx > optionsIdx, "Default overload must remain Bottom-placed");
     }
+
+    [Fact]
+    public void AddResponseExample_Generic_RendersResponseShapeSection()
+    {
+        var cmd = new Command("demo", "Demo");
+        cmd.AddResponseExample<AbsCli.Models.AuthorItem>();
+
+        var output = RenderHelp(cmd);
+        Assert.Contains("Response shape:", output);
+        Assert.Contains("\"numBooks\"", output);
+    }
+
+    [Fact]
+    public void AddResponseExample_EnvelopeAndElement_SubstitutesResultsArray()
+    {
+        var cmd = new Command("demo", "Demo");
+        cmd.AddResponseExample(
+            typeof(AbsCli.Models.PaginatedResponse),
+            typeof(AbsCli.Models.LibraryItemMinified));
+
+        var output = RenderHelp(cmd);
+        Assert.Contains("Response shape:", output);
+        Assert.Contains("\"results\"", output);
+        Assert.Contains("\"mediaType\"", output);
+    }
 }

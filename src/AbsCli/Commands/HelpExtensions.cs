@@ -43,6 +43,56 @@ public static class HelpExtensions
             .Count();
     }
 
+    public static void AddResponseExample<T>(this Command command)
+        => AddResponseExampleSection(command, ResponseExamples.For(typeof(T)));
+
+    /// <summary>
+    /// Registers a response-shape sample for a paginated envelope whose
+    /// <c>results</c> array is typed as <c>List&lt;JsonElement&gt;</c>. The
+    /// element sample is spliced into the envelope's results array.
+    /// </summary>
+    public static void AddResponseExample(this Command command, Type envelopeType, Type elementType)
+    {
+        var envelopeJson = ResponseExamples.For(envelopeType);
+        var elementJson = ResponseExamples.For(elementType);
+        var spliced = SpliceResultsArray(envelopeJson, elementJson);
+        AddResponseExampleSection(command, spliced);
+    }
+
+    private static void AddResponseExampleSection(Command command, string json)
+        => command.AddHelpSection("Response shape", HelpSectionPosition.Bottom, json.Split('\n'));
+
+    private static string SpliceResultsArray(string envelopeJson, string elementJson)
+    {
+        var lines = envelopeJson.Split('\n');
+        for (int i = 0; i < lines.Length; i++)
+        {
+            var trimmed = lines[i].TrimStart();
+            if (!trimmed.StartsWith("\"results\":", StringComparison.Ordinal)) continue;
+
+            var indent = new string(' ', lines[i].Length - trimmed.Length);
+
+            int closeIdx = i;
+            while (closeIdx < lines.Length &&
+                   !lines[closeIdx].TrimStart().StartsWith("]", StringComparison.Ordinal))
+                closeIdx++;
+            if (closeIdx == lines.Length) break;
+
+            var elementIndented = string.Join("\n",
+                elementJson.Split('\n').Select(l => indent + "  " + l));
+            var trailing = lines[closeIdx].TrimStart().StartsWith("],", StringComparison.Ordinal) ? "]," : "]";
+
+            var output = new List<string>();
+            output.AddRange(lines.Take(i));
+            output.Add($"{indent}\"results\": [");
+            output.Add(elementIndented);
+            output.Add($"{indent}{trailing}");
+            output.AddRange(lines.Skip(closeIdx + 1));
+            return string.Join('\n', output);
+        }
+        return envelopeJson;
+    }
+
     public static CommandLineBuilder UseCustomHelpSections(this CommandLineBuilder builder)
     {
         builder.UseHelp(ctx =>
