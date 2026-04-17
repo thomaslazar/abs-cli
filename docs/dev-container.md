@@ -20,7 +20,7 @@ devcontainer image (Debian Bookworm).
 | .NET 8 SDK | C# compilation, project tooling |
 | clang | Native AOT linker (required for AOT publish on Linux) |
 | zlib1g-dev | Native AOT compression dependency |
-| Python 3 + pip | Required by MemPalace and peon-ping |
+| Python 3 + pip | Required by peon-ping |
 
 ### Claude Code Integrations
 
@@ -32,51 +32,6 @@ All are installed automatically during container creation via `post-create.sh`.
 Installed via the native installer (`curl -fsSL https://claude.ai/install.sh`).
 This is the recommended install method — standalone binary with auto-updates,
 no Node.js dependency.
-
-#### MemPalace — Project Memory
-
-**Repo:** [milla-jovovich/mempalace](https://github.com/milla-jovovich/mempalace)
-
-**What it does:** Local AI memory system using ChromaDB. Stores design decisions,
-architecture rationale, and project knowledge in a searchable vector database.
-Claude Code accesses it via 19 MCP tools (search, add drawers, knowledge graph,
-agent diary).
-
-**Why it's here:** Provides cross-session context for the project. When you ask
-"why did we choose System.CommandLine?", Claude searches the palace instead of
-guessing. Decisions persist across sessions and container rebuilds (via the seed
-script).
-
-**Setup:**
-- Installed via `pip install mempalace` in the Dockerfile
-- MCP server registered in post-create.sh pointing to `.mempalace/` (repo-local)
-- Palace data is gitignored — reseed after fresh checkout with
-  `bash scripts/seed-mempalace.sh`
-
-**Details:** See [mempalace.md](mempalace.md).
-
-#### Caveman — Token Optimization
-
-**Repo:** [JuliusBrussee/caveman](https://github.com/JuliusBrussee/caveman)
-
-**What it does:** Reduces Claude's output tokens by ~65-75% through terse
-communication. Drops articles, filler words, and hedging while keeping code,
-URLs, and technical terms untouched.
-
-**Why it's here:** Faster responses, lower token costs, and the terse style
-suits a CLI project where directness matters. Backed by academic research
-showing brevity constraints improve accuracy by 26%.
-
-**Setup:**
-- Plugin marketplace added and plugin installed in post-create.sh
-- Auto-activates every session via SessionStart hook
-- Modes: `lite` (drop filler), `full` (default, drop articles), `ultra` (abbreviations)
-- Toggle off with `stop caveman` or `normal mode` in any session
-
-**Additional skills:**
-- `/caveman-commit` — terse Conventional Commits (≤50 char)
-- `/caveman-review` — one-line structured PR comments
-- `/caveman:compress` — compress .md memory files (~46% savings)
 
 #### Superpowers — Structured Development Workflow
 

@@ -9,6 +9,7 @@
 - Body (optional): explain *why*, not *what*. Wrap at 72 chars.
 - Do NOT include `Co-Authored-By:` lines in commit messages.
 - Do NOT add "Generated with Claude Code" or similar attribution lines to PRs, commits, or any auto-generated content.
+- After creating a pull request, always present the PR URL as a clickable link (plain URL on its own line or markdown link format) so the user can open it directly.
 
 Examples:
 ```
@@ -36,10 +37,3 @@ test: add metadata update assertion to smoke tests
 - Replace the version tag with whatever `MinSupportedVersion` is currently set to.
 - Use this checkout to verify endpoints, controllers, request/response shapes, and permission checks before designing or changing CLI commands.
 
-## MemPalace
-
-- A project-local memory palace is available via MCP at `.mempalace/`
-- Wing: `abs-cli`. Rooms: `architecture`, `cli-design`, `testing`, `decisions` (add more as needed)
-- **Query the palace first** when you need context on architecture, past decisions, AOT quirks, testing strategy, or any implementation rationale. The palace contains hard-won knowledge from the initial build (e.g., AOT source-gen requirements, macOS cross-compilation, testing architecture decisions).
-- Store significant new findings, decisions, and workarounds as drawers
-- Use `mempalace_search` for broad queries, `mempalace_kg_query` for entity relationships

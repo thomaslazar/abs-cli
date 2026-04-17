@@ -1,15 +1,12 @@
 FROM mcr.microsoft.com/devcontainers/dotnet:8.0
 
-# Native AOT compilation dependencies + Python (needed by peon-ping installer + mempalace)
+# Native AOT compilation dependencies + Python (needed by peon-ping installer)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     clang \
     zlib1g-dev \
     python3 \
     python3-pip \
     && rm -rf /var/lib/apt/lists/*
-
-# MemPalace — local AI memory system (MCP server for Claude Code)
-RUN pip install --no-cache-dir --break-system-packages mempalace
 
 # Claude Code CLI (native installer) + peon-ping both install to ~/.local/bin
 ENV PATH="/home/vscode/.local/bin:${PATH}"
