@@ -61,6 +61,7 @@ public static class ItemsCommand
             "abs-cli items list --filter \"genres=Fantasy\" --desc",
             "abs-cli items list --sort \"addedAt\" --desc --limit 10",
             "abs-cli items list | jq '.results[] | select(.media.metadata.isbn == null)'");
+        command.AddResponseExample(typeof(PaginatedResponse), typeof(LibraryItemMinified));
 
         command.SetHandler(async (string? library, string? filter, string? sort,
             bool desc, int limit, int? page) =>
@@ -82,6 +83,7 @@ public static class ItemsCommand
         command.AddExamples(
             "abs-cli items get --id \"li_abc123\"",
             "abs-cli items get --id \"li_abc123\" | jq '.media.metadata'");
+        command.AddResponseExample<LibraryItemMinified>();
 
         command.SetHandler(async (string id) =>
         {
@@ -108,6 +110,7 @@ public static class ItemsCommand
         command.AddExamples(
             "abs-cli items search --query \"Mistborn\"",
             "abs-cli items search --query \"978-0\" --limit 20");
+        command.AddResponseExample<SearchResult>();
 
         command.SetHandler(async (string query, string? library, int limit) =>
         {
@@ -131,6 +134,7 @@ public static class ItemsCommand
             "abs-cli items update --id \"li_abc123\" --input '{\"metadata\":{\"title\":\"New Title\"}}'",
             "abs-cli items update --id \"li_abc123\" --input payload.json",
             "abs-cli items update --id \"li_abc123\" --input '{\"metadata\":{\"genres\":[\"Fantasy\",\"Epic\"]}}'");
+        command.AddResponseExample<UpdateMediaResponse>();
 
         command.SetHandler(async (string id, string input) =>
         {
@@ -153,6 +157,7 @@ public static class ItemsCommand
         command.AddExamples(
             "abs-cli items batch-update --input updates.json",
             "cat updates.json | abs-cli items batch-update --stdin");
+        command.AddResponseExample<BatchUpdateResponse>();
 
         command.SetHandler(async (string? input, bool stdin) =>
         {
@@ -184,6 +189,7 @@ public static class ItemsCommand
         command.AddExamples(
             "abs-cli items batch-get --input ids.json",
             "echo '{\"libraryItemIds\":[\"li_abc\",\"li_def\"]}' | abs-cli items batch-get --stdin");
+        command.AddResponseExample<BatchGetResponse>();
 
         command.SetHandler(async (string? input, bool stdin) =>
         {
@@ -213,6 +219,7 @@ public static class ItemsCommand
         command.AddExamples(
             "abs-cli items scan --id \"li_abc123\"",
             "abs-cli items scan --id \"li_abc123\" | jq '.result'");
+        command.AddResponseExample<ScanResult>();
         command.SetHandler(async (string id) =>
         {
             var (client, _) = CommandHelper.BuildClient();

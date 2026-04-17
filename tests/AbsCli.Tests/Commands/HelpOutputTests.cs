@@ -65,4 +65,35 @@ public class HelpOutputTests
         Assert.Contains("\"results\"", output);
         Assert.Contains("\"name\"", output);
     }
+
+    [Fact]
+    public void ItemsList_Help_ShowsPaginatedResponseWithLibraryItemFields()
+    {
+        var output = RenderHelp("items", "list");
+        Assert.Contains("Response shape:", output);
+        Assert.Contains("\"results\"", output);
+        Assert.Contains("\"mediaType\"", output);
+        Assert.Contains("\"libraryId\"", output);
+    }
+
+    [Fact]
+    public void ItemsGet_Help_ShowsLibraryItemMinified()
+    {
+        var output = RenderHelp("items", "get");
+        Assert.Contains("Response shape:", output);
+        Assert.Contains("\"mediaType\"", output);
+        Assert.Contains("\"birthtimeMs\"", output);
+    }
+
+    [Theory]
+    [InlineData("search")]
+    [InlineData("update")]
+    [InlineData("batch-update")]
+    [InlineData("batch-get")]
+    [InlineData("scan")]
+    public void Items_Subcommand_Help_IncludesResponseShape(string sub)
+    {
+        var output = RenderHelp("items", sub);
+        Assert.Contains("Response shape:", output);
+    }
 }
