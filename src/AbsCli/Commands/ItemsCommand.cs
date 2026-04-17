@@ -59,6 +59,7 @@ public static class ItemsCommand
             "abs-cli items list",
             "abs-cli items list --filter \"languages=English\" --sort \"media.metadata.title\"",
             "abs-cli items list --filter \"genres=Fantasy\" --desc",
+            "abs-cli items list --filter \"series=se_abc123\" --sort sequence",
             "abs-cli items list --sort \"addedAt\" --desc --limit 10",
             "abs-cli items list | jq '.results[] | select(.media.metadata.isbn == null)'");
         command.AddResponseExample(typeof(PaginatedResponse), typeof(LibraryItemMinified));

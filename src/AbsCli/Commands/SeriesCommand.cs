@@ -14,7 +14,11 @@ public static class SeriesCommand
             "Series are derived from book metadata. A series exists while at least one",
             "library item references it. When the last referencing item is removed or",
             "re-tagged, the scanner deletes the series on its next run. To remove a",
-            "series, update the books that reference it.");
+            "series, update the books that reference it.",
+            "",
+            "Neither 'series list' nor 'series get' returns the books in a series —",
+            "they return series entities only. To list books in a specific series:",
+            "  abs-cli items list --filter \"series=<series-id>\" --sort sequence");
         command.AddCommand(CreateListCommand());
         command.AddCommand(CreateGetCommand());
         return command;
