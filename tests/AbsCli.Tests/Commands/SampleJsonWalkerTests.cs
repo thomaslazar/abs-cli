@@ -31,6 +31,16 @@ public class SampleJsonWalkerTests
     }
 
     [Fact]
+    public void Render_ReturnsLfOnly_NeverCrlf()
+    {
+        // Utf8JsonWriter(Indented=true) uses Environment.NewLine in .NET 8, so
+        // on Windows it would emit CRLF. That would leak raw \r into the
+        // generated string literals and break the C# compile on Windows.
+        var rendered = SampleJsonWalker.Render(typeof(Primitives));
+        Assert.DoesNotContain("\r", rendered);
+    }
+
+    [Fact]
     public void Placeholders_AreNotUnicodeEscapedInRawText()
     {
         // The generated file contains the raw output as a string literal.

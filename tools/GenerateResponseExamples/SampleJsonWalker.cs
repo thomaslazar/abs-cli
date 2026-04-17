@@ -41,7 +41,10 @@ public static class SampleJsonWalker
         {
             WriteValue(writer, type, new HashSet<Type>(), overrides);
         }
-        return Encoding.UTF8.GetString(stream.ToArray());
+        // Normalise to LF: Utf8JsonWriter with Indented=true uses Environment.NewLine
+        // in .NET 8, so on Windows raw \r bytes would leak into the generated
+        // string literals and break the C# compile cross-platform.
+        return Encoding.UTF8.GetString(stream.ToArray()).Replace("\r\n", "\n");
     }
 
     private static void WriteValue(Utf8JsonWriter writer, Type type, HashSet<Type> visiting, PropertyOverrides? overrides = null)
