@@ -30,6 +30,7 @@ namespace AbsCli.Models;
 [JsonSerializable(typeof(MetadataProvidersResponse))]
 [JsonSerializable(typeof(CoverSearchResponse))]
 [JsonSerializable(typeof(UploadManifestEntry))]
+[JsonSerializable(typeof(UploadReceipt))]
 [JsonSerializable(typeof(List<UploadManifestEntry>))]
 [JsonSourceGenerationOptions(WriteIndented = true)]
 public partial class AppJsonContext : JsonSerializerContext;

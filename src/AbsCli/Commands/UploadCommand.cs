@@ -56,6 +56,15 @@ public static class UploadCommand
             "abs-cli upload --title \"Morning Star\" --author \"Pierce Brown\" --series \"Red Rising\" --sequence 3 --prefix-source-dir --files \"Part 1-2\"/*.mp3 \"Part 3\"/*.mp3",
             "abs-cli upload --title \"My Audiobook\" --files-manifest manifest.json",
             "cat manifest.json | abs-cli upload --title \"My Audiobook\" --files-manifest -");
+        command.AddHelpSection("Output",
+            "Without --wait: returns a receipt ({uploaded, title, libraryId, folderId, files})",
+            "                once the HTTP upload completes. ABS writes the files",
+            "                synchronously but creates the library item on its next",
+            "                scan tick — so the receipt confirms files landed, not",
+            "                that the item exists yet.",
+            "With --wait:    polls items search and returns the resulting library",
+            "                item (LibraryItemMinified shape) once it appears.");
+        command.AddResponseExample<UploadReceipt>();
         command.SetHandler(async (context) =>
         {
             var library = context.ParseResult.GetValueForOption(libraryOption);
@@ -110,11 +119,10 @@ public static class UploadCommand
             var libraryId = CommandHelper.RequireLibrary(config);
             var service = new UploadService(client);
             var folderId = folder ?? await service.ResolveFolderIdAsync(libraryId);
-            await service.UploadAsync(libraryId, folderId, title, author, series, sequence, uploadList);
+            var receipt = await service.UploadAsync(libraryId, folderId, title, author, series, sequence, uploadList);
             if (wait)
             {
-                var searchTitle = sequence.HasValue ? $"{sequence.Value}. - {title}" : title;
-                var item = await service.WaitForItemAsync(libraryId, searchTitle, timeoutSeconds: waitTimeout);
+                var item = await service.WaitForItemAsync(libraryId, receipt.Title, timeoutSeconds: waitTimeout);
                 if (item == null)
                 {
                     ConsoleOutput.WriteError($"Timed out after {waitTimeout}s waiting for item to appear in library. The upload may still be processing — check 'abs-cli items search --query <title>' or pass --wait-timeout <seconds> to wait longer.");
@@ -122,6 +130,10 @@ public static class UploadCommand
                     return;
                 }
                 ConsoleOutput.WriteJson(item, AppJsonContext.Default.LibraryItemMinified);
+            }
+            else
+            {
+                ConsoleOutput.WriteJson(receipt, AppJsonContext.Default.UploadReceipt);
             }
         });
         return command;
