@@ -3,6 +3,28 @@
 All notable changes to abs-cli are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## v0.2.3 — 2026-04-14
+
+### Highlights
+- **Debian packages** — `.deb` artifacts for amd64 and arm64 are now built and attached to each release. Install with `dpkg -i abs-cli_0.2.3_amd64.deb`.
+- **Homebrew tap** — CLI is now available via `brew install thomaslazar/abs-cli/abs-cli`. The tap formula auto-updates on each release.
+- **Install scripts** — `install.sh` for macOS/Linux and `install.ps1` for Windows for quick one-liner installation.
+
+### Features
+- feat: add install.sh for macOS and Linux
+- feat: add install.ps1 for Windows
+- feat: add Homebrew formula template
+
+### Fixes
+- fix: use exact PATH matching and handle null UserPath in install.ps1
+
+### Other
+- ci: add deb package build step for Linux releases
+- ci: add Homebrew tap update job on release
+- chore: update release skill for deb packages and Homebrew tap
+- docs: add Homebrew, install scripts, and deb to installation section
+- docs: add package manager distribution spec and implementation plan
+
 ## v0.2.2 — 2026-04-16
 
 ### Highlights
