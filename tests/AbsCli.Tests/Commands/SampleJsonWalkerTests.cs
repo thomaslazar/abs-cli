@@ -30,6 +30,18 @@ public class SampleJsonWalkerTests
         Assert.False(json.GetProperty("b").GetBoolean());
     }
 
+    [Fact]
+    public void Placeholders_AreNotUnicodeEscapedInRawText()
+    {
+        // The generated file contains the raw output as a string literal.
+        // If '<' and '>' come out as \u003C / \u003E, help output shows the
+        // escape sequences instead of "<string>".
+        var raw = SampleJsonWalker.Render(typeof(Primitives));
+        Assert.Contains("\"<string>\"", raw);
+        Assert.DoesNotContain("\\u003C", raw);
+        Assert.DoesNotContain("\\u003E", raw);
+    }
+
     private class WithList
     {
         [JsonPropertyName("items")] public List<Primitives> Items { get; set; } = new();

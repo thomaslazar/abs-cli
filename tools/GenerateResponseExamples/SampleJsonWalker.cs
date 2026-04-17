@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -12,10 +13,18 @@ namespace AbsCli.Tools.GenerateResponseExamples;
 /// </summary>
 public static class SampleJsonWalker
 {
+    // UnsafeRelaxedJsonEscaping keeps '<', '>' and '&' unescaped so placeholders
+    // like "<string>" render literally in help output instead of \u003Cstring\u003E.
+    private static readonly JsonWriterOptions WriterOptions = new()
+    {
+        Indented = true,
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    };
+
     public static string Render(Type type)
     {
         using var stream = new MemoryStream();
-        using (var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = true }))
+        using (var writer = new Utf8JsonWriter(stream, WriterOptions))
         {
             WriteValue(writer, type, new HashSet<Type>());
         }

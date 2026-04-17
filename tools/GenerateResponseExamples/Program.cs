@@ -66,11 +66,13 @@ internal static class Program
         // Exclude types that aren't response payloads:
         //  - LoginRequest (request body only)
         //  - AppConfig (local config, never a response)
+        //  - UploadManifestEntry (client-side manifest read from disk, never a response)
         //  - raw Dictionary/List helper registrations (not command responses)
         var excluded = new HashSet<Type>
         {
             typeof(LoginRequest),
             typeof(Configuration.AppConfig),
+            typeof(UploadManifestEntry),
         };
 
         // JsonSerializableAttribute.Type is not a public property in .NET 8 —
