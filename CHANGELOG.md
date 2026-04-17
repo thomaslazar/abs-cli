@@ -3,6 +3,46 @@
 All notable changes to abs-cli are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## 0.2.4 — 2026-04-17
+
+### Highlights
+- `abs-cli <cmd> --help` now shows a generated `Response shape:` JSON sample for every typed command, so agents and humans can see exactly what each endpoint returns without running it first.
+- `authors --help` and `series --help` gain `Notes:` blocks explaining those resources are lifecycle-driven by book metadata (can't be created/deleted directly); `series --help` points at `items list --filter "series=<id>"` for listing books in a series.
+- `items` / `search` help now includes concrete shapes for `LibraryItemMinified.media` (book vs. podcast variants) and every untyped array inside `SearchResult`.
+- `abs-cli upload` (without `--wait`) returns a typed `UploadReceipt` on stdout instead of exiting silent — callers can now tell success from a swallowed error.
+- Dev-tooling cleanup: MemPalace and Caveman integrations removed.
+
+### Features
+- feat: add top/bottom positioning to help sections
+- feat: add SampleJsonWalker for response-shape codegen
+- feat: add codegen tool emitting ResponseExamples.g.cs
+- feat: regenerate ResponseExamples.g.cs on build, add drift tests
+- feat: add AddResponseExample helpers to HelpExtensions
+- feat: add notes and response-shape examples to authors and series
+- feat: add response-shape examples to items commands
+- feat: add response-shape examples to libraries/backup/tasks/metadata/search
+- feat: add search wrapper models and register media types
+- feat: add property overrides to SampleJsonWalker
+- feat: add book/podcast media union hint to items and search help
+- feat: return upload receipt JSON when --wait is not set
+
+### Fixes
+- fix: render unescaped angle brackets in response samples
+- fix: normalise walker output to LF to keep Windows build happy
+
+### Docs
+- docs: add spec and plan for agent-friendly help output
+- docs: clarify series help does not return books, show series filter
+- docs: require PR URL as clickable link in CLAUDE.md
+
+### Refactors
+- refactor: remove dead type guard in WriteSections
+- refactor: simplify dictionary/enumerable dispatch and fix test name
+
+### Chores
+- chore: remove MemPalace and Caveman integrations
+
+
 ## v0.2.3 — 2026-04-14
 
 ### Highlights
