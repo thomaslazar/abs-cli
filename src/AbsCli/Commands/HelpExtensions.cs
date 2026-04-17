@@ -61,8 +61,7 @@ public static class HelpExtensions
 
     private static void WriteSections(HelpContext ctx, HelpSectionPosition position)
     {
-        if (ctx.Command is not Command command) return;
-        if (!CommandSections.TryGetValue(command, out var sections)) return;
+        if (!CommandSections.TryGetValue(ctx.Command, out var sections)) return;
 
         foreach (var section in sections.Where(s => s.Position == position))
         {
