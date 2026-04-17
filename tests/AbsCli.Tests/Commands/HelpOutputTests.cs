@@ -130,4 +130,35 @@ public class HelpOutputTests
         var output = RenderHelp(group, sub);
         Assert.DoesNotContain("Response shape:", output);
     }
+
+    [Theory]
+    [InlineData("items", "get")]
+    [InlineData("items", "list")]
+    [InlineData("items", "search")]
+    [InlineData("items", "update")]
+    [InlineData("items", "batch-get")]
+    public void Items_Help_ShowsBothMediaUnionShapes(string group, string sub)
+    {
+        var output = RenderHelp(group, sub);
+        Assert.Contains("Book media shape", output);
+        Assert.Contains("Podcast media shape", output);
+        Assert.Contains("\"numTracks\"", output);   // BookMediaMinified-specific
+    }
+
+    [Fact]
+    public void Search_Help_ShowsBothMediaUnionShapes()
+    {
+        var output = RenderHelp("search");
+        Assert.Contains("Book media shape", output);
+        Assert.Contains("Podcast media shape", output);
+    }
+
+    [Fact]
+    public void Search_Help_ShowsConcreteSearchWrapperShapes()
+    {
+        var output = RenderHelp("search");
+        // SearchResult.narrators and .genres/.tags have distinct wrappers.
+        Assert.Contains("\"numBooks\"", output);
+        Assert.Contains("\"numItems\"", output);
+    }
 }

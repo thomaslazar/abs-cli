@@ -47,6 +47,25 @@ public static class HelpExtensions
         => AddResponseExampleSection(command, ResponseExamples.For(typeof(T)));
 
     /// <summary>
+    /// Appends two extra sections describing the concrete shapes of
+    /// <c>LibraryItemMinified.media</c>. The main response-shape sample emits a
+    /// placeholder there because the field is a union of book and podcast.
+    /// Call after <see cref="AddResponseExample{T}"/> whenever the command
+    /// surface includes a library item.
+    /// </summary>
+    public static void AddMediaUnionShapes(this Command command)
+    {
+        command.AddHelpSection(
+            "Book media shape (when mediaType is \"book\")",
+            HelpSectionPosition.Bottom,
+            ResponseExamples.For(typeof(AbsCli.Models.BookMediaMinified)).Split('\n'));
+        command.AddHelpSection(
+            "Podcast media shape (when mediaType is \"podcast\")",
+            HelpSectionPosition.Bottom,
+            ResponseExamples.For(typeof(AbsCli.Models.PodcastMedia)).Split('\n'));
+    }
+
+    /// <summary>
     /// Registers a response-shape sample for a paginated envelope whose
     /// <c>results</c> array is typed as <c>List&lt;JsonElement&gt;</c>. The
     /// element sample is spliced into the envelope's results array.
