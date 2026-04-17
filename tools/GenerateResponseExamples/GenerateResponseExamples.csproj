@@ -9,7 +9,13 @@
     <IsPackable>false</IsPackable>
     <IsPublishable>false</IsPublishable>
   </PropertyGroup>
+  <!--
+    Source-link model files instead of ProjectReference'ing AbsCli. A ProjectReference
+    would cause build recursion: AbsCli's BeforeBuild target runs this tool, which
+    would then trigger AbsCli's build again.
+  -->
   <ItemGroup>
-    <ProjectReference Include="..\..\src\AbsCli\AbsCli.csproj" />
+    <Compile Include="..\..\src\AbsCli\Models\*.cs" LinkBase="Models" />
+    <Compile Include="..\..\src\AbsCli\Configuration\AppConfig.cs" LinkBase="Configuration" />
   </ItemGroup>
 </Project>
