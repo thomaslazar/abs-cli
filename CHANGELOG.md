@@ -3,6 +3,33 @@
 All notable changes to abs-cli are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## 0.2.5 — 2026-04-20
+
+### Highlights
+- `abs-cli upload --wait` is reliable again: path-based matching instead of title substring. The old logic silently timed out whenever `--sequence` was used, because ABS strips the `N. -` prefix from `media.metadata.title` while the CLI kept searching with it. Drift-detection smoke cases guard against future regressions.
+- `UploadReceipt` gains a `relPath` field pointing at the exact folder ABS wrote to, so agents using no-`--wait` uploads can locate the resulting library item without replicating ABS's `sanitizeFilename` rules themselves.
+- ABS 2.33.2 is now the highest tested version. Login warning stops firing against 2.33.2 servers. Controller / model diff vs 2.33.1 reviewed — zero breaking changes on the abs-cli API surface.
+- `--wait-timeout` option removed. It only bounded the polling loop (not the upload itself), and with path-based matching the timeout rarely matters. On timeout the `UploadReceipt` is now emitted to stdout instead of producing empty output.
+- `items search --help` no longer misdescribes the response: it hits the same endpoint as top-level `search` and returns the full multi-array `SearchResult`. The command is kept as an alias; removal scheduled on the roadmap.
+
+### Features
+- feat: include relPath in upload receipt
+
+### Fixes
+- fix: match uploaded item by relPath, port ABS sanitizeFilename
+
+### Docs
+- docs: align items search help with actual behavior
+- docs: clarify upload help for agents
+
+### Chores
+- chore: raise MaxTestedVersion to 2.33.2
+- chore: bump docker-compose abs to 2.33.2
+
+### Breaking changes
+- `abs-cli upload --wait-timeout <seconds>` is no longer accepted — the option only controlled the post-upload polling window, which is now a fixed 120s internal. Remove it from any scripts that passed it.
+
+
 ## 0.2.4 — 2026-04-17
 
 ### Highlights
