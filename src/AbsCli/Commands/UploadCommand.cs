@@ -57,13 +57,17 @@ public static class UploadCommand
             "abs-cli upload --title \"My Audiobook\" --files-manifest manifest.json",
             "cat manifest.json | abs-cli upload --title \"My Audiobook\" --files-manifest -");
         command.AddHelpSection("Output",
-            "Without --wait: returns a receipt ({uploaded, title, libraryId, folderId, files})",
-            "                once the HTTP upload completes. ABS writes the files",
-            "                synchronously but creates the library item on its next",
-            "                scan tick — so the receipt confirms files landed, not",
-            "                that the item exists yet.",
+            "Without --wait: returns a receipt ({uploaded, title, author, series,",
+            "                libraryId, folderId, relPath, files}) once the HTTP",
+            "                upload completes. ABS writes the files synchronously",
+            "                but creates the library item on its next scan tick, so",
+            "                the receipt confirms files landed, not that the item",
+            "                exists yet. Use receipt.relPath to locate the resulting",
+            "                library item later, e.g.:",
+            "                  abs-cli items list --sort addedAt --desc \\",
+            "                    | jq '.results[] | select(.relPath == \"<relPath>\")'",
             "With --wait:    polls items list for an item whose relPath matches the",
-            "                folder ABS created, and returns it as a LibraryItemMinified.",
+            "                receipt.relPath above, returns it as a LibraryItemMinified.",
             "                If the item doesn't appear within ~2 minutes the receipt",
             "                is emitted on stdout and the command exits 1 — ABS may",
             "                still be scanning; re-check with 'items list --sort addedAt --desc'.");
@@ -132,13 +136,12 @@ public static class UploadCommand
                 // ABS strips the "N. -" prefix from media.metadata.title when
                 // scanning, so the CLI's search query (which included the
                 // prefix) no longer matched what ABS had indexed.
-                var expectedRelPath = Api.FilenameSanitizer.PredictRelPath(author, series, receipt.Title);
-                var item = await service.WaitForItemByPathAsync(libraryId, expectedRelPath);
+                var item = await service.WaitForItemByPathAsync(libraryId, receipt.RelPath);
                 if (item == null)
                 {
                     ConsoleOutput.WriteError(
                         $"Upload completed but the library item did not appear within the wait window. " +
-                        $"Expected relPath: '{expectedRelPath}'. " +
+                        $"Expected relPath: '{receipt.RelPath}'. " +
                         $"ABS may still be scanning — re-run: abs-cli items list --sort addedAt --desc --limit 5");
                     ConsoleOutput.WriteJson(receipt, AppJsonContext.Default.UploadReceipt);
                     Environment.Exit(1);

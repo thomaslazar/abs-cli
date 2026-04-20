@@ -58,7 +58,7 @@ internal static class ResponseExamples
         { typeof(AbsCli.Models.UpdateMediaResponse),
           "{\n  \"updated\": false,\n  \"libraryItem\": {\n    \"id\": \"<string>\",\n    \"ino\": null,\n    \"libraryId\": \"<string>\",\n    \"folderId\": null,\n    \"path\": null,\n    \"relPath\": null,\n    \"isFile\": false,\n    \"mtimeMs\": 0,\n    \"ctimeMs\": 0,\n    \"birthtimeMs\": 0,\n    \"addedAt\": 0,\n    \"updatedAt\": 0,\n    \"isMissing\": false,\n    \"isInvalid\": false,\n    \"mediaType\": \"<string>\",\n    \"media\": \"<book or podcast media — see Book media shape / Podcast media shape below>\",\n    \"numFiles\": 0,\n    \"size\": 0\n  }\n}" },
         { typeof(AbsCli.Models.UploadReceipt),
-          "{\n  \"uploaded\": true,\n  \"title\": \"<string>\",\n  \"author\": null,\n  \"series\": null,\n  \"libraryId\": \"<string>\",\n  \"folderId\": \"<string>\",\n  \"files\": [\n    \"<string>\"\n  ]\n}" },
+          "{\n  \"uploaded\": true,\n  \"title\": \"<string>\",\n  \"author\": null,\n  \"series\": null,\n  \"libraryId\": \"<string>\",\n  \"folderId\": \"<string>\",\n  \"relPath\": \"<string>\",\n  \"files\": [\n    \"<string>\"\n  ]\n}" },
     };
 
     public static string For(Type type)

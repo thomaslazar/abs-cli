@@ -48,6 +48,7 @@ public class UploadService
             Series = series,
             LibraryId = libraryId,
             FolderId = folderId,
+            RelPath = FilenameSanitizer.PredictRelPath(author, series, uploadTitle),
             Files = files.Select(f => f.UploadName).ToList(),
         };
     }
