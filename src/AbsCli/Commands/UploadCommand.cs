@@ -16,8 +16,8 @@ public static class UploadCommand
         var authorOption = new Option<string?>("--author", "Book author");
         var seriesOption = new Option<string?>("--series", "Series name");
         var sequenceOption = new Option<int?>("--sequence", "Series sequence number (requires --series)");
-        var waitOption = new Option<bool>("--wait", "Poll until the uploaded item appears in the library (default 5min timeout)");
-        var waitTimeoutOption = new Option<int>("--wait-timeout", () => 300, "Seconds to wait for the item to appear (with --wait). Defaults to 300.");
+        var waitOption = new Option<bool>("--wait",
+            "After upload, poll until the item appears in the library (up to ~2min) and return its full LibraryItemMinified. Without --wait, a terse UploadReceipt is returned immediately.");
         var filesOption = new Option<string[]>("--files", "File paths to upload (mutually exclusive with --files-manifest)") { AllowMultipleArgumentsPerToken = true };
         var prefixSourceDirOption = new Option<bool>("--prefix-source-dir",
             "Prefix each upload filename with its parent directory name (avoids collisions when files from multiple source dirs share basenames)");
@@ -26,7 +26,7 @@ public static class UploadCommand
         var command = new Command("upload", "Upload audiobook files to a library")
         {
             libraryOption, folderOption, titleOption, authorOption,
-            seriesOption, sequenceOption, waitOption, waitTimeoutOption, filesOption,
+            seriesOption, sequenceOption, waitOption, filesOption,
             prefixSourceDirOption, manifestOption
         };
         command.AddHelpSection("Folder ID",
@@ -62,8 +62,11 @@ public static class UploadCommand
             "                synchronously but creates the library item on its next",
             "                scan tick — so the receipt confirms files landed, not",
             "                that the item exists yet.",
-            "With --wait:    polls items search and returns the resulting library",
-            "                item (LibraryItemMinified shape) once it appears.");
+            "With --wait:    polls items list for an item whose relPath matches the",
+            "                folder ABS created, and returns it as a LibraryItemMinified.",
+            "                If the item doesn't appear within ~2 minutes the receipt",
+            "                is emitted on stdout and the command exits 1 — ABS may",
+            "                still be scanning; re-check with 'items list --sort addedAt --desc'.");
         command.AddResponseExample<UploadReceipt>();
         command.SetHandler(async (context) =>
         {
@@ -74,7 +77,6 @@ public static class UploadCommand
             var series = context.ParseResult.GetValueForOption(seriesOption);
             var sequence = context.ParseResult.GetValueForOption(sequenceOption);
             var wait = context.ParseResult.GetValueForOption(waitOption);
-            var waitTimeout = context.ParseResult.GetValueForOption(waitTimeoutOption);
             var files = context.ParseResult.GetValueForOption(filesOption) ?? Array.Empty<string>();
             var prefixSourceDir = context.ParseResult.GetValueForOption(prefixSourceDirOption);
             var manifestPath = context.ParseResult.GetValueForOption(manifestOption);
@@ -122,10 +124,21 @@ public static class UploadCommand
             var receipt = await service.UploadAsync(libraryId, folderId, title, author, series, sequence, uploadList);
             if (wait)
             {
-                var item = await service.WaitForItemAsync(libraryId, receipt.Title, timeoutSeconds: waitTimeout);
+                // Match by relPath — deterministic given that we compute the
+                // exact path ABS wrote to using the same sanitisation. The
+                // old title-substring search failed with --sequence because
+                // ABS strips the "N. -" prefix from media.metadata.title when
+                // scanning, so the CLI's search query (which included the
+                // prefix) no longer matched what ABS had indexed.
+                var expectedRelPath = Api.FilenameSanitizer.PredictRelPath(author, series, receipt.Title);
+                var item = await service.WaitForItemByPathAsync(libraryId, expectedRelPath);
                 if (item == null)
                 {
-                    ConsoleOutput.WriteError($"Timed out after {waitTimeout}s waiting for item to appear in library. The upload may still be processing — check 'abs-cli items search --query <title>' or pass --wait-timeout <seconds> to wait longer.");
+                    ConsoleOutput.WriteError(
+                        $"Upload completed but the library item did not appear within the wait window. " +
+                        $"Expected relPath: '{expectedRelPath}'. " +
+                        $"ABS may still be scanning — re-run: abs-cli items list --sort addedAt --desc --limit 5");
+                    ConsoleOutput.WriteJson(receipt, AppJsonContext.Default.UploadReceipt);
                     Environment.Exit(1);
                     return;
                 }

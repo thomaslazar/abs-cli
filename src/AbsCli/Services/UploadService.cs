@@ -71,22 +71,39 @@ public class UploadService
         return library.Folders[0].Id;
     }
 
-    public async Task<LibraryItemMinified?> WaitForItemAsync(string libraryId, string title,
-        int timeoutSeconds = 300, int pollIntervalMs = 3000)
+    /// <summary>
+    /// Poll items list (sorted by addedAt desc) and return the first item whose
+    /// relPath matches <paramref name="expectedRelPath"/>. Path-based match is
+    /// deterministic: we computed the exact folder ABS wrote the files into
+    /// using the same sanitisation ABS applies, so there is no false positive
+    /// and no false negative from title substring matching (which broke when
+    /// --sequence prefixed the uploaded title).
+    /// </summary>
+    public async Task<LibraryItemMinified?> WaitForItemByPathAsync(
+        string libraryId, string expectedRelPath,
+        int timeoutSeconds = 120, int pollIntervalMs = 3000)
     {
         var deadline = DateTime.UtcNow.AddSeconds(timeoutSeconds);
         while (DateTime.UtcNow < deadline)
         {
             var query = HttpUtility.ParseQueryString("");
-            query["q"] = title;
-            query["limit"] = "5";
-            var url = ApiEndpoints.LibrarySearch(libraryId) + "?" + query;
-            var result = await _client.GetAsync(url, AppJsonContext.Default.SearchResult);
-            if (result.Book != null && result.Book.Count > 0)
+            query["sort"] = "addedAt";
+            query["desc"] = "1";
+            query["limit"] = "20";
+            var url = ApiEndpoints.LibraryItems(libraryId) + "?" + query;
+            var result = await _client.GetAsync(url, AppJsonContext.Default.PaginatedResponse);
+            foreach (var itemElement in result.Results)
             {
-                var itemJson = result.Book[0].GetProperty("libraryItem").GetRawText();
-                return System.Text.Json.JsonSerializer.Deserialize(itemJson,
-                    AppJsonContext.Default.LibraryItemMinified);
+                if (!itemElement.TryGetProperty("relPath", out var relPathProp)) continue;
+                var relPath = relPathProp.GetString();
+                if (relPath == null) continue;
+                // ABS stores relPath with a leading slash; strip it for comparison.
+                var normalised = relPath.TrimStart('/');
+                if (string.Equals(normalised, expectedRelPath, StringComparison.Ordinal))
+                {
+                    return System.Text.Json.JsonSerializer.Deserialize(itemElement.GetRawText(),
+                        AppJsonContext.Default.LibraryItemMinified);
+                }
             }
             await Task.Delay(pollIntervalMs);
         }

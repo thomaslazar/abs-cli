@@ -391,13 +391,66 @@ else
 fi
 
 export ABS_TOKEN="$SAVE_TOKEN"
-rm -rf "$UPLOAD_TMP"
 
 # Cleanup: hard-delete the uploaded item (also removes orphan author "Test Author")
 if [ -n "$UPLOADED_ITEM_ID" ]; then
     curl -sf -X DELETE "$ABS_URL/api/items/$UPLOADED_ITEM_ID?hard=1" \
         -H "Authorization: Bearer $ABS_TOKEN" > /dev/null 2>&1 || true
 fi
+
+# --- Sanitisation drift detection ---
+# If the CLI's FilenameSanitizer drifts from ABS's sanitizeFilename, --wait
+# will fail to match the scanned item's relPath and these uploads will time
+# out. Each case exercises a specific sanitisation rule.
+
+run_drift_case() {
+    local label="$1" title="$2" author="$3" expected_relpath="$4" sequence_arg="$5" series_arg="$6"
+    export ABS_TOKEN="$UPLOAD_TOKEN"
+    local out
+    out=$($CLI upload --title "$title" --author "$author" $series_arg $sequence_arg \
+        --folder "$FOLDER_ID" --wait --files "$UPLOAD_TMP/test.mp3" 2>&1)
+    local rc=$?
+    export ABS_TOKEN="$SAVE_TOKEN"
+    if [ $rc -ne 0 ]; then
+        fail "sanitize drift: $label" "upload failed: ${out:0:300}"
+        return
+    fi
+    local actual
+    actual=$(echo "$out" | python3 -c "import sys,json; print(json.load(sys.stdin)['relPath'].lstrip('/'))" 2>/dev/null || echo "PARSE_ERROR")
+    if [ "$actual" = "$expected_relpath" ]; then
+        pass "sanitize drift: $label"
+        local item_id=$(echo "$out" | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])" 2>/dev/null)
+        [ -n "$item_id" ] && curl -sf -X DELETE "$ABS_URL/api/items/$item_id?hard=1" \
+            -H "Authorization: Bearer $ABS_TOKEN" > /dev/null 2>&1 || true
+    else
+        fail "sanitize drift: $label" "expected relPath '$expected_relpath', got '$actual'"
+    fi
+}
+
+# Colon in title: first ':' replaced with ' - '
+run_drift_case "colon in title" "Alien: 3" "Sanitize Author" \
+    "Sanitize Author/Alien - 3" "" ""
+
+# Trailing dot in author
+run_drift_case "trailing dot in author" "Plain Title One" "J.R.R. Tolkien." \
+    "J.R.R. Tolkien/Plain Title One" "" ""
+
+# Sequence prefix: ABS keeps "N. -" in relPath (it's the folder name);
+# it only strips the prefix when deriving media.metadata.title. This is
+# why title-substring search failed pre-fix — the title-metadata lost the
+# prefix but the search query we built included it.
+run_drift_case "sequence prefix kept in relPath" "Hobbit Draft" "Sanitize Author Seq" \
+    "Sanitize Author Seq/Dwarves/1. - Hobbit Draft" "--sequence 1" "--series Dwarves"
+
+# Illegal char (pipe) stripped
+run_drift_case "illegal char stripped" "Pipe|Title" "Sanitize Author Pipe" \
+    "Sanitize Author Pipe/PipeTitle" "" ""
+
+# Whitespace run collapsed
+run_drift_case "whitespace collapsed" "Extra   Spaces   Title" "Sanitize Author WS" \
+    "Sanitize Author WS/Extra Spaces Title" "" ""
+
+rm -rf "$UPLOAD_TMP"
 
 # Filename-collision tests: build a 2-dir source tree where both dirs have a file
 # called "01.mp3". Confirm default errors, --prefix-source-dir succeeds, and
