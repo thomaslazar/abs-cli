@@ -68,6 +68,8 @@ public static class UploadCommand
             "                is emitted on stdout and the command exits 1 — ABS may",
             "                still be scanning; re-check with 'items list --sort addedAt --desc'.");
         command.AddResponseExample<UploadReceipt>();
+        command.AddHelpSection("Response shape (with --wait, on success)",
+            "LibraryItemMinified — same shape as 'abs-cli items get --help'.");
         command.SetHandler(async (context) =>
         {
             var library = context.ParseResult.GetValueForOption(libraryOption);

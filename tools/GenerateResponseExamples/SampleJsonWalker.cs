@@ -17,6 +17,10 @@ public class PropertyOverrides
 {
     public Dictionary<(Type, string), string> Placeholders { get; } = new();
     public Dictionary<(Type, string), Type> TypeSubstitutions { get; } = new();
+    /// <summary>Override the sample value of a <c>bool</c> property. Walker's
+    /// default is always <c>false</c>, which is misleading for fields whose
+    /// only meaningful runtime value is <c>true</c> (e.g. success flags).</summary>
+    public Dictionary<(Type, string), bool> BoolValues { get; } = new();
 }
 
 /// <summary>
@@ -139,6 +143,11 @@ public static class SampleJsonWalker
             if (overrides != null && overrides.Placeholders.TryGetValue(key, out var placeholder))
             {
                 writer.WriteStringValue(placeholder);
+                continue;
+            }
+            if (overrides != null && overrides.BoolValues.TryGetValue(key, out var boolValue))
+            {
+                writer.WriteBooleanValue(boolValue);
                 continue;
             }
             if (overrides != null && overrides.TypeSubstitutions.TryGetValue(key, out var substitute))
