@@ -106,12 +106,30 @@ public static class ItemsCommand
         var limitOption = new Option<int>("--limit", () => 50, "Max results (default 50, pass higher value to retrieve more)");
 
         var command = new Command("search",
-            "Search items in a library (substring match, case-insensitive, searches title/subtitle/ASIN/ISBN, defaults to 50 results)")
+            "Search across a library (substring match, case-insensitive, defaults to 50 results). Alias for 'abs-cli search' — same endpoint, same response shape.")
         {
             queryOption, libraryOption, limitOption
         };
+        command.AddHelpSection("Search behavior",
+            "Substring match, case-insensitive. No operators or wildcards.",
+            "Multi-word queries match as a single phrase (\"brandon sanderson\"",
+            "matches but \"sanderson brandon\" does not).",
+            "Accent-insensitive when the server supports it.");
+        command.AddHelpSection("Fields searched",
+            "Books: title, subtitle, ASIN, ISBN",
+            "Authors: name",
+            "Series: name",
+            "Narrators: name",
+            "Tags: name",
+            "Genres: name",
+            "NOT searched: description, publisher");
+        command.AddHelpSection("Note",
+            "The response populates book, podcast, authors, series, narrators,",
+            "tags and genres arrays — not just books. This command is kept as",
+            "an alias; prefer top-level 'abs-cli search'. See roadmap for removal.");
         command.AddExamples(
             "abs-cli items search --query \"Mistborn\"",
+            "abs-cli items search --query \"Brandon Sanderson\" | jq '.authors[].name'",
             "abs-cli items search --query \"978-0\" --limit 20");
         command.AddResponseExample<SearchResult>();
         command.AddMediaUnionShapes();
