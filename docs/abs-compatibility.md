@@ -5,9 +5,10 @@
 The CLI tracks which ABS versions it has been tested against. This is documented in
 the project README and checked at runtime.
 
-| abs-cli Version | ABS Versions | Notes |
-|----------------|-------------|-------|
-| 0.1.x          | 2.33.1      | Initial release, baseline API |
+| abs-cli Version | ABS Versions  | Notes |
+|----------------|--------------|-------|
+| 0.1.x — 0.2.4   | 2.33.1        | Initial release, baseline API |
+| 0.2.5+          | 2.33.1 — 2.33.2 | No API surface changes in 2.33.2 (maintenance release; internal refactors, image-endpoint clamping, cross-library bulk-download guard) |
 
 This table grows as new ABS versions are tested. A single CLI version may support
 multiple ABS versions if the API surface hasn't changed.

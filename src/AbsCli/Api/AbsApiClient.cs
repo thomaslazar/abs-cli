@@ -197,7 +197,7 @@ public class AbsApiClient
     }
 
     private static readonly string MinSupportedVersion = "2.33.1";
-    private static readonly string MaxTestedVersion = "2.33.1";
+    private static readonly string MaxTestedVersion = "2.33.2";
 
     private static readonly string AssemblyVersion =
         typeof(AbsApiClient).Assembly.GetName().Version?.ToString(3) ?? "0.0.0";
