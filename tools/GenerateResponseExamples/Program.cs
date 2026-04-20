@@ -76,6 +76,11 @@ internal static class Program
         o.Placeholders[(typeof(LibraryItemMinified), nameof(LibraryItemMinified.Media))]
             = "<book or podcast media — see Book media shape / Podcast media shape below>";
 
+        // UploadReceipt.Uploaded is always true on success (failure paths exit
+        // before emitting the receipt), so the walker's default-false is
+        // misleading. Override to true.
+        o.BoolValues[(typeof(UploadReceipt), nameof(UploadReceipt.Uploaded))] = true;
+
         // Typed containers for libraryItem / libraryItems that ABS returns
         // but we declared as JsonElement(?) to keep the CLI transparent.
         o.TypeSubstitutions[(typeof(BatchGetResponse), nameof(BatchGetResponse.LibraryItems))] = typeof(LibraryItemMinified);

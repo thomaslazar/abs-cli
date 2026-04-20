@@ -30,6 +30,16 @@ public class UploadReceipt
     [JsonPropertyName("folderId")]
     public string FolderId { get; set; } = "";
 
+    /// <summary>
+    /// Relative path (under the library folder) where ABS wrote the files.
+    /// The CLI predicts this using <see cref="Api.FilenameSanitizer"/> since
+    /// ABS's upload endpoint returns no body. Agents can use this to locate
+    /// the resulting library item once ABS scans — e.g.
+    /// <c>abs-cli items list --sort addedAt --desc | jq '.results[] | select(.relPath == "&lt;relPath&gt;")'</c>.
+    /// </summary>
+    [JsonPropertyName("relPath")]
+    public string RelPath { get; set; } = "";
+
     [JsonPropertyName("files")]
     public List<string> Files { get; set; } = new();
 }
