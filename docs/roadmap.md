@@ -40,3 +40,11 @@ All are additive — nothing in the v1 architecture blocks them.
 | Collections / Playlists resources | Not needed for metadata workflow |
 | `items files` / `items progress` | Playback and file management not in scope |
 | Auto-update mechanism | Check for new versions, prompt/apply updates from GitHub releases |
+
+## Planned breaking changes
+
+Scheduled for a future minor release with a prior deprecation window.
+
+| Change | Reason |
+|--------|--------|
+| Remove `abs-cli items search` | Functional duplicate of top-level `abs-cli search` — same endpoint (`/api/libraries/:id/search`), same response shape. Kept as alias through v0.2.x with a note in its help; remove in the next minor bump. |
