@@ -49,7 +49,10 @@ public class ItemsService
 
     public async Task<BatchUpdateResponse> BatchUpdateAsync(string jsonBody)
     {
-        return await _client.PatchAsync(ApiEndpoints.ItemsBatchUpdate, jsonBody, AppJsonContext.Default.BatchUpdateResponse);
+        // ABS route is POST /items/batch/update (not PATCH — the single-item
+        // /items/:id/media endpoint is PATCH but the batch variant is POST).
+        // See temp/audiobookshelf/server/routers/ApiRouter.js.
+        return await _client.PostAsync(ApiEndpoints.ItemsBatchUpdate, jsonBody, AppJsonContext.Default.BatchUpdateResponse);
     }
 
     public async Task<BatchGetResponse> BatchGetAsync(string jsonBody)

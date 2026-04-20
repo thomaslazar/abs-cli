@@ -263,6 +263,30 @@ output=$(echo "{\"libraryItemIds\":[\"$FIRST_ITEM_ID\",\"$SECOND_ITEM_ID\"]}" \
     | $CLI items batch-get --stdin 2>/dev/null)
 assert_json_expr "batch-get returns 2 items" "len(d.get('libraryItems',[]))==2" "$output"
 
+# Batch update — update two items in one call. Guards against the bug
+# where the CLI issued PATCH /api/items/batch/update while ABS only
+# registers POST for that route (which 404s as "Cannot PATCH ...").
+BATCH_PAYLOAD="[{\"id\":\"$FIRST_ITEM_ID\",\"mediaPayload\":{\"metadata\":{\"publisher\":\"Smoke Batch Press A\"}}},{\"id\":\"$SECOND_ITEM_ID\",\"mediaPayload\":{\"metadata\":{\"publisher\":\"Smoke Batch Press B\"}}}]"
+output=$(echo "$BATCH_PAYLOAD" | $CLI items batch-update --stdin 2>&1)
+rc=$?
+if [ $rc -eq 0 ] && echo "$output" | python3 -c "import sys,json; d=json.load(sys.stdin); assert d.get('success') is True" 2>/dev/null; then
+    pass "batch-update returns success"
+else
+    fail "batch-update returns success" "rc=$rc output: ${output:0:200}"
+fi
+
+# Verify both items actually got the new publisher.
+pub_a=$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null | python3 -c "import sys,json; print(json.load(sys.stdin)['media']['metadata'].get('publisher'))")
+pub_b=$($CLI items get --id "$SECOND_ITEM_ID" 2>/dev/null | python3 -c "import sys,json; print(json.load(sys.stdin)['media']['metadata'].get('publisher'))")
+if [ "$pub_a" = "Smoke Batch Press A" ] && [ "$pub_b" = "Smoke Batch Press B" ]; then
+    pass "batch-update persisted both items"
+else
+    fail "batch-update persisted both items" "got '$pub_a' / '$pub_b'"
+fi
+
+# Restore both
+$CLI items batch-update --stdin 2>/dev/null <<< "[{\"id\":\"$FIRST_ITEM_ID\",\"mediaPayload\":{\"metadata\":{\"publisher\":null}}},{\"id\":\"$SECOND_ITEM_ID\",\"mediaPayload\":{\"metadata\":{\"publisher\":null}}}]" > /dev/null
+
 # ============================================================
 echo ""
 echo "=== Series Commands ==="
