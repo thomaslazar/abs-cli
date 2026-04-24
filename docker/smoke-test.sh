@@ -466,6 +466,12 @@ run_drift_case "trailing dot in author" "Plain Title One" "J.R.R. Tolkien." \
 run_drift_case "sequence prefix kept in relPath" "Hobbit Draft" "Sanitize Author Seq" \
     "Sanitize Author Seq/Dwarves/1. - Hobbit Draft" "--sequence 1" "--series Dwarves"
 
+# Decimal sequence: ABS stores BookSeries.sequence as STRING, so "1.5" must
+# flow through the CLI unchanged. Regression test for the old int-only typing
+# that rejected decimal series positions at the CLI boundary.
+run_drift_case "decimal sequence kept in relPath" "Hobbit Decimal" "Sanitize Author Dec" \
+    "Sanitize Author Dec/Dwarves/1.5. - Hobbit Decimal" "--sequence 1.5" "--series Dwarves"
+
 # Illegal char (pipe) stripped
 run_drift_case "illegal char stripped" "Pipe|Title" "Sanitize Author Pipe" \
     "Sanitize Author Pipe/PipeTitle" "" ""
