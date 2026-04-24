@@ -3,6 +3,17 @@
 All notable changes to abs-cli are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## 0.2.7 — 2026-04-24
+
+### Highlights
+- `abs-cli upload --sequence` now accepts any non-empty string, so decimal series positions (`--sequence 1.5`), zero-prefixed labels, and free-form values like `II` or `0a` work the same way the ABS server does. The CLI previously typed the option as an integer, silently blocking valid ABS sequences at the CLI boundary — a limitation the `abs-management` orchestrator hit while uploading books at fractional series positions. Smoke coverage now asserts a `--sequence 1.5` upload round-trips through `relPath` intact.
+
+### Fixes
+- fix: accept string sequences on upload --sequence
+
+### Docs
+- docs: mark v0.2.0 shipped and restructure roadmap
+
 ## 0.2.6 — 2026-04-24
 
 ### Highlights
