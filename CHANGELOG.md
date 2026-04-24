@@ -3,6 +3,14 @@
 All notable changes to abs-cli are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## 0.2.6 — 2026-04-24
+
+### Highlights
+- `abs-cli items batch-update` works again. The CLI was issuing `PATCH` against `/api/items/batch/update`, but ABS only registers that route as `POST` — every call was coming back as a 404. Single-item updates use `PATCH`, which is where the confusion came from. Smoke coverage now fires a two-item batch-update and asserts the changes were persisted, so this class of verb-mismatch regression won't slip through again.
+
+### Fixes
+- fix: use POST for batch-update endpoint
+
 ## 0.2.5 — 2026-04-20
 
 ### Highlights
