@@ -15,10 +15,10 @@ public class UploadService
     }
 
     public async Task<UploadReceipt> UploadAsync(string libraryId, string folderId, string title,
-        string? author, string? series, int? sequence,
+        string? author, string? series, string? sequence,
         IReadOnlyList<(string LocalPath, string UploadName)> files)
     {
-        var uploadTitle = sequence.HasValue ? $"{sequence.Value}. - {title}" : title;
+        var uploadTitle = sequence != null ? $"{sequence}. - {title}" : title;
         var content = new MultipartFormDataContent();
         content.Add(new StringContent(libraryId), "library");
         content.Add(new StringContent(folderId), "folder");

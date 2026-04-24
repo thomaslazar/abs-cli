@@ -15,7 +15,7 @@ public static class UploadCommand
         var titleOption = new Option<string>("--title", "Book title") { IsRequired = true };
         var authorOption = new Option<string?>("--author", "Book author");
         var seriesOption = new Option<string?>("--series", "Series name");
-        var sequenceOption = new Option<int?>("--sequence", "Series sequence number (requires --series)");
+        var sequenceOption = new Option<string?>("--sequence", "Series sequence (requires --series). Any non-empty string — integer (\"1\"), decimal (\"1.5\"), or free-form (\"0\", \"II\"). Becomes the \"N. -\" prefix on the item folder.");
         var waitOption = new Option<bool>("--wait",
             "After upload, poll until the item appears in the library (up to ~2min) and return its full LibraryItemMinified. Without --wait, a terse UploadReceipt is returned immediately.");
         var filesOption = new Option<string[]>("--files", "File paths to upload (mutually exclusive with --files-manifest)") { AllowMultipleArgumentsPerToken = true };
@@ -86,9 +86,15 @@ public static class UploadCommand
             var files = context.ParseResult.GetValueForOption(filesOption) ?? Array.Empty<string>();
             var prefixSourceDir = context.ParseResult.GetValueForOption(prefixSourceDirOption);
             var manifestPath = context.ParseResult.GetValueForOption(manifestOption);
-            if (sequence.HasValue && series == null)
+            if (sequence != null && series == null)
             {
                 ConsoleOutput.WriteError("--sequence requires --series.");
+                Environment.Exit(1);
+                return;
+            }
+            if (sequence != null && string.IsNullOrWhiteSpace(sequence))
+            {
+                ConsoleOutput.WriteError("--sequence must be a non-empty string.");
                 Environment.Exit(1);
                 return;
             }
