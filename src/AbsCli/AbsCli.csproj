@@ -21,6 +21,10 @@
     <InternalsVisibleTo Include="AbsCli.Tests" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\CHANGELOG.md" LogicalName="CHANGELOG.md" />
+  </ItemGroup>
+
   <!--
     Regenerates Commands/ResponseExamples.g.cs when any Models/*.cs or codegen
     tool source changes. Forward slashes only — MSBuild normalises them on
