@@ -39,15 +39,22 @@ Two roadmap items being delivered together as the next minor release.
   before any command design — outcome may be a `covers` command or a
   documentation update, decided after investigation.
 
+### v0.3.x — .NET 10 LTS upgrade
+
+Scheduled for a v0.3.x patch after v0.3.0 ships.
+
+- **Upgrade target framework to .NET 10 LTS** — Move from `net8.0` to
+  `net10.0` once .NET 10 LTS is generally available. Verify AOT publish,
+  `System.CommandLine` 2.x compatibility, and `System.Text.Json`
+  source-gen behaviour. Spec/plan to follow.
+
 ---
 
 ## Ideas
 
 Not yet scoped — notes to pick up later.
 
-| Idea | Notes |
-|------|-------|
-| Upgrade to .NET 10 LTS | Move target framework from `net8.0` to `net10.0` once .NET 10 LTS is GA. Verify AOT publish, `System.CommandLine` 2.x compatibility, and `System.Text.Json` source-gen behaviour. Target: a v0.3.x patch after v0.3.0 ships. |
+_None currently. New ideas land here before getting scheduled into a release._
 
 ## Deferred features
 
