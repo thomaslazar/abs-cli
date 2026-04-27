@@ -16,11 +16,12 @@ public static class ChangelogCommand
         command.AddExamples(
             "abs-cli changelog",
             "abs-cli changelog --all");
-        command.SetHandler((bool all) =>
+        command.SetHandler((context) =>
         {
+            var all = context.ParseResult.GetValueForOption(allOption);
             var output = all ? ChangelogReader.ReadAll() : ChangelogReader.ReadLatest();
-            Console.Out.WriteLine(output);
-        }, allOption);
+            context.Console.Out.Write(output + Environment.NewLine);
+        });
         return command;
     }
 }
