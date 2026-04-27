@@ -24,9 +24,9 @@ compatibility, upload `relPath` + sanitize-drift coverage, batch-update verb fix
 
 ## In progress
 
-### v0.3.0 — Changelog command & cover handling
+### v0.3.0 — Changelog, cover handling & .NET 10 LTS
 
-Two roadmap items being delivered together as the next minor release.
+Three roadmap items being delivered together as the next minor release.
 
 - **`abs-cli changelog` command** — Print the most recent entry by default;
   `--all` prints the full file. Source of truth is the bundled
@@ -38,11 +38,6 @@ Two roadmap items being delivered together as the next minor release.
   interacts with `metadata covers` and `items update`. Scoping exercise
   before any command design — outcome may be a `covers` command or a
   documentation update, decided after investigation.
-
-### v0.3.x — .NET 10 LTS upgrade
-
-Scheduled for a v0.3.x patch after v0.3.0 ships.
-
 - **Upgrade target framework to .NET 10 LTS** — Move from `net8.0` to
   `net10.0` once .NET 10 LTS is generally available. Verify AOT publish,
   `System.CommandLine` 2.x compatibility, and `System.Text.Json`
