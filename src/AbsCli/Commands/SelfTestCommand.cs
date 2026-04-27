@@ -438,6 +438,17 @@ public static class SelfTestCommand
                 Assert(sw.ToString().Trim() == "{\"raw\":true}", "raw passthrough failed");
             });
 
+            Console.Error.WriteLine();
+            Console.Error.WriteLine("=== Embedded resources ===");
+
+            Check("CHANGELOG.md embedded and parseable", () =>
+            {
+                var latest = AbsCli.Services.ChangelogReader.ReadLatest();
+                Assert(!string.IsNullOrWhiteSpace(latest), "ReadLatest returned empty");
+                Assert(latest.StartsWith("## ", StringComparison.Ordinal),
+                    $"ReadLatest did not start with '## ': '{latest[..Math.Min(40, latest.Length)]}'");
+            });
+
             // Summary
             Console.Error.WriteLine("");
             Console.Error.WriteLine($"========================================");
