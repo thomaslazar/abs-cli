@@ -20,7 +20,7 @@ public static class ChangelogCommand
         {
             var all = context.ParseResult.GetValueForOption(allOption);
             var output = all ? ChangelogReader.ReadAll() : ChangelogReader.ReadLatest();
-            context.Console.Out.Write(output + Environment.NewLine);
+            context.Console.Out.Write(output + "\n");
         });
         return command;
     }

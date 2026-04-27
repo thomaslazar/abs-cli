@@ -21,15 +21,16 @@ public class ChangelogCommandTests
 
     private static string FirstVersionHeading()
     {
-        // tests/AbsCli.Tests/bin/Debug/net8.0 -> repo root is four levels up.
-        // TrimEnd('/') normalises the trailing slash AppContext.BaseDirectory may include.
+        // Walk up from the test assembly's base directory until we find AbsCli.sln,
+        // which marks the repo root. No fixed depth cap — the walk terminates at
+        // the filesystem root.
         var dir = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar, '/');
-        for (var i = 0; i < 7 && dir is not null; i++)
+        while (dir is not null)
         {
-            var candidate = Path.Combine(dir, "CHANGELOG.md");
-            if (File.Exists(candidate))
+            if (File.Exists(Path.Combine(dir, "AbsCli.sln")))
             {
-                foreach (var line in File.ReadLines(candidate))
+                var changelog = Path.Combine(dir, "CHANGELOG.md");
+                foreach (var line in File.ReadLines(changelog))
                 {
                     if (line.StartsWith("## ", StringComparison.Ordinal))
                     {
@@ -40,7 +41,7 @@ public class ChangelogCommandTests
             }
             dir = Path.GetDirectoryName(dir);
         }
-        throw new InvalidOperationException("Could not locate repo CHANGELOG.md from test base directory");
+        throw new InvalidOperationException("Could not locate AbsCli.sln from test base directory");
     }
 
     [Fact]

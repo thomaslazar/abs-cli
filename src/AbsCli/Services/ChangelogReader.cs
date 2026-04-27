@@ -23,6 +23,7 @@ public static class ChangelogReader
             throw new InvalidOperationException("CHANGELOG.md has no version entries");
         }
 
+        changelog = changelog.Replace("\r\n", "\n");
         var lines = changelog.Split('\n');
         var startIndex = -1;
         for (var i = 0; i < lines.Length; i++)
