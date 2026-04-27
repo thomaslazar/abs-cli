@@ -616,13 +616,12 @@ If there were no changes, skip this step.
 
 ---
 
-## Task 9: Roadmap and CHANGELOG entries
+## Task 9: CHANGELOG entry
 
-Document the new command. The version bump itself is part of the release process, not this plan — but the changelog entry and roadmap update belong with the work.
+Document the new command. The version bump itself is part of the release process, not this plan — but the changelog entry belongs with the work. Roadmap was restructured in commit `43c6c89` (separate from the plan tasks); no roadmap edits needed here.
 
 **Files:**
 - Modify: `CHANGELOG.md`
-- Modify: `docs/roadmap.md`
 
 - [ ] **Step 1: Add an unreleased entry to `CHANGELOG.md`**
 
@@ -643,17 +642,7 @@ At the top of `CHANGELOG.md` (just below the file header preamble, above `## 0.2
 
 The release process will rename `## Unreleased` to `## 0.3.0 — <date>` at version-bump time.
 
-- [ ] **Step 2: Remove the changelog idea from the roadmap**
-
-In `docs/roadmap.md`, delete this row from the Ideas table:
-
-```markdown
-| `abs-cli changelog` command | Print the most recent entry by default; a flag (e.g. `--all`) prints the full file. Source of truth is the bundled `CHANGELOG.md`. |
-```
-
-Leave the cover-handling row in place — it's a separate sub-project.
-
-- [ ] **Step 3: Verify the new entry round-trips through the command**
+- [ ] **Step 2: Verify the new entry round-trips through the command**
 
 ```bash
 dotnet run --project /workspaces/abs-cli/src/AbsCli/AbsCli.csproj -- changelog | head -2
@@ -661,11 +650,11 @@ dotnet run --project /workspaces/abs-cli/src/AbsCli/AbsCli.csproj -- changelog |
 
 Expected: stdout begins with `## Unreleased`.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 3: Commit**
 
 ```bash
-git add CHANGELOG.md docs/roadmap.md
-git commit -m "docs: add changelog command entry and tidy roadmap"
+git add CHANGELOG.md
+git commit -m "docs: add changelog entry for changelog command"
 ```
 
 ---
