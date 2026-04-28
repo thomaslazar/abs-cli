@@ -1,7 +1,4 @@
 using System.CommandLine;
-using System.CommandLine.Builder;
-using System.CommandLine.IO;
-using System.CommandLine.Parsing;
 using AbsCli.Commands;
 
 namespace AbsCli.Tests.Commands;
@@ -10,14 +7,12 @@ public class HelpExtensionsTests
 {
     private static string RenderHelp(Command command)
     {
-        var console = new TestConsole();
         var root = new RootCommand { command };
-        var parser = new CommandLineBuilder(root)
-            .UseDefaults()
-            .UseCustomHelpSections()
-            .Build();
-        parser.Invoke(new[] { command.Name, "--help" }, console);
-        return console.Out.ToString() ?? "";
+        HelpExtensions.UseCustomHelpSections(root);
+        var output = new StringWriter();
+        var config = new InvocationConfiguration { Output = output };
+        root.Parse(new[] { command.Name, "--help" }).Invoke(config);
+        return output.ToString();
     }
 
     [Fact]
@@ -25,9 +20,7 @@ public class HelpExtensionsTests
     {
         var cmd = new Command("demo", "Demo command");
         cmd.AddHelpSection("Notes", HelpSectionPosition.Top, "Top-placed content");
-
         var output = RenderHelp(cmd);
-
         var notesIdx = output.IndexOf("Notes:", StringComparison.Ordinal);
         var optionsIdx = output.IndexOf("Options:", StringComparison.Ordinal);
         Assert.True(notesIdx >= 0, "Notes section missing");
@@ -40,9 +33,7 @@ public class HelpExtensionsTests
     {
         var cmd = new Command("demo", "Demo command");
         cmd.AddHelpSection("Examples", HelpSectionPosition.Bottom, "abs-cli demo");
-
         var output = RenderHelp(cmd);
-
         var examplesIdx = output.IndexOf("Examples:", StringComparison.Ordinal);
         var optionsIdx = output.IndexOf("Options:", StringComparison.Ordinal);
         Assert.True(examplesIdx > optionsIdx, "Examples should render after Options");
@@ -53,9 +44,7 @@ public class HelpExtensionsTests
     {
         var cmd = new Command("demo", "Demo command");
         cmd.AddHelpSection("Examples", "abs-cli demo");
-
         var output = RenderHelp(cmd);
-
         var examplesIdx = output.IndexOf("Examples:", StringComparison.Ordinal);
         var optionsIdx = output.IndexOf("Options:", StringComparison.Ordinal);
         Assert.True(examplesIdx > optionsIdx, "Default overload must remain Bottom-placed");
@@ -66,7 +55,6 @@ public class HelpExtensionsTests
     {
         var cmd = new Command("demo", "Demo");
         cmd.AddResponseExample<AbsCli.Models.AuthorItem>();
-
         var output = RenderHelp(cmd);
         Assert.Contains("Response shape:", output);
         Assert.Contains("\"numBooks\"", output);
@@ -79,7 +67,6 @@ public class HelpExtensionsTests
         cmd.AddResponseExample(
             typeof(AbsCli.Models.PaginatedResponse),
             typeof(AbsCli.Models.LibraryItemMinified));
-
         var output = RenderHelp(cmd);
         Assert.Contains("Response shape:", output);
         Assert.Contains("\"results\"", output);

@@ -9,10 +9,9 @@ public static class SearchCommand
 {
     public static Command Create()
     {
-        var queryOption = new Option<string>("--query", "Search text") { IsRequired = true };
-        var libraryOption = new Option<string?>("--library", "Library ID or name");
-        var limitOption = new Option<int>("--limit", () => 50, "Max results (default 50, pass higher value to retrieve more)");
-
+        var queryOption = new Option<string>("--query") { Description = "Search text", Required = true };
+        var libraryOption = new Option<string?>("--library") { Description = "Library ID or name" };
+        var limitOption = new Option<int>("--limit") { Description = "Max results (default 50, pass higher value to retrieve more)", DefaultValueFactory = _ => 50 };
         var command = new Command("search", "Search across a library (defaults to 50 results)")
         {
             queryOption, libraryOption, limitOption
@@ -37,16 +36,18 @@ public static class SearchCommand
             "abs-cli search --query \"Fantasy\" | jq '.book[].libraryItem.media.metadata.title'");
         command.AddResponseExample<SearchResult>();
         command.AddMediaUnionShapes();
-
-        command.SetHandler(async (string query, string? library, int limit) =>
+        command.SetAction(async (parseResult, cancellationToken) =>
         {
+            var query = parseResult.GetValue(queryOption)!;
+            var library = parseResult.GetValue(libraryOption);
+            var limit = parseResult.GetValue(limitOption);
             var (client, config) = CommandHelper.BuildClient(libraryOverride: library);
             var libraryId = CommandHelper.RequireLibrary(config);
             var service = new SearchService(client);
             var result = await service.SearchAsync(libraryId, query, limit);
             ConsoleOutput.WriteJson(result, AppJsonContext.Default.SearchResult);
-        }, queryOption, libraryOption, limitOption);
-
+            return 0;
+        });
         return command;
     }
 }

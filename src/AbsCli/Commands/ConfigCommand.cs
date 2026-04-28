@@ -9,8 +9,8 @@ public static class ConfigCommand
     public static Command Create()
     {
         var command = new Command("config", "Manage abs-cli configuration");
-        command.AddCommand(CreateGetCommand());
-        command.AddCommand(CreateSetCommand());
+        command.Subcommands.Add(CreateGetCommand());
+        command.Subcommands.Add(CreateSetCommand());
         return command;
     }
 
@@ -20,12 +20,10 @@ public static class ConfigCommand
         command.AddExamples(
             "abs-cli config get",
             "abs-cli config get | jq '.server'");
-
-        command.SetHandler(() =>
+        command.SetAction(parseResult =>
         {
             var configManager = new ConfigManager();
             var config = configManager.Load();
-
             var display = new Dictionary<string, string>
             {
                 ["server"] = config.Server ?? "(not set)",
@@ -34,18 +32,16 @@ public static class ConfigCommand
                 ["defaultLibrary"] = config.DefaultLibrary ?? "(not set)",
                 ["configPath"] = ConfigManager.DefaultConfigPath()
             };
-
             ConsoleOutput.WriteJson(display);
+            return 0;
         });
-
         return command;
     }
 
     private static Command CreateSetCommand()
     {
-        var keyArg = new Argument<string>("key", "Configuration key (server, defaultLibrary)");
-        var valueArg = new Argument<string>("value", "Configuration value");
-
+        var keyArg = new Argument<string>("key") { Description = "Configuration key (server, defaultLibrary)" };
+        var valueArg = new Argument<string>("value") { Description = "Configuration value" };
         var command = new Command("set", "Set a configuration value")
         {
             keyArg,
@@ -54,12 +50,12 @@ public static class ConfigCommand
         command.AddExamples(
             "abs-cli config set server https://abs.example.com",
             "abs-cli config set defaultLibrary \"lib_abc123\"");
-
-        command.SetHandler((string key, string value) =>
+        command.SetAction(parseResult =>
         {
+            var key = parseResult.GetValue(keyArg)!;
+            var value = parseResult.GetValue(valueArg)!;
             var configManager = new ConfigManager();
             var config = configManager.Load();
-
             switch (key)
             {
                 case "server":
@@ -71,13 +67,12 @@ public static class ConfigCommand
                 default:
                     ConsoleOutput.WriteError($"Unknown config key: '{key}'. Valid keys: server, defaultLibrary");
                     Environment.Exit(1);
-                    return;
+                    return 1;
             }
-
             configManager.Save(config);
             Console.Error.WriteLine($"Set {key} = {value}");
-        }, keyArg, valueArg);
-
+            return 0;
+        });
         return command;
     }
 }

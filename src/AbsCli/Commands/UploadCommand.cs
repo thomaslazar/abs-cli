@@ -10,19 +10,25 @@ public static class UploadCommand
 {
     public static Command Create()
     {
-        var libraryOption = new Option<string?>("--library", "Library ID or name");
-        var folderOption = new Option<string?>("--folder", "Folder ID (auto-resolved if library has one folder)");
-        var titleOption = new Option<string>("--title", "Book title") { IsRequired = true };
-        var authorOption = new Option<string?>("--author", "Book author");
-        var seriesOption = new Option<string?>("--series", "Series name");
-        var sequenceOption = new Option<string?>("--sequence", "Series sequence (requires --series). Any non-empty string — integer (\"1\"), decimal (\"1.5\"), or free-form (\"0\", \"II\"). Becomes the \"N. -\" prefix on the item folder.");
-        var waitOption = new Option<bool>("--wait",
-            "After upload, poll until the item appears in the library (up to ~2min) and return its full LibraryItemMinified. Without --wait, a terse UploadReceipt is returned immediately.");
-        var filesOption = new Option<string[]>("--files", "File paths to upload (mutually exclusive with --files-manifest)") { AllowMultipleArgumentsPerToken = true };
-        var prefixSourceDirOption = new Option<bool>("--prefix-source-dir",
-            "Prefix each upload filename with its parent directory name (avoids collisions when files from multiple source dirs share basenames)");
-        var manifestOption = new Option<string?>("--files-manifest",
-            "Path to JSON manifest mapping {src, as} pairs (or '-' for stdin). Mutually exclusive with --files and --prefix-source-dir.");
+        var libraryOption = new Option<string?>("--library") { Description = "Library ID or name" };
+        var folderOption = new Option<string?>("--folder") { Description = "Folder ID (auto-resolved if library has one folder)" };
+        var titleOption = new Option<string>("--title") { Description = "Book title", Required = true };
+        var authorOption = new Option<string?>("--author") { Description = "Book author" };
+        var seriesOption = new Option<string?>("--series") { Description = "Series name" };
+        var sequenceOption = new Option<string?>("--sequence") { Description = "Series sequence (requires --series). Any non-empty string — integer (\"1\"), decimal (\"1.5\"), or free-form (\"0\", \"II\"). Becomes the \"N. -\" prefix on the item folder." };
+        var waitOption = new Option<bool>("--wait")
+        {
+            Description = "After upload, poll until the item appears in the library (up to ~2min) and return its full LibraryItemMinified. Without --wait, a terse UploadReceipt is returned immediately."
+        };
+        var filesOption = new Option<string[]>("--files") { Description = "File paths to upload (mutually exclusive with --files-manifest)", AllowMultipleArgumentsPerToken = true };
+        var prefixSourceDirOption = new Option<bool>("--prefix-source-dir")
+        {
+            Description = "Prefix each upload filename with its parent directory name (avoids collisions when files from multiple source dirs share basenames)"
+        };
+        var manifestOption = new Option<string?>("--files-manifest")
+        {
+            Description = "Path to JSON manifest mapping {src, as} pairs (or '-' for stdin). Mutually exclusive with --files and --prefix-source-dir."
+        };
         var command = new Command("upload", "Upload audiobook files to a library")
         {
             libraryOption, folderOption, titleOption, authorOption,
@@ -74,47 +80,47 @@ public static class UploadCommand
         command.AddResponseExample<UploadReceipt>();
         command.AddHelpSection("Response shape (with --wait, on success)",
             "LibraryItemMinified — same shape as 'abs-cli items get --help'.");
-        command.SetHandler(async (context) =>
+        command.SetAction(async (parseResult, cancellationToken) =>
         {
-            var library = context.ParseResult.GetValueForOption(libraryOption);
-            var folder = context.ParseResult.GetValueForOption(folderOption);
-            var title = context.ParseResult.GetValueForOption(titleOption)!;
-            var author = context.ParseResult.GetValueForOption(authorOption);
-            var series = context.ParseResult.GetValueForOption(seriesOption);
-            var sequence = context.ParseResult.GetValueForOption(sequenceOption);
-            var wait = context.ParseResult.GetValueForOption(waitOption);
-            var files = context.ParseResult.GetValueForOption(filesOption) ?? Array.Empty<string>();
-            var prefixSourceDir = context.ParseResult.GetValueForOption(prefixSourceDirOption);
-            var manifestPath = context.ParseResult.GetValueForOption(manifestOption);
+            var library = parseResult.GetValue(libraryOption);
+            var folder = parseResult.GetValue(folderOption);
+            var title = parseResult.GetValue(titleOption)!;
+            var author = parseResult.GetValue(authorOption);
+            var series = parseResult.GetValue(seriesOption);
+            var sequence = parseResult.GetValue(sequenceOption);
+            var wait = parseResult.GetValue(waitOption);
+            var files = parseResult.GetValue(filesOption) ?? Array.Empty<string>();
+            var prefixSourceDir = parseResult.GetValue(prefixSourceDirOption);
+            var manifestPath = parseResult.GetValue(manifestOption);
             if (sequence != null && series == null)
             {
                 ConsoleOutput.WriteError("--sequence requires --series.");
                 Environment.Exit(1);
-                return;
+                return 1;
             }
             if (sequence != null && string.IsNullOrWhiteSpace(sequence))
             {
                 ConsoleOutput.WriteError("--sequence must be a non-empty string.");
                 Environment.Exit(1);
-                return;
+                return 1;
             }
             if (manifestPath != null && files.Length > 0)
             {
                 ConsoleOutput.WriteError("--files and --files-manifest are mutually exclusive.");
                 Environment.Exit(1);
-                return;
+                return 1;
             }
             if (manifestPath != null && prefixSourceDir)
             {
                 ConsoleOutput.WriteError("--prefix-source-dir and --files-manifest are mutually exclusive.");
                 Environment.Exit(1);
-                return;
+                return 1;
             }
             if (manifestPath == null && files.Length == 0)
             {
                 ConsoleOutput.WriteError("Pass --files <path>... or --files-manifest <path|->.");
                 Environment.Exit(1);
-                return;
+                return 1;
             }
             var uploadList = manifestPath != null
                 ? await BuildFromManifestAsync(manifestPath)
@@ -125,7 +131,7 @@ public static class UploadCommand
                 {
                     ConsoleOutput.WriteError($"File not found: {entry.LocalPath}");
                     Environment.Exit(1);
-                    return;
+                    return 1;
                 }
             }
             CheckForDuplicates(uploadList);
@@ -151,7 +157,7 @@ public static class UploadCommand
                         $"ABS may still be scanning — re-run: abs-cli items list --sort addedAt --desc --limit 5");
                     ConsoleOutput.WriteJson(receipt, AppJsonContext.Default.UploadReceipt);
                     Environment.Exit(1);
-                    return;
+                    return 1;
                 }
                 ConsoleOutput.WriteJson(item, AppJsonContext.Default.LibraryItemMinified);
             }
@@ -159,6 +165,7 @@ public static class UploadCommand
             {
                 ConsoleOutput.WriteJson(receipt, AppJsonContext.Default.UploadReceipt);
             }
+            return 0;
         });
         return command;
     }

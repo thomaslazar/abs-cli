@@ -14,7 +14,7 @@ public static class SelfTestCommand
         var command = new Command("self-test",
             "Verify AOT binary integrity — exercises all serialization paths without network access");
 
-        command.SetHandler(() =>
+        command.SetAction(parseResult =>
         {
             var pass = 0;
             var fail = 0;
