@@ -17,6 +17,6 @@ rootCommand.Subcommands.Add(MetadataCommand.Create());
 rootCommand.Subcommands.Add(SelfTestCommand.Create());
 rootCommand.Subcommands.Add(ChangelogCommand.Create());
 
-HelpExtensions.UseCustomHelpSections(rootCommand);
+rootCommand.UseCustomHelpSections();
 
 return await rootCommand.Parse(args).InvokeAsync();

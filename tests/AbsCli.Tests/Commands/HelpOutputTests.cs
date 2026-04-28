@@ -16,7 +16,7 @@ public class HelpOutputTests
         root.Subcommands.Add(TasksCommand.Create());
         root.Subcommands.Add(MetadataCommand.Create());
         root.Subcommands.Add(SearchCommand.Create());
-        HelpExtensions.UseCustomHelpSections(root);
+        root.UseCustomHelpSections();
         var output = new StringWriter();
         var config = new InvocationConfiguration { Output = output };
         var args = path.Concat(new[] { "--help" }).ToArray();

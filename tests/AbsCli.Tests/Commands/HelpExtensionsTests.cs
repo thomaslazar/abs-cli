@@ -8,7 +8,7 @@ public class HelpExtensionsTests
     private static string RenderHelp(Command command)
     {
         var root = new RootCommand { command };
-        HelpExtensions.UseCustomHelpSections(root);
+        root.UseCustomHelpSections();
         var output = new StringWriter();
         var config = new InvocationConfiguration { Output = output };
         root.Parse(new[] { command.Name, "--help" }).Invoke(config);

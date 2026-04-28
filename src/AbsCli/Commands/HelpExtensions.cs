@@ -115,11 +115,15 @@ public static class HelpExtensions
     /// after it. The HelpOption is recursive by default, so the wrapper also
     /// fires for every subcommand <c>--help</c>.
     /// </summary>
-    public static void UseCustomHelpSections(RootCommand root)
+    public static void UseCustomHelpSections(this RootCommand root)
     {
-        var helpOption = root.Options.OfType<HelpOption>().FirstOrDefault();
-        if (helpOption?.Action is HelpAction defaultAction)
-            helpOption.Action = new CustomHelpAction(defaultAction);
+        var helpOption = root.Options.OfType<HelpOption>().FirstOrDefault()
+            ?? throw new InvalidOperationException(
+                "RootCommand has no HelpOption — cannot install CustomHelpAction.");
+        if (helpOption.Action is not HelpAction defaultAction)
+            throw new InvalidOperationException(
+                $"HelpOption.Action is {helpOption.Action?.GetType().Name ?? "null"}, expected HelpAction.");
+        helpOption.Action = new CustomHelpAction(defaultAction);
     }
 
     private sealed class CustomHelpAction : SynchronousCommandLineAction
