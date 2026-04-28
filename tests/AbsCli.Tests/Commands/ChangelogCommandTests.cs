@@ -1,7 +1,4 @@
 using System.CommandLine;
-using System.CommandLine.Builder;
-using System.CommandLine.IO;
-using System.CommandLine.Parsing;
 using AbsCli.Commands;
 using Xunit;
 
@@ -9,14 +6,12 @@ namespace AbsCli.Tests.Commands;
 
 public class ChangelogCommandTests
 {
-    private static int Invoke(TestConsole console, params string[] args)
+    private static int Invoke(StringWriter output, params string[] args)
     {
         var root = new RootCommand();
-        root.AddCommand(ChangelogCommand.Create());
-        var parser = new CommandLineBuilder(root)
-            .UseDefaults()
-            .Build();
-        return parser.Invoke(args, console);
+        root.Subcommands.Add(ChangelogCommand.Create());
+        var config = new InvocationConfiguration { Output = output };
+        return root.Parse(args).Invoke(config);
     }
 
     private static string FirstVersionHeading()
@@ -47,10 +42,9 @@ public class ChangelogCommandTests
     [Fact]
     public void Default_PrintsLatestEntryStartingAtTopmostHeading()
     {
-        var console = new TestConsole();
-        var exit = Invoke(console, "changelog");
-        var stdout = console.Out.ToString() ?? "";
-
+        var output = new StringWriter();
+        var exit = Invoke(output, "changelog");
+        var stdout = output.ToString();
         Assert.Equal(0, exit);
         Assert.StartsWith(FirstVersionHeading(), stdout);
     }
@@ -58,10 +52,9 @@ public class ChangelogCommandTests
     [Fact]
     public void All_PrintsFullFileStartingWithTopHeader()
     {
-        var console = new TestConsole();
-        var exit = Invoke(console, "changelog", "--all");
-        var stdout = console.Out.ToString() ?? "";
-
+        var output = new StringWriter();
+        var exit = Invoke(output, "changelog", "--all");
+        var stdout = output.ToString();
         Assert.Equal(0, exit);
         Assert.StartsWith("# Changelog", stdout);
     }
@@ -69,13 +62,12 @@ public class ChangelogCommandTests
     [Fact]
     public void All_OutputIsLongerThanDefault()
     {
-        var defaultConsole = new TestConsole();
-        Invoke(defaultConsole, "changelog");
-        var allConsole = new TestConsole();
-        Invoke(allConsole, "changelog", "--all");
-
-        var defaultLen = (defaultConsole.Out.ToString() ?? "").Length;
-        var allLen = (allConsole.Out.ToString() ?? "").Length;
+        var defaultOut = new StringWriter();
+        Invoke(defaultOut, "changelog");
+        var allOut = new StringWriter();
+        Invoke(allOut, "changelog", "--all");
+        var defaultLen = defaultOut.ToString().Length;
+        var allLen = allOut.ToString().Length;
         Assert.True(allLen > defaultLen,
             $"--all output ({allLen} chars) should be longer than default ({defaultLen})");
     }

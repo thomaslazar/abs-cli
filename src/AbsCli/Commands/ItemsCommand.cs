@@ -10,25 +10,24 @@ public static class ItemsCommand
     public static Command Create()
     {
         var command = new Command("items", "Manage library items");
-        command.AddCommand(CreateListCommand());
-        command.AddCommand(CreateGetCommand());
-        command.AddCommand(CreateSearchCommand());
-        command.AddCommand(CreateUpdateCommand());
-        command.AddCommand(CreateBatchUpdateCommand());
-        command.AddCommand(CreateBatchGetCommand());
-        command.AddCommand(CreateScanCommand());
+        command.Subcommands.Add(CreateListCommand());
+        command.Subcommands.Add(CreateGetCommand());
+        command.Subcommands.Add(CreateSearchCommand());
+        command.Subcommands.Add(CreateUpdateCommand());
+        command.Subcommands.Add(CreateBatchUpdateCommand());
+        command.Subcommands.Add(CreateBatchGetCommand());
+        command.Subcommands.Add(CreateScanCommand());
         return command;
     }
 
     private static Command CreateListCommand()
     {
-        var libraryOption = new Option<string?>("--library", "Library ID or name");
-        var filterOption = new Option<string?>("--filter", "Filter expression (e.g. 'genres=Sci Fi')");
-        var sortOption = new Option<string?>("--sort", "Sort field (e.g. 'media.metadata.title')");
-        var descOption = new Option<bool>("--desc", "Sort descending");
-        var limitOption = new Option<int>("--limit", () => 50, "Results per page (default 50, pass higher value to retrieve more)");
-        var pageOption = new Option<int?>("--page", "Page number (0-indexed)");
-
+        var libraryOption = new Option<string?>("--library") { Description = "Library ID or name" };
+        var filterOption = new Option<string?>("--filter") { Description = "Filter expression (e.g. 'genres=Sci Fi')" };
+        var sortOption = new Option<string?>("--sort") { Description = "Sort field (e.g. 'media.metadata.title')" };
+        var descOption = new Option<bool>("--desc") { Description = "Sort descending" };
+        var limitOption = new Option<int>("--limit") { Description = "Results per page (default 50, pass higher value to retrieve more)", DefaultValueFactory = _ => 50 };
+        var pageOption = new Option<int?>("--page") { Description = "Page number (0-indexed)" };
         var command = new Command("list",
             "List library items with optional filtering, sorting, and pagination (defaults to 50 results)")
         {
@@ -64,47 +63,50 @@ public static class ItemsCommand
             "abs-cli items list | jq '.results[] | select(.media.metadata.isbn == null)'");
         command.AddResponseExample(typeof(PaginatedResponse), typeof(LibraryItemMinified));
         command.AddMediaUnionShapes();
-
-        command.SetHandler(async (string? library, string? filter, string? sort,
-            bool desc, int limit, int? page) =>
+        command.SetAction(async (parseResult, cancellationToken) =>
         {
+            var library = parseResult.GetValue(libraryOption);
+            var filter = parseResult.GetValue(filterOption);
+            var sort = parseResult.GetValue(sortOption);
+            var desc = parseResult.GetValue(descOption);
+            var limit = parseResult.GetValue(limitOption);
+            var page = parseResult.GetValue(pageOption);
             var (client, config) = CommandHelper.BuildClient(libraryOverride: library);
             var libraryId = CommandHelper.RequireLibrary(config);
             var service = new ItemsService(client);
             var result = await service.ListAsync(libraryId, filter, sort, desc, limit, page);
             ConsoleOutput.WriteJson(result, AppJsonContext.Default.PaginatedResponse);
-        }, libraryOption, filterOption, sortOption, descOption, limitOption, pageOption);
-
+            return 0;
+        });
         return command;
     }
 
     private static Command CreateGetCommand()
     {
-        var idOption = new Option<string>("--id", "Item ID") { IsRequired = true };
+        var idOption = new Option<string>("--id") { Description = "Item ID", Required = true };
         var command = new Command("get", "Get a single library item by ID") { idOption };
         command.AddExamples(
             "abs-cli items get --id \"li_abc123\"",
             "abs-cli items get --id \"li_abc123\" | jq '.media.metadata'");
         command.AddResponseExample<LibraryItemMinified>();
         command.AddMediaUnionShapes();
-
-        command.SetHandler(async (string id) =>
+        command.SetAction(async (parseResult, cancellationToken) =>
         {
+            var id = parseResult.GetValue(idOption)!;
             var (client, _) = CommandHelper.BuildClient();
             var service = new ItemsService(client);
             var result = await service.GetAsync(id);
             ConsoleOutput.WriteJson(result, AppJsonContext.Default.LibraryItemMinified);
-        }, idOption);
-
+            return 0;
+        });
         return command;
     }
 
     private static Command CreateSearchCommand()
     {
-        var queryOption = new Option<string>("--query", "Search text") { IsRequired = true };
-        var libraryOption = new Option<string?>("--library", "Library ID or name");
-        var limitOption = new Option<int>("--limit", () => 50, "Max results (default 50, pass higher value to retrieve more)");
-
+        var queryOption = new Option<string>("--query") { Description = "Search text", Required = true };
+        var libraryOption = new Option<string?>("--library") { Description = "Library ID or name" };
+        var limitOption = new Option<int>("--limit") { Description = "Max results (default 50, pass higher value to retrieve more)", DefaultValueFactory = _ => 50 };
         var command = new Command("search",
             "Search across a library (substring match, case-insensitive, defaults to 50 results). Alias for 'abs-cli search' — same endpoint, same response shape.")
         {
@@ -133,24 +135,25 @@ public static class ItemsCommand
             "abs-cli items search --query \"978-0\" --limit 20");
         command.AddResponseExample<SearchResult>();
         command.AddMediaUnionShapes();
-
-        command.SetHandler(async (string query, string? library, int limit) =>
+        command.SetAction(async (parseResult, cancellationToken) =>
         {
+            var query = parseResult.GetValue(queryOption)!;
+            var library = parseResult.GetValue(libraryOption);
+            var limit = parseResult.GetValue(limitOption);
             var (client, config) = CommandHelper.BuildClient(libraryOverride: library);
             var libraryId = CommandHelper.RequireLibrary(config);
             var service = new ItemsService(client);
             var result = await service.SearchAsync(libraryId, query, limit);
             ConsoleOutput.WriteJson(result, AppJsonContext.Default.SearchResult);
-        }, queryOption, libraryOption, limitOption);
-
+            return 0;
+        });
         return command;
     }
 
     private static Command CreateUpdateCommand()
     {
-        var idOption = new Option<string>("--id", "Item ID") { IsRequired = true };
-        var inputOption = new Option<string>("--input", "JSON input (string or file path)") { IsRequired = true };
-
+        var idOption = new Option<string>("--id") { Description = "Item ID", Required = true };
+        var inputOption = new Option<string>("--input") { Description = "JSON input (string or file path)", Required = true };
         var command = new Command("update", "Update a single item's metadata") { idOption, inputOption };
         command.AddExamples(
             "abs-cli items update --id \"li_abc123\" --input '{\"metadata\":{\"title\":\"New Title\"}}'",
@@ -158,32 +161,33 @@ public static class ItemsCommand
             "abs-cli items update --id \"li_abc123\" --input '{\"metadata\":{\"genres\":[\"Fantasy\",\"Epic\"]}}'");
         command.AddResponseExample<UpdateMediaResponse>();
         command.AddMediaUnionShapes();
-
-        command.SetHandler(async (string id, string input) =>
+        command.SetAction(async (parseResult, cancellationToken) =>
         {
+            var id = parseResult.GetValue(idOption)!;
+            var input = parseResult.GetValue(inputOption)!;
             var jsonBody = CommandHelper.ReadJsonInput(input);
             var (client, _) = CommandHelper.BuildClient();
             var service = new ItemsService(client);
             var result = await service.UpdateMediaAsync(id, jsonBody);
             ConsoleOutput.WriteJson(result, AppJsonContext.Default.UpdateMediaResponse);
-        }, idOption, inputOption);
-
+            return 0;
+        });
         return command;
     }
 
     private static Command CreateBatchUpdateCommand()
     {
-        var inputOption = new Option<string?>("--input", "JSON file path");
-        var stdinOption = new Option<bool>("--stdin", "Read JSON from stdin");
-
+        var inputOption = new Option<string?>("--input") { Description = "JSON file path" };
+        var stdinOption = new Option<bool>("--stdin") { Description = "Read JSON from stdin" };
         var command = new Command("batch-update", "Batch update multiple items") { inputOption, stdinOption };
         command.AddExamples(
             "abs-cli items batch-update --input updates.json",
             "cat updates.json | abs-cli items batch-update --stdin");
         command.AddResponseExample<BatchUpdateResponse>();
-
-        command.SetHandler(async (string? input, bool stdin) =>
+        command.SetAction(async (parseResult, cancellationToken) =>
         {
+            var input = parseResult.GetValue(inputOption);
+            var stdin = parseResult.GetValue(stdinOption);
             string jsonBody;
             if (stdin) jsonBody = await Console.In.ReadToEndAsync();
             else if (input != null) jsonBody = CommandHelper.ReadJsonInput(input);
@@ -191,32 +195,31 @@ public static class ItemsCommand
             {
                 ConsoleOutput.WriteError("Provide --input <file> or --stdin");
                 Environment.Exit(1);
-                return;
+                return 1;
             }
-
             var (client, _) = CommandHelper.BuildClient();
             var service = new ItemsService(client);
             var result = await service.BatchUpdateAsync(jsonBody);
             ConsoleOutput.WriteJson(result, AppJsonContext.Default.BatchUpdateResponse);
-        }, inputOption, stdinOption);
-
+            return 0;
+        });
         return command;
     }
 
     private static Command CreateBatchGetCommand()
     {
-        var inputOption = new Option<string?>("--input", "JSON file with libraryItemIds");
-        var stdinOption = new Option<bool>("--stdin", "Read JSON from stdin");
-
+        var inputOption = new Option<string?>("--input") { Description = "JSON file with libraryItemIds" };
+        var stdinOption = new Option<bool>("--stdin") { Description = "Read JSON from stdin" };
         var command = new Command("batch-get", "Batch get multiple items by ID") { inputOption, stdinOption };
         command.AddExamples(
             "abs-cli items batch-get --input ids.json",
             "echo '{\"libraryItemIds\":[\"li_abc\",\"li_def\"]}' | abs-cli items batch-get --stdin");
         command.AddResponseExample<BatchGetResponse>();
         command.AddMediaUnionShapes();
-
-        command.SetHandler(async (string? input, bool stdin) =>
+        command.SetAction(async (parseResult, cancellationToken) =>
         {
+            var input = parseResult.GetValue(inputOption);
+            var stdin = parseResult.GetValue(stdinOption);
             string jsonBody;
             if (stdin) jsonBody = await Console.In.ReadToEndAsync();
             else if (input != null) jsonBody = CommandHelper.ReadJsonInput(input);
@@ -224,33 +227,34 @@ public static class ItemsCommand
             {
                 ConsoleOutput.WriteError("Provide --input <file> or --stdin");
                 Environment.Exit(1);
-                return;
+                return 1;
             }
-
             var (client, _) = CommandHelper.BuildClient();
             var service = new ItemsService(client);
             var result = await service.BatchGetAsync(jsonBody);
             ConsoleOutput.WriteJson(result, AppJsonContext.Default.BatchGetResponse);
-        }, inputOption, stdinOption);
-
+            return 0;
+        });
         return command;
     }
 
     private static Command CreateScanCommand()
     {
-        var idOption = new Option<string>("--id", "Item ID") { IsRequired = true };
+        var idOption = new Option<string>("--id") { Description = "Item ID", Required = true };
         var command = new Command("scan", "Scan a single library item (admin-only, sync)") { idOption };
         command.AddExamples(
             "abs-cli items scan --id \"li_abc123\"",
             "abs-cli items scan --id \"li_abc123\" | jq '.result'");
         command.AddResponseExample<ScanResult>();
-        command.SetHandler(async (string id) =>
+        command.SetAction(async (parseResult, cancellationToken) =>
         {
+            var id = parseResult.GetValue(idOption)!;
             var (client, _) = CommandHelper.BuildClient();
             var service = new ItemsService(client);
             var result = await service.ScanAsync(id);
             ConsoleOutput.WriteJson(result, AppJsonContext.Default.ScanResult);
-        }, idOption);
+            return 0;
+        });
         return command;
     }
 }

@@ -10,7 +10,7 @@ public static class TasksCommand
     public static Command Create()
     {
         var command = new Command("tasks", "Manage server tasks");
-        command.AddCommand(CreateListCommand());
+        command.Subcommands.Add(CreateListCommand());
         return command;
     }
 
@@ -22,12 +22,13 @@ public static class TasksCommand
             "abs-cli tasks list | jq '.tasks[] | select(.isFinished==false)'",
             "abs-cli tasks list | jq '.tasks[] | {action, title, isFinished}'");
         command.AddResponseExample<TaskListResponse>();
-        command.SetHandler(async () =>
+        command.SetAction(async (parseResult, cancellationToken) =>
         {
             var (client, _) = CommandHelper.BuildClient();
             var service = new TasksService(client);
             var result = await service.ListAsync();
             ConsoleOutput.WriteJson(result, AppJsonContext.Default.TaskListResponse);
+            return 0;
         });
         return command;
     }

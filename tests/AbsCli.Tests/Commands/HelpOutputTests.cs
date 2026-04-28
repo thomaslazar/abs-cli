@@ -1,7 +1,4 @@
 using System.CommandLine;
-using System.CommandLine.Builder;
-using System.CommandLine.IO;
-using System.CommandLine.Parsing;
 using AbsCli.Commands;
 
 namespace AbsCli.Tests.Commands;
@@ -11,24 +8,20 @@ public class HelpOutputTests
     private static string RenderHelp(params string[] path)
     {
         var root = new RootCommand();
-        root.AddCommand(AuthorsCommand.Create());
-        root.AddCommand(SeriesCommand.Create());
-        root.AddCommand(ItemsCommand.Create());
-        root.AddCommand(LibrariesCommand.Create());
-        root.AddCommand(BackupCommand.Create());
-        root.AddCommand(TasksCommand.Create());
-        root.AddCommand(MetadataCommand.Create());
-        root.AddCommand(SearchCommand.Create());
-
-        var parser = new CommandLineBuilder(root)
-            .UseDefaults()
-            .UseCustomHelpSections()
-            .Build();
-
-        var console = new TestConsole();
+        root.Subcommands.Add(AuthorsCommand.Create());
+        root.Subcommands.Add(SeriesCommand.Create());
+        root.Subcommands.Add(ItemsCommand.Create());
+        root.Subcommands.Add(LibrariesCommand.Create());
+        root.Subcommands.Add(BackupCommand.Create());
+        root.Subcommands.Add(TasksCommand.Create());
+        root.Subcommands.Add(MetadataCommand.Create());
+        root.Subcommands.Add(SearchCommand.Create());
+        root.UseCustomHelpSections();
+        var output = new StringWriter();
+        var config = new InvocationConfiguration { Output = output };
         var args = path.Concat(new[] { "--help" }).ToArray();
-        parser.Invoke(args, console);
-        return console.Out.ToString() ?? "";
+        root.Parse(args).Invoke(config);
+        return output.ToString();
     }
 
     [Fact]

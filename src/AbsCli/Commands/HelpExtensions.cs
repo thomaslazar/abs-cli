@@ -1,6 +1,6 @@
 using System.CommandLine;
-using System.CommandLine.Builder;
 using System.CommandLine.Help;
+using System.CommandLine.Invocation;
 
 namespace AbsCli.Commands;
 
@@ -88,19 +88,15 @@ public static class HelpExtensions
         {
             var trimmed = lines[i].TrimStart();
             if (!trimmed.StartsWith("\"results\":", StringComparison.Ordinal)) continue;
-
             var indent = new string(' ', lines[i].Length - trimmed.Length);
-
             int closeIdx = i;
             while (closeIdx < lines.Length &&
                    !lines[closeIdx].TrimStart().StartsWith("]", StringComparison.Ordinal))
                 closeIdx++;
             if (closeIdx == lines.Length) break;
-
             var elementIndented = string.Join("\n",
                 elementJson.Split('\n').Select(l => indent + "  " + l));
             var trailing = lines[closeIdx].TrimStart().StartsWith("],", StringComparison.Ordinal) ? "]," : "]";
-
             var output = new List<string>();
             output.AddRange(lines.Take(i));
             output.Add($"{indent}\"results\": [");
@@ -112,32 +108,49 @@ public static class HelpExtensions
         return envelopeJson;
     }
 
-    public static CommandLineBuilder UseCustomHelpSections(this CommandLineBuilder builder)
+    /// <summary>
+    /// Replaces the default <see cref="HelpAction"/> on the root command's
+    /// <see cref="HelpOption"/> with a wrapper that writes Top-positioned
+    /// sections before the default layout and Bottom-positioned sections
+    /// after it. The HelpOption is recursive by default, so the wrapper also
+    /// fires for every subcommand <c>--help</c>.
+    /// </summary>
+    public static void UseCustomHelpSections(this RootCommand root)
     {
-        builder.UseHelp(ctx =>
-        {
-            ctx.HelpBuilder.CustomizeLayout(_ =>
-            {
-                var defaultLayout = HelpBuilder.Default.GetLayout().ToList();
-                var withTop = new List<HelpSectionDelegate> { helpCtx => WriteSections(helpCtx, HelpSectionPosition.Top) };
-                withTop.AddRange(defaultLayout);
-                withTop.Add(helpCtx => WriteSections(helpCtx, HelpSectionPosition.Bottom));
-                return withTop;
-            });
-        });
-        return builder;
+        var helpOption = root.Options.OfType<HelpOption>().FirstOrDefault()
+            ?? throw new InvalidOperationException(
+                "RootCommand has no HelpOption — cannot install CustomHelpAction.");
+        if (helpOption.Action is not HelpAction defaultAction)
+            throw new InvalidOperationException(
+                $"HelpOption.Action is {helpOption.Action?.GetType().Name ?? "null"}, expected HelpAction.");
+        helpOption.Action = new CustomHelpAction(defaultAction);
     }
 
-    private static void WriteSections(HelpContext ctx, HelpSectionPosition position)
+    private sealed class CustomHelpAction : SynchronousCommandLineAction
     {
-        if (!CommandSections.TryGetValue(ctx.Command, out var sections)) return;
+        private readonly HelpAction _inner;
+        public CustomHelpAction(HelpAction inner) { _inner = inner; }
 
+        public override int Invoke(ParseResult parseResult)
+        {
+            var command = parseResult.CommandResult.Command;
+            var output = parseResult.InvocationConfiguration.Output;
+            WriteSections(command, output, HelpSectionPosition.Top);
+            var rc = _inner.Invoke(parseResult);
+            WriteSections(command, output, HelpSectionPosition.Bottom);
+            return rc;
+        }
+    }
+
+    private static void WriteSections(Command command, TextWriter output, HelpSectionPosition position)
+    {
+        if (!CommandSections.TryGetValue(command, out var sections)) return;
         foreach (var section in sections.Where(s => s.Position == position))
         {
-            ctx.Output.WriteLine($"{section.Title}:");
+            output.WriteLine($"{section.Title}:");
             foreach (var line in section.Lines)
-                ctx.Output.WriteLine($"  {line}");
-            ctx.Output.WriteLine();
+                output.WriteLine($"  {line}");
+            output.WriteLine();
         }
     }
 }

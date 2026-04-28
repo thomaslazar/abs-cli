@@ -9,10 +9,10 @@ public static class LoginCommand
 {
     public static Command Create()
     {
-        var serverOption = new Option<string?>(
-            "--server",
-            "Audiobookshelf server URL");
-
+        var serverOption = new Option<string?>("--server")
+        {
+            Description = "Audiobookshelf server URL"
+        };
         var command = new Command("login", "Authenticate with an Audiobookshelf server")
         {
             serverOption
@@ -20,42 +20,34 @@ public static class LoginCommand
         command.AddExamples(
             "abs-cli login --server https://abs.example.com",
             "abs-cli login");
-
-        command.SetHandler(async (string? server) =>
+        command.SetAction(async (parseResult, cancellationToken) =>
         {
+            var server = parseResult.GetValue(serverOption);
             var configManager = new ConfigManager();
-
             if (server == null)
             {
                 Console.Error.Write("Server URL: ");
                 server = Console.ReadLine()?.Trim();
             }
-
             if (string.IsNullOrEmpty(server))
             {
                 ConsoleOutput.WriteError("Server URL is required.");
                 Environment.Exit(1);
             }
-
             Console.Error.Write("Username: ");
             var username = Console.ReadLine()?.Trim();
-
             Console.Error.Write("Password: ");
             var password = ReadPassword();
-
             if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
             {
                 ConsoleOutput.WriteError("Username and password are required.");
                 Environment.Exit(1);
             }
-
             var tempConfig = new AppConfig { Server = server };
             var client = new AbsApiClient(tempConfig, configManager);
-
             try
             {
-                var loginResponse = await client.LoginAsync(username, password);
-
+                var loginResponse = await client.LoginAsync(username!, password!);
                 var config = configManager.Load();
                 // Server changed — drop the previous defaultLibrary so we don't
                 // carry a stale ID that doesn't exist on the new server.
@@ -65,16 +57,12 @@ public static class LoginCommand
                 config.Server = server;
                 config.AccessToken = loginResponse.User.AccessToken;
                 config.RefreshToken = loginResponse.User.RefreshToken;
-
                 if (config.DefaultLibrary == null && loginResponse.UserDefaultLibraryId != null)
                     config.DefaultLibrary = loginResponse.UserDefaultLibraryId;
-
                 configManager.Save(config);
                 AbsApiClient.CheckServerVersion(loginResponse.ServerSettings?.Version);
-
                 var version = loginResponse.ServerSettings?.Version ?? "unknown";
                 Console.Error.WriteLine($"Logged in as {loginResponse.User.Username} to {server} (ABS {version})");
-
                 if (config.DefaultLibrary != null)
                     Console.Error.WriteLine($"Default library: {config.DefaultLibrary}");
                 else
@@ -85,8 +73,8 @@ public static class LoginCommand
                 ConsoleOutput.WriteError($"Login failed: {ex.Message}");
                 Environment.Exit(2);
             }
-        }, serverOption);
-
+            return 0;
+        });
         return command;
     }
 

@@ -16,14 +16,14 @@ public static class AuthorsCommand
             "removed or re-tagged, the scanner deletes the author on its next run",
             "(unless a custom image is set). To remove an author, update the books",
             "that reference it.");
-        command.AddCommand(CreateListCommand());
-        command.AddCommand(CreateGetCommand());
+        command.Subcommands.Add(CreateListCommand());
+        command.Subcommands.Add(CreateGetCommand());
         return command;
     }
 
     private static Command CreateListCommand()
     {
-        var libraryOption = new Option<string?>("--library", "Library ID or name");
+        var libraryOption = new Option<string?>("--library") { Description = "Library ID or name" };
         var command = new Command("list",
             "List authors in a library (returns all, no pagination)") { libraryOption };
         command.AddExamples(
@@ -31,36 +31,36 @@ public static class AuthorsCommand
             "abs-cli authors list | jq '.authors[] | {name, numBooks}'",
             "abs-cli authors list | jq '.authors | sort_by(.numBooks) | reverse | .[:5]'");
         command.AddResponseExample<AuthorListResponse>();
-
-        command.SetHandler(async (string? library) =>
+        command.SetAction(async (parseResult, cancellationToken) =>
         {
+            var library = parseResult.GetValue(libraryOption);
             var (client, config) = CommandHelper.BuildClient(libraryOverride: library);
             var libraryId = CommandHelper.RequireLibrary(config);
             var service = new AuthorsService(client);
             var result = await service.ListAsync(libraryId);
             ConsoleOutput.WriteJson(result, AppJsonContext.Default.AuthorListResponse);
-        }, libraryOption);
-
+            return 0;
+        });
         return command;
     }
 
     private static Command CreateGetCommand()
     {
-        var idOption = new Option<string>("--id", "Author ID") { IsRequired = true };
+        var idOption = new Option<string>("--id") { Description = "Author ID", Required = true };
         var command = new Command("get", "Get a single author") { idOption };
         command.AddExamples(
             "abs-cli authors get --id \"aut_abc123\"",
             "abs-cli authors get --id \"aut_abc123\" | jq '.name'");
         command.AddResponseExample<AuthorItem>();
-
-        command.SetHandler(async (string id) =>
+        command.SetAction(async (parseResult, cancellationToken) =>
         {
+            var id = parseResult.GetValue(idOption)!;
             var (client, _) = CommandHelper.BuildClient();
             var service = new AuthorsService(client);
             var result = await service.GetAsync(id);
             ConsoleOutput.WriteJson(result, AppJsonContext.Default.AuthorItem);
-        }, idOption);
-
+            return 0;
+        });
         return command;
     }
 }
