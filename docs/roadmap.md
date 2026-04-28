@@ -26,7 +26,7 @@ compatibility, upload `relPath` + sanitize-drift coverage, batch-update verb fix
 
 ### v0.3.0 — Changelog, cover handling & .NET 10 LTS
 
-Three roadmap items being delivered together as the next minor release.
+Four roadmap items being delivered together as the next minor release.
 
 - **`abs-cli changelog` command** — Print the most recent entry by default;
   `--all` prints the full file. Source of truth is the bundled
@@ -39,9 +39,14 @@ Three roadmap items being delivered together as the next minor release.
   before any command design — outcome may be a `covers` command or a
   documentation update, decided after investigation.
 - **Upgrade target framework to .NET 10 LTS** — Move from `net8.0` to
-  `net10.0` once .NET 10 LTS is generally available. Verify AOT publish,
-  `System.CommandLine` 2.x compatibility, and `System.Text.Json`
-  source-gen behaviour. Spec/plan to follow.
+  `net10.0`. Covers the dev container, CI, and all three csproj files;
+  test packages and `System.CommandLine` are deferred to the next item.
+  Spec: [docs/specs/2026-04-28-dotnet-10-lts-upgrade.md](specs/2026-04-28-dotnet-10-lts-upgrade.md).
+  Plan: [docs/plans/2026-04-28-dotnet-10-lts-upgrade.md](plans/2026-04-28-dotnet-10-lts-upgrade.md).
+- **General library upgrades** — Bump `System.CommandLine` from the long-stale
+  `2.0.0-beta4` pin to the now-stable 2.0.7 (likely API-breaking; needs its
+  own spec) and refresh test-tooling packages (`Microsoft.NET.Test.Sdk`,
+  `xUnit`, `coverlet`). Spec/plan to follow.
 
 ---
 
