@@ -13,8 +13,11 @@
 
   // Docker outside of Docker: lets you run `docker build / docker run`
   // against the host daemon (e.g. OrbStack) from inside the container.
+  // GitHub CLI: `gh` is no longer bundled in the dotnet:10.0 base image
+  // (it shipped in :8.0), so install it explicitly via the feature.
   "features": {
-    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
   },
 
   "remoteUser": "vscode",

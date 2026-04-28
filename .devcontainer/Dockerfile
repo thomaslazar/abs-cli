@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/devcontainers/dotnet:8.0
+FROM mcr.microsoft.com/devcontainers/dotnet:10.0
 
 # Native AOT compilation dependencies + Python (needed by peon-ping installer)
 RUN apt-get update && apt-get install -y --no-install-recommends \
