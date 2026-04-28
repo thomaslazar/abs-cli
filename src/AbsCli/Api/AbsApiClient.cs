@@ -130,6 +130,18 @@ public class AbsApiClient
         await EnsureSuccessOrHandleAuthAsync(response, HttpMethod.Post, endpoint, permissionHint);
     }
 
+    public async Task<T> PostMultipartAsync<T>(string endpoint, MultipartFormDataContent content,
+        JsonTypeInfo<T> typeInfo, string? permissionHint = null, TimeSpan? timeout = null)
+    {
+        await EnsureValidTokenAsync();
+        using var cts = new CancellationTokenSource(timeout ?? DefaultRequestTimeout);
+        var response = await _http.PostAsync(endpoint, content, cts.Token);
+        await EnsureSuccessOrHandleAuthAsync(response, HttpMethod.Post, endpoint, permissionHint);
+        var json = await response.Content.ReadAsStringAsync(cts.Token);
+        return JsonSerializer.Deserialize(json, typeInfo)
+            ?? throw new InvalidOperationException($"Failed to deserialize response from {endpoint}");
+    }
+
     public async Task DownloadFileAsync(string endpoint, string outputPath, string? permissionHint = null, TimeSpan? timeout = null)
     {
         await EnsureValidTokenAsync();
@@ -139,6 +151,20 @@ public class AbsApiClient
         await using var stream = await response.Content.ReadAsStreamAsync(cts.Token);
         await using var fileStream = new FileStream(outputPath, FileMode.Create, FileAccess.Write);
         await stream.CopyToAsync(fileStream, cts.Token);
+    }
+
+    /// <summary>
+    /// GET that returns the response body as a Stream the caller can consume
+    /// (e.g. copy to a FileStream or to Console.OpenStandardOutput()). The
+    /// caller MUST dispose the returned stream.
+    /// </summary>
+    public async Task<Stream> GetStreamAsync(string endpoint, string? permissionHint = null, TimeSpan? timeout = null)
+    {
+        await EnsureValidTokenAsync();
+        using var cts = new CancellationTokenSource(timeout ?? DefaultRequestTimeout);
+        var response = await _http.GetAsync(endpoint, HttpCompletionOption.ResponseHeadersRead, cts.Token);
+        await EnsureSuccessOrHandleAuthAsync(response, HttpMethod.Get, endpoint, permissionHint);
+        return await response.Content.ReadAsStreamAsync(cts.Token);
     }
 
     public async Task<string> PostEmptyAsync(string endpoint, string? permissionHint = null, TimeSpan? timeout = null)
