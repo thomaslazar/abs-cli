@@ -17,6 +17,7 @@ rootCommand.AddCommand(UploadCommand.Create());
 rootCommand.AddCommand(TasksCommand.Create());
 rootCommand.AddCommand(MetadataCommand.Create());
 rootCommand.AddCommand(SelfTestCommand.Create());
+rootCommand.AddCommand(ChangelogCommand.Create());
 
 var parser = new CommandLineBuilder(rootCommand)
     .UseDefaults()

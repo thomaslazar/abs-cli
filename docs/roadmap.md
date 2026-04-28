@@ -22,14 +22,34 @@ compatibility, upload `relPath` + sanitize-drift coverage, batch-update verb fix
 
 ---
 
+## In progress
+
+### v0.3.0 — Changelog, cover handling & .NET 10 LTS
+
+Three roadmap items being delivered together as the next minor release.
+
+- **`abs-cli changelog` command** — Print the most recent entry by default;
+  `--all` prints the full file. Source of truth is the bundled
+  `CHANGELOG.md`, embedded in the assembly so the command works offline.
+  Spec: [docs/specs/2026-04-27-changelog-command.md](specs/2026-04-27-changelog-command.md).
+  Plan: [docs/plans/2026-04-27-changelog-command.md](plans/2026-04-27-changelog-command.md).
+- **Investigate cover handling** — How cover metadata upload works end-to-end:
+  which endpoints, request shapes, where ABS stores the image, how this
+  interacts with `metadata covers` and `items update`. Scoping exercise
+  before any command design — outcome may be a `covers` command or a
+  documentation update, decided after investigation.
+- **Upgrade target framework to .NET 10 LTS** — Move from `net8.0` to
+  `net10.0` once .NET 10 LTS is generally available. Verify AOT publish,
+  `System.CommandLine` 2.x compatibility, and `System.Text.Json`
+  source-gen behaviour. Spec/plan to follow.
+
+---
+
 ## Ideas
 
 Not yet scoped — notes to pick up later.
 
-| Idea | Notes |
-|------|-------|
-| Investigate cover handling | How cover metadata upload works end-to-end — which endpoints, request shapes, where ABS stores the image, how this interacts with `metadata covers` and `items update`. Scoping exercise before any command design. |
-| `abs-cli changelog` command | Print the most recent entry by default; a flag (e.g. `--all`) prints the full file. Source of truth is the bundled `CHANGELOG.md`. |
+_None currently. New ideas land here before getting scheduled into a release._
 
 ## Deferred features
 
