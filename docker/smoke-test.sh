@@ -630,6 +630,84 @@ fi
 
 # ============================================================
 echo ""
+echo "=== Cover Commands ==="
+
+# Generate a tiny valid PNG (1x1 transparent pixel) as a fixture.
+COVER_TMP=$(mktemp -d)
+COVER_FILE="$COVER_TMP/cover.png"
+python3 -c "
+import struct, zlib
+def chunk(t, d):
+    return struct.pack('>I', len(d)) + t + d + struct.pack('>I', zlib.crc32(t+d) & 0xffffffff)
+sig = b'\x89PNG\r\n\x1a\n'
+ihdr = chunk(b'IHDR', struct.pack('>IIBBBBB', 1, 1, 8, 6, 0, 0, 0))
+idat_raw = b'\x00\x00\x00\x00\x00'
+idat = chunk(b'IDAT', zlib.compress(idat_raw))
+iend = chunk(b'IEND', b'')
+with open('$COVER_FILE', 'wb') as f:
+    f.write(sig + ihdr + idat + iend)
+"
+
+# 1. Apply cover from local file via multipart upload
+output=$($CLI items cover set --id "$FIRST_ITEM_ID" --file "$COVER_FILE" 2>/dev/null)
+if echo "$output" | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['success']==True and d['cover']" 2>/dev/null; then
+    pass "items cover set --file applied cover"
+else
+    fail "items cover set --file applied cover" "unexpected response"
+    echo "    response: ${output:0:200}"
+fi
+
+# 2. Verify item now reports a non-null coverPath
+output=$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)
+if echo "$output" | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['media'].get('coverPath')" 2>/dev/null; then
+    pass "items get reports non-null coverPath after set"
+else
+    fail "items get reports non-null coverPath after set" "coverPath missing"
+fi
+
+# 3. Download cover to file
+DOWNLOAD_FILE="$COVER_TMP/downloaded.bin"
+output=$($CLI items cover get --id "$FIRST_ITEM_ID" --output "$DOWNLOAD_FILE" 2>/dev/null)
+if echo "$output" | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['path']=='$DOWNLOAD_FILE' and d['bytes']>0" 2>/dev/null; then
+    pass "items cover get --output writes file and reports descriptor"
+else
+    fail "items cover get --output writes file and reports descriptor" "unexpected descriptor"
+    echo "    response: ${output:0:200}"
+fi
+if [ -s "$DOWNLOAD_FILE" ]; then
+    pass "downloaded cover file is non-empty"
+else
+    fail "downloaded cover file is non-empty" "file missing or zero-byte"
+fi
+
+# 4. Stream cover bytes to stdout (capture via wc -c)
+bytes=$($CLI items cover get --id "$FIRST_ITEM_ID" --output - 2>/dev/null | wc -c)
+if [ "$bytes" -gt 0 ]; then
+    pass "items cover get --output - streams non-zero bytes to stdout"
+else
+    fail "items cover get --output - streams non-zero bytes to stdout" "zero bytes"
+fi
+
+# 5. Remove cover
+output=$($CLI items cover remove --id "$FIRST_ITEM_ID" 2>/dev/null)
+if echo "$output" | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['success']" 2>/dev/null; then
+    pass "items cover remove returns success"
+else
+    fail "items cover remove returns success" "unexpected response"
+fi
+
+# 6. Verify item now has null coverPath
+output=$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)
+if echo "$output" | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['media'].get('coverPath') is None" 2>/dev/null; then
+    pass "items get reports null coverPath after remove"
+else
+    fail "items get reports null coverPath after remove" "coverPath still set"
+fi
+
+rm -rf "$COVER_TMP"
+
+# ============================================================
+echo ""
 echo "========================================"
 echo "Results: $PASS passed, $FAIL failed"
 echo "========================================"
