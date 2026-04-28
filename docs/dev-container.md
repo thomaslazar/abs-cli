@@ -3,13 +3,13 @@
 ## Overview
 
 Development happens inside a VS Code dev container. The container provides a
-consistent environment with .NET 8, Native AOT tooling, and all Claude Code
+consistent environment with .NET 10, Native AOT tooling, and all Claude Code
 integrations pre-configured.
 
 ## Base Image
 
-`mcr.microsoft.com/devcontainers/dotnet:8.0` — Microsoft's official .NET 8
-devcontainer image (Debian Bookworm).
+`mcr.microsoft.com/devcontainers/dotnet:10.0` — Microsoft's official .NET 10
+devcontainer image (Ubuntu 24.04 LTS).
 
 ## What's Installed
 
@@ -17,7 +17,7 @@ devcontainer image (Debian Bookworm).
 
 | Tool | Purpose |
 |------|---------|
-| .NET 8 SDK | C# compilation, project tooling |
+| .NET 10 SDK | C# compilation, project tooling |
 | clang | Native AOT linker (required for AOT publish on Linux) |
 | zlib1g-dev | Native AOT compression dependency |
 | Python 3 + pip | Required by peon-ping |
