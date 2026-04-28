@@ -616,46 +616,13 @@ If there were no changes, skip this step.
 
 ---
 
-## Task 9: CHANGELOG entry
+## Note on `CHANGELOG.md`
 
-Document the new command. The version bump itself is part of the release process, not this plan — but the changelog entry belongs with the work. Roadmap was restructured in commit `43c6c89` (separate from the plan tasks); no roadmap edits needed here.
-
-**Files:**
-- Modify: `CHANGELOG.md`
-
-- [ ] **Step 1: Add an unreleased entry to `CHANGELOG.md`**
-
-At the top of `CHANGELOG.md` (just below the file header preamble, above `## 0.2.7`), add:
-
-```markdown
-## Unreleased
-
-### Highlights
-- `abs-cli changelog` prints release notes from the bundled CHANGELOG.md.
-  Default output is the latest version's entry; `--all` prints the full file.
-  The file is embedded as an assembly resource so the command works offline
-  and ships in a single artifact.
-
-### Features
-- feat: add abs-cli changelog command
-```
-
-The release process will rename `## Unreleased` to `## 0.3.0 — <date>` at version-bump time.
-
-- [ ] **Step 2: Verify the new entry round-trips through the command**
-
-```bash
-dotnet run --project /workspaces/abs-cli/src/AbsCli/AbsCli.csproj -- changelog | head -2
-```
-
-Expected: stdout begins with `## Unreleased`.
-
-- [ ] **Step 3: Commit**
-
-```bash
-git add CHANGELOG.md
-git commit -m "docs: add changelog entry for changelog command"
-```
+`CHANGELOG.md` is **owned by the release process** (`docs/releasing.md`,
+invoked via `/release` on a `release/v{version}` branch). Feature branches —
+including this one — must not edit it. The release agent picks new entries
+up from the commit log when v0.3.0 is cut. Any plan that includes a
+"document the change in CHANGELOG.md" task is wrong; skip such steps.
 
 ---
 
