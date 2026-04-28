@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '10.0.x'
       - name: Check formatting
         run: dotnet format AbsCli.sln --verify-no-changes
       - name: Run unit tests
@@ -34,7 +34,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '10.0.x'
       - name: Build AOT binary
         run: >
           dotnet publish src/AbsCli/AbsCli.csproj
@@ -82,7 +82,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '10.0.x'
       - name: Publish
         run: >
           dotnet publish src/AbsCli/AbsCli.csproj
@@ -90,21 +90,21 @@ jobs:
       - name: Run self-test (AOT integrity check)
         shell: bash
         run: |
-          BIN="src/AbsCli/bin/Release/net8.0/${{ matrix.rid }}/publish/abs-cli"
+          BIN="src/AbsCli/bin/Release/net10.0/${{ matrix.rid }}/publish/abs-cli"
           [ -f "${BIN}.exe" ] && BIN="${BIN}.exe"
           "${BIN}" self-test
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
           name: abs-cli-${{ matrix.rid }}
-          path: src/AbsCli/bin/Release/net8.0/${{ matrix.rid }}/publish/
+          path: src/AbsCli/bin/Release/net10.0/${{ matrix.rid }}/publish/
       - name: Attach binary to GitHub Release
         if: github.event_name == 'release'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          BIN="src/AbsCli/bin/Release/net8.0/${{ matrix.rid }}/publish/abs-cli"
+          BIN="src/AbsCli/bin/Release/net10.0/${{ matrix.rid }}/publish/abs-cli"
           [ -f "${BIN}.exe" ] && BIN="${BIN}.exe"
           EXT=""
           [[ "$BIN" == *.exe ]] && EXT=".exe"
@@ -135,7 +135,7 @@ jobs:
           printf "Description: Command-line interface for Audiobookshelf\n" >> "${PKG_DIR}/DEBIAN/control"
           printf " A CLI tool for managing Audiobookshelf servers, libraries, and media.\n" >> "${PKG_DIR}/DEBIAN/control"
           printf "Homepage: https://github.com/thomaslazar/abs-cli\n" >> "${PKG_DIR}/DEBIAN/control"
-          BIN="src/AbsCli/bin/Release/net8.0/${{ matrix.rid }}/publish/abs-cli"
+          BIN="src/AbsCli/bin/Release/net10.0/${{ matrix.rid }}/publish/abs-cli"
           cp "$BIN" "${PKG_DIR}/usr/local/bin/abs-cli"
           chmod 755 "${PKG_DIR}/usr/local/bin/abs-cli"
           dpkg-deb --build --root-owner-group "$PKG_DIR"
