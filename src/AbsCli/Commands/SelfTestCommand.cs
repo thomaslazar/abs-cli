@@ -439,6 +439,43 @@ public static class SelfTestCommand
             });
 
             Console.Error.WriteLine();
+            Console.Error.WriteLine("=== Cover Models ===");
+
+            Check("CoverApplyResponse round-trip", () =>
+            {
+                var obj = new CoverApplyResponse { Success = true, Cover = "/srv/abs/covers/foo.jpg" };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.CoverApplyResponse);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.CoverApplyResponse)!;
+                Assert(back.Success == true, $"success: {back.Success}");
+                Assert(back.Cover == "/srv/abs/covers/foo.jpg", $"cover: {back.Cover}");
+            });
+
+            Check("CoverApplyByUrlRequest round-trip", () =>
+            {
+                var obj = new CoverApplyByUrlRequest { Url = "https://example.com/cover.jpg" };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.CoverApplyByUrlRequest);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.CoverApplyByUrlRequest)!;
+                Assert(back.Url == "https://example.com/cover.jpg", $"url: {back.Url}");
+            });
+
+            Check("CoverLinkExistingRequest round-trip", () =>
+            {
+                var obj = new CoverLinkExistingRequest { Cover = "/srv/abs/library/Author/Title/cover.jpg" };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.CoverLinkExistingRequest);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.CoverLinkExistingRequest)!;
+                Assert(back.Cover == "/srv/abs/library/Author/Title/cover.jpg", $"cover: {back.Cover}");
+            });
+
+            Check("CoverFileSavedDescriptor round-trip", () =>
+            {
+                var obj = new CoverFileSavedDescriptor { Path = "/tmp/cover.jpg", Bytes = 12345 };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.CoverFileSavedDescriptor);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.CoverFileSavedDescriptor)!;
+                Assert(back.Path == "/tmp/cover.jpg", $"path: {back.Path}");
+                Assert(back.Bytes == 12345, $"bytes: {back.Bytes}");
+            });
+
+            Console.Error.WriteLine();
             Console.Error.WriteLine("=== Embedded resources ===");
 
             Check("CHANGELOG.md embedded and parseable", () =>

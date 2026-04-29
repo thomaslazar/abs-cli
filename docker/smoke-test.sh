@@ -630,6 +630,144 @@ fi
 
 # ============================================================
 echo ""
+echo "=== Cover Commands ==="
+
+# Generate a tiny valid PNG (1x1 transparent pixel) as a fixture.
+COVER_TMP=$(mktemp -d)
+COVER_FILE="$COVER_TMP/cover.png"
+python3 -c "
+import struct, zlib
+def chunk(t, d):
+    return struct.pack('>I', len(d)) + t + d + struct.pack('>I', zlib.crc32(t+d) & 0xffffffff)
+sig = b'\x89PNG\r\n\x1a\n'
+ihdr = chunk(b'IHDR', struct.pack('>IIBBBBB', 1, 1, 8, 6, 0, 0, 0))
+idat_raw = b'\x00\x00\x00\x00\x00'
+idat = chunk(b'IDAT', zlib.compress(idat_raw))
+iend = chunk(b'IEND', b'')
+with open('$COVER_FILE', 'wb') as f:
+    f.write(sig + ihdr + idat + iend)
+"
+
+# --- Mode 1: --file (multipart upload) ---
+output=$($CLI items cover set --id "$FIRST_ITEM_ID" --file "$COVER_FILE" 2>/dev/null)
+if echo "$output" | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['success']==True and d['cover']" 2>/dev/null; then
+    pass "items cover set --file applied cover"
+    SERVER_COVER_PATH=$(echo "$output" | python3 -c "import sys,json; print(json.load(sys.stdin)['cover'])")
+else
+    fail "items cover set --file applied cover" "unexpected response"
+    echo "    response: ${output:0:200}"
+    SERVER_COVER_PATH=""
+fi
+
+output=$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)
+if echo "$output" | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['media'].get('coverPath')" 2>/dev/null; then
+    pass "items get reports non-null coverPath after --file set"
+else
+    fail "items get reports non-null coverPath after --file set" "coverPath missing"
+fi
+
+# Download cover to file
+DOWNLOAD_FILE="$COVER_TMP/downloaded.bin"
+output=$($CLI items cover get --id "$FIRST_ITEM_ID" --output "$DOWNLOAD_FILE" 2>/dev/null)
+if echo "$output" | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['path']=='$DOWNLOAD_FILE' and d['bytes']>0" 2>/dev/null; then
+    pass "items cover get --output writes file and reports descriptor"
+else
+    fail "items cover get --output writes file and reports descriptor" "unexpected descriptor"
+    echo "    response: ${output:0:200}"
+fi
+if [ -s "$DOWNLOAD_FILE" ]; then
+    pass "downloaded cover file is non-empty"
+else
+    fail "downloaded cover file is non-empty" "file missing or zero-byte"
+fi
+
+# Stream cover bytes to stdout (capture via wc -c)
+bytes=$($CLI items cover get --id "$FIRST_ITEM_ID" --output - 2>/dev/null | wc -c)
+if [ "$bytes" -gt 0 ]; then
+    pass "items cover get --output - streams non-zero bytes to stdout"
+else
+    fail "items cover get --output - streams non-zero bytes to stdout" "zero bytes"
+fi
+
+# Remove cover
+output=$($CLI items cover remove --id "$FIRST_ITEM_ID" 2>/dev/null)
+if echo "$output" | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['success']" 2>/dev/null; then
+    pass "items cover remove returns success"
+else
+    fail "items cover remove returns success" "unexpected response"
+fi
+
+output=$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)
+if echo "$output" | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['media'].get('coverPath') is None" 2>/dev/null; then
+    pass "items get reports null coverPath after remove"
+else
+    fail "items get reports null coverPath after remove" "coverPath still set"
+fi
+
+# --- Mode 2: --server-path (PATCH, link to existing on-disk file) ---
+# Re-link the cover file the previous --file step left on the ABS server's disk.
+if [ -n "$SERVER_COVER_PATH" ]; then
+    output=$($CLI items cover set --id "$FIRST_ITEM_ID" --server-path "$SERVER_COVER_PATH" 2>/dev/null)
+    if echo "$output" | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['success']==True and d['cover']=='$SERVER_COVER_PATH'" 2>/dev/null; then
+        pass "items cover set --server-path applied cover from existing on-disk file"
+    else
+        fail "items cover set --server-path applied cover from existing on-disk file" "unexpected response"
+        echo "    response: ${output:0:200}"
+    fi
+
+    output=$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)
+    if echo "$output" | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['media'].get('coverPath')=='$SERVER_COVER_PATH'" 2>/dev/null; then
+        pass "items get coverPath matches --server-path target"
+    else
+        fail "items get coverPath matches --server-path target" "coverPath did not match"
+    fi
+
+    # Cleanup: remove again so the next mode (or end-state) is clean
+    $CLI items cover remove --id "$FIRST_ITEM_ID" > /dev/null 2>&1
+fi
+
+# --- Mode 3: --url (POST with {url}; ABS server downloads) ---
+# Uses the google metadata provider against a known-seeded book to obtain a
+# real cover URL. Google + Storm Front (or whichever the first seeded book
+# is) is reliable enough to run unconditionally.
+item_json=$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)
+item_title=$(echo "$item_json" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['media']['metadata'].get('title') or '')")
+item_author=$(echo "$item_json" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['media']['metadata'].get('authorName') or '')")
+
+if [ -n "$item_title" ]; then
+    covers_json=$($CLI metadata covers --provider google --title "$item_title" --author "$item_author" 2>/dev/null)
+    cover_url=$(echo "$covers_json" | python3 -c "import sys,json; d=json.load(sys.stdin); r=d.get('results',[]); print(r[0] if r else '')" 2>/dev/null)
+
+    if [ -n "$cover_url" ]; then
+        pass "metadata covers returned a URL for seeded book"
+
+        output=$($CLI items cover set --id "$FIRST_ITEM_ID" --url "$cover_url" 2>/dev/null)
+        if echo "$output" | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['success']==True and d['cover']" 2>/dev/null; then
+            pass "items cover set --url applied cover from metadata-provider URL"
+        else
+            fail "items cover set --url applied cover from metadata-provider URL" "unexpected response"
+            echo "    response: ${output:0:200}"
+        fi
+
+        output=$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)
+        if echo "$output" | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['media'].get('coverPath')" 2>/dev/null; then
+            pass "items get reports non-null coverPath after --url set"
+        else
+            fail "items get reports non-null coverPath after --url set" "coverPath missing"
+        fi
+
+        $CLI items cover remove --id "$FIRST_ITEM_ID" > /dev/null 2>&1
+    else
+        fail "metadata covers returned a URL for seeded book" "google returned no URLs for '$item_title'"
+    fi
+else
+    fail "items get readable for --url cover test" "could not read item title"
+fi
+
+rm -rf "$COVER_TMP"
+
+# ============================================================
+echo ""
 echo "========================================"
 echo "Results: $PASS passed, $FAIL failed"
 echo "========================================"

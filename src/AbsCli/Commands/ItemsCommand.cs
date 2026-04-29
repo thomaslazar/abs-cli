@@ -17,6 +17,7 @@ public static class ItemsCommand
         command.Subcommands.Add(CreateBatchUpdateCommand());
         command.Subcommands.Add(CreateBatchGetCommand());
         command.Subcommands.Add(CreateScanCommand());
+        command.Subcommands.Add(CreateCoverCommand());
         return command;
     }
 
@@ -254,6 +255,119 @@ public static class ItemsCommand
             var result = await service.ScanAsync(id);
             ConsoleOutput.WriteJson(result, AppJsonContext.Default.ScanResult);
             return 0;
+        });
+        return command;
+    }
+
+    private static Command CreateCoverCommand()
+    {
+        var command = new Command("cover", "Manage book covers (apply, fetch, remove)");
+        command.Subcommands.Add(CreateCoverSetCommand());
+        command.Subcommands.Add(CreateCoverGetCommand());
+        command.Subcommands.Add(CreateCoverRemoveCommand());
+        return command;
+    }
+
+    private static Command CreateCoverSetCommand()
+    {
+        var idOption = new Option<string>("--id") { Description = "Library item ID", Required = true };
+        var urlOption = new Option<string?>("--url") { Description = "Cover image URL — ABS server downloads it" };
+        var fileOption = new Option<string?>("--file") { Description = "Local cover image file to upload" };
+        var serverPathOption = new Option<string?>("--server-path") { Description = "Path to a file already on the ABS server's filesystem" };
+        var command = new Command("set", "Apply a cover to a book by URL, local file, or existing server-side path") { idOption, urlOption, fileOption, serverPathOption };
+        command.AddExamples(
+            "abs-cli items cover set --id \"li_abc123\" --url \"https://example.com/cover.jpg\"",
+            "abs-cli items cover set --id \"li_abc123\" --file ./cover.jpg",
+            "abs-cli items cover set --id \"li_abc123\" --server-path /srv/abs/library/foo/cover.jpg");
+        command.AddResponseExample<CoverApplyResponse>();
+        command.SetAction(async parseResult =>
+        {
+            var id = parseResult.GetValue(idOption)!;
+            var url = parseResult.GetValue(urlOption);
+            var file = parseResult.GetValue(fileOption);
+            var serverPath = parseResult.GetValue(serverPathOption);
+            var sources = new[] { url, file, serverPath }.Count(s => !string.IsNullOrEmpty(s));
+            if (sources != 1)
+            {
+                ConsoleOutput.WriteError("Specify exactly one of --url, --file, --server-path");
+                Environment.Exit(1);
+            }
+            var (client, _) = CommandHelper.BuildClient();
+            var service = new CoversService(client);
+            CoverApplyResponse result;
+            if (!string.IsNullOrEmpty(url))
+            {
+                result = await service.SetByUrlAsync(id, url);
+            }
+            else if (!string.IsNullOrEmpty(file))
+            {
+                if (!File.Exists(file))
+                {
+                    ConsoleOutput.WriteError($"File not found: {file}");
+                    Environment.Exit(1);
+                }
+                result = await service.UploadFromFileAsync(id, file);
+            }
+            else
+            {
+                result = await service.LinkExistingAsync(id, serverPath!);
+            }
+            ConsoleOutput.WriteJson(result, AppJsonContext.Default.CoverApplyResponse);
+        });
+        return command;
+    }
+
+    private static Command CreateCoverGetCommand()
+    {
+        var idOption = new Option<string>("--id") { Description = "Library item ID", Required = true };
+        var outputOption = new Option<string>("--output") { Description = "Output file path, or '-' for binary to stdout", Required = true };
+        var rawOption = new Option<bool>("--raw") { Description = "Fetch the original unprocessed image (default: ABS-resized)" };
+        var command = new Command("get", "Download the cover image for a book") { idOption, outputOption, rawOption };
+        command.AddExamples(
+            "abs-cli items cover get --id \"li_abc123\" --output cover.jpg",
+            "abs-cli items cover get --id \"li_abc123\" --output cover.jpg --raw",
+            "abs-cli items cover get --id \"li_abc123\" --output - > cover.jpg");
+        command.AddResponseExample<CoverFileSavedDescriptor>();
+        command.SetAction(async parseResult =>
+        {
+            var id = parseResult.GetValue(idOption)!;
+            var output = parseResult.GetValue(outputOption)!;
+            var raw = parseResult.GetValue(rawOption);
+            var (client, _) = CommandHelper.BuildClient();
+            var service = new CoversService(client);
+            await using var stream = await service.GetStreamAsync(id, raw);
+            if (output == "-")
+            {
+                await using var stdout = Console.OpenStandardOutput();
+                await stream.CopyToAsync(stdout);
+                return;
+            }
+            long bytes;
+            await using (var fileStream = new FileStream(output, FileMode.Create, FileAccess.Write))
+            {
+                await stream.CopyToAsync(fileStream);
+                bytes = fileStream.Length;
+            }
+            var descriptor = new CoverFileSavedDescriptor { Path = output, Bytes = bytes };
+            ConsoleOutput.WriteJson(descriptor, AppJsonContext.Default.CoverFileSavedDescriptor);
+        });
+        return command;
+    }
+
+    private static Command CreateCoverRemoveCommand()
+    {
+        var idOption = new Option<string>("--id") { Description = "Library item ID", Required = true };
+        var command = new Command("remove", "Remove the cover from a book") { idOption };
+        command.AddExamples(
+            "abs-cli items cover remove --id \"li_abc123\"");
+        command.SetAction(async parseResult =>
+        {
+            var id = parseResult.GetValue(idOption)!;
+            var (client, _) = CommandHelper.BuildClient();
+            var service = new CoversService(client);
+            await service.RemoveAsync(id);
+            ConsoleOutput.WriteJson(
+                new Dictionary<string, string> { ["success"] = "true" });
         });
         return command;
     }

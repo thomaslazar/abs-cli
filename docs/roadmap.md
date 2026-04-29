@@ -33,11 +33,13 @@ Four roadmap items being delivered together as the next minor release.
   `CHANGELOG.md`, embedded in the assembly so the command works offline.
   Spec: [docs/specs/2026-04-27-changelog-command.md](specs/2026-04-27-changelog-command.md).
   Plan: [docs/plans/2026-04-27-changelog-command.md](plans/2026-04-27-changelog-command.md).
-- **Investigate cover handling** — How cover metadata upload works end-to-end:
-  which endpoints, request shapes, where ABS stores the image, how this
-  interacts with `metadata covers` and `items update`. Scoping exercise
-  before any command design — outcome may be a `covers` command or a
-  documentation update, decided after investigation.
+- **`items cover` command** — Apply, fetch, and remove book covers via the
+  ABS API. Three primitives (`set` with `--url` / `--file` / `--server-path`,
+  `get` to file or stdout, `remove`) that the agent composes with
+  `items list --filter "missing=cover"` and `metadata covers` to build a
+  cover-handling workflow.
+  Spec: [docs/specs/2026-04-28-items-cover-handling.md](specs/2026-04-28-items-cover-handling.md).
+  Plan: [docs/plans/2026-04-28-items-cover-handling.md](plans/2026-04-28-items-cover-handling.md).
 - **Upgrade target framework to .NET 10 LTS** — Move from `net8.0` to
   `net10.0`. Covers the dev container, CI, and all three csproj files;
   test packages and `System.CommandLine` are deferred to the next item.
