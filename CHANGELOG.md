@@ -3,6 +3,86 @@
 All notable changes to abs-cli are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## 0.3.0 — 2026-04-29
+
+### Highlights
+- New `abs-cli items cover` subcommand tree — apply, fetch, and remove book covers.
+  `set` accepts `--url` (ABS server downloads), `--file` (local upload), or
+  `--server-path` (link to a file already on the ABS server's disk). `get` writes
+  to a file with a JSON descriptor or streams binary to stdout (`--output -`).
+  `remove` deletes the cover. Combined with `items list --filter "missing=cover"`
+  and `metadata covers`, agents now have every primitive needed to build a
+  cover-handling workflow.
+- New `abs-cli changelog` command — print release notes straight from the
+  bundled `CHANGELOG.md`. Default output is the latest entry; `--all` prints
+  the full file. The file is embedded as an assembly resource, so the command
+  works offline and ships in the AOT-published single-file binary.
+- Target framework upgraded to **.NET 10 LTS**. Improved AOT trimmer drops the
+  Linux-x64 binary from ~11 MB to ~8.7 MB. Dev container, CI matrix, and docs
+  all updated to match.
+- Added a build-time **NuGet Audit gate** (`Directory.Build.props` with
+  `WarningsAsErrors` for NU1901-NU1904). Combined with GitHub Dependabot
+  security updates (enabled at the repo level), CVEs in dependencies now
+  surface as build failures and as auto-PRs the moment an advisory has a fix.
+- `System.CommandLine` finally bumped from the 2022-vintage `2.0.0-beta4` pin
+  to the **2.0.7 stable** release. Custom help-section infrastructure
+  rewritten against the new action-based help model; user-facing help format
+  is byte-for-byte identical to before.
+- Test packages refreshed to xUnit v3 (3.2.2), `Microsoft.NET.Test.Sdk`
+  18.4.0, `coverlet.collector` 10.0.0. No changes to test sources required.
+
+### Features
+- feat: add abs-cli changelog command
+- feat: add ChangelogReader.ExtractLatest
+- feat: add cover endpoint helper and typed multipart/stream HTTP methods
+- feat: add cover request/response models
+- feat: add CoversService
+- feat: add items cover command tree (set, get, remove)
+
+### Fixes
+- fix: harden changelog reader, command, and tests after review
+
+### Refactors
+- refactor: tidy UseCustomHelpSections after review
+
+### Tests
+- test: assert CHANGELOG.md is embedded in self-test
+- test: cover ExtractLatest stop/trim/error cases
+- test: cover models round-trip and items cover command help
+- test: cover smoke suite for all three set modes
+- test: drop redundant CoversServiceTests
+- test: end-to-end coverage for changelog command
+- test: round-trip cover models in self-test
+- test: smoke coverage for items cover lifecycle
+
+### Chores
+- chore: add NuGet Audit policy
+- chore: bump devcontainer base image to dotnet:10.0
+- chore: bump System.CommandLine to 2.0.7
+- chore: bump TargetFramework from net8.0 to net10.0
+- chore: bump test packages to xUnit v3
+- chore: bump version to 0.3.0
+- chore: embed CHANGELOG.md as assembly resource
+- chore: install gh CLI via devcontainer feature
+- chore: regenerate response examples for cover models
+
+### CI
+- ci: bump SDK and artifact paths to net10.0
+
+### Docs
+- docs: add spec and plan for .NET 10 LTS upgrade
+- docs: add spec and plan for changelog command
+- docs: add spec and plan for items cover handling
+- docs: add spec and plan for library upgrades and dependency security
+- docs: add v0.3.0 in-progress section and .NET 10 LTS idea
+- docs: drop roadmap step from changelog plan
+- docs: drop Task 9 from changelog plan
+- docs: fold .NET 10 LTS upgrade into v0.3.0 scope
+- docs: schedule general library upgrades under v0.3.0
+- docs: schedule .NET 10 LTS upgrade as v0.3.x
+- docs: update dev-container doc for .NET 10
+- docs: update v0.3.0 cover-handling entry to reflect deliverable
+
 ## 0.2.7 — 2026-04-24
 
 ### Highlights
