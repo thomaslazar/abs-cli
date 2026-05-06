@@ -19,7 +19,7 @@ public static class MetadataCommand
     private static Command CreateSearchCommand()
     {
         var providerOption = new Option<string>("--provider") { Description = "Metadata provider (e.g. audible)", Required = true };
-        var titleOption = new Option<string>("--title") { Description = "Book title to search", Required = true };
+        var titleOption = new Option<string>("--title") { Description = "Book title to search (audible providers also accept an ASIN)", Required = true };
         var authorOption = new Option<string?>("--author") { Description = "Author name to narrow results" };
         var command = new Command("search", "Search for book metadata from a provider")
         {
@@ -27,7 +27,8 @@ public static class MetadataCommand
         };
         command.AddExamples(
             "abs-cli metadata search --provider audible --title \"The Way of Kings\"",
-            "abs-cli metadata search --provider audible --title \"Mistborn\" --author \"Brandon Sanderson\"");
+            "abs-cli metadata search --provider audible --title \"Mistborn\" --author \"Brandon Sanderson\"",
+            "abs-cli metadata search --provider audible --title B0CHL3GVKD");
         command.SetAction(async (parseResult, cancellationToken) =>
         {
             var provider = parseResult.GetValue(providerOption)!;
