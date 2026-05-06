@@ -52,6 +52,63 @@ Four roadmap items being delivered together as the next minor release.
 
 ---
 
+## Next
+
+### v0.4.0 — Author management
+
+Improving how the CLI works with authors: pagination on listing, a matching
+primitive so agents can identify and clean up unmatched authors, and edit /
+delete / image primitives so agents can act on what they find.
+
+- **Author pagination support** — `abs-cli authors list` currently uses the
+  unpaginated response shape (`{ authors: [...] }`). The endpoint
+  `GET /api/libraries/:id/authors` actually supports pagination when both
+  `limit` and `page` query params are numeric, switching to
+  `{ results, total, limit, page, sortBy, sortDesc, filterBy, minified, include }`.
+  Add `--limit`, `--page`, `--sort` (`name` / `lastFirst` / `addedAt` /
+  `updatedAt` / `numBooks`), `--desc`, `--filter`. The response-shape change
+  requires a separate paged response model alongside the existing one.
+- **Author matching** — Expose ABS's author match flow via
+  `POST /api/authors/:id/match` (body: `q` name or `asin`, optional `region`,
+  default `us`; backed by Audnexus). Match is destructive — on a hit it
+  immediately writes `asin`, `imagePath`, and `description` onto the author
+  and emits `author_updated`. A 404 leaves the author untouched, which is
+  the signal we want for surfacing authors that couldn't be matched
+  (e.g. names like `"Joe Bloggs - illustrator"`) so they can be cleaned up.
+  Pair it with `GET /api/search/authors?q=<name>` (also Audnexus-backed,
+  read-only — no `region`, no ASIN path) as a non-destructive probe.
+- **Namespace decision** — Both commands live under `authors`, not
+  `metadata`. The CLI is organized by ABS resource (`items`, `libraries`,
+  `authors`, ...); `metadata` is reserved for stateless provider discovery
+  with no ABS entity attached. Match requires an author ID and mutates
+  that author's record — that's an entity operation. Likely shape:
+  `abs-cli authors match <id> [--asin <asin>] [--region <r>]` and
+  `abs-cli authors lookup --name "..."` for the read-only probe, plus a
+  workflow for iterating the library and reporting unmatched authors.
+- **Author edit / delete / image** — Once agents can find unmatched
+  authors, they need primitives to fix them. ABS exposes:
+  `PATCH /api/authors/:id` (editable fields: `name`, `description`,
+  `asin`; pass `null` to clear), `DELETE /api/authors/:id` (removes from
+  all books and deletes), and image endpoints
+  (`POST` / `DELETE` / `GET /api/authors/:id/image`). Likely shape:
+  `abs-cli authors update <id> [--name] [--description] [--asin]`,
+  `abs-cli authors delete <id>`, and `authors image set|get|remove`
+  mirroring `items cover`.
+
+  **Merge-on-rename quirk** — `PATCH /api/authors/:id` has a surprising
+  side effect: if you rename an author to a name that already exists in
+  the same library, ABS auto-merges them. All books of the source author
+  are reassigned to the existing author and the source is deleted. The
+  response in this case is `{ author: <existingAuthor>, merged: true }`
+  instead of the usual `{ author, updated: bool }`. This is a single
+  endpoint serving two operations, and a typo-fix can silently destroy
+  an author. The CLI must surface this clearly: detect `merged: true` in
+  the response, stderr-warn (or fail-loud unless `--allow-merge` is
+  passed), and the help text for `authors update` must call it out so
+  agents and users don't get bitten.
+
+---
+
 ## Ideas
 
 Not yet scoped — notes to pick up later.
