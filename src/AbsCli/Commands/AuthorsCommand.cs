@@ -15,7 +15,12 @@ public static class AuthorsCommand
             "least one library item references it. When the last referencing item is",
             "removed or re-tagged, the scanner deletes the author on its next run",
             "(unless a custom image is set). To remove an author, update the books",
-            "that reference it.");
+            "that reference it.",
+            "",
+            "Author matching uses the Audnexus provider (audnex.us), the same backend",
+            "the ABS web UI uses. 'match' writes ASIN/description/image onto the ABS",
+            "author record; 'lookup' is a read-only probe that does not touch ABS",
+            "state.");
         command.Subcommands.Add(CreateListCommand());
         command.Subcommands.Add(CreateGetCommand());
         return command;
