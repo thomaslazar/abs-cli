@@ -129,4 +129,21 @@ public class AuthorsCommandTests
                 Assert.Contains(fragment, json);
         }
     }
+
+    [Fact]
+    public void AuthorsDelete_Help_RequiresIdOnly()
+    {
+        var output = RenderHelp("authors", "delete");
+        Assert.Contains("--id", output);
+        Assert.DoesNotContain("--name", output);
+        Assert.DoesNotContain("--asin", output);
+        Assert.DoesNotContain("--description", output);
+    }
+
+    [Fact]
+    public void AuthorsDelete_Help_DocumentsHardDeleteCaveat()
+    {
+        var output = RenderHelp("authors", "delete");
+        Assert.Contains("removes the author from all books", output, StringComparison.OrdinalIgnoreCase);
+    }
 }

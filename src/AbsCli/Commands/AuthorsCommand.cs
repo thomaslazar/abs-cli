@@ -26,6 +26,7 @@ public static class AuthorsCommand
         command.Subcommands.Add(CreateMatchCommand());
         command.Subcommands.Add(CreateLookupCommand());
         command.Subcommands.Add(CreateUpdateCommand());
+        command.Subcommands.Add(CreateDeleteCommand());
         return command;
     }
 
@@ -225,5 +226,30 @@ public static class AuthorsCommand
         if (asin is not null)
             body["asin"] = asin == "" ? null! : asin;
         return body;
+    }
+
+    private static Command CreateDeleteCommand()
+    {
+        var idOption = new Option<string>("--id") { Description = "Author ID", Required = true };
+        var command = new Command("delete", "Delete an author and unlink it from all books") { idOption };
+        command.AddHelpSection("Notes", HelpSectionPosition.Top,
+            "Removes the author from all books and deletes the record. Books lose",
+            "their author tag; the scanner may re-derive the author on its next run",
+            "if file metadata still references the name (see the group-level lifecycle",
+            "note).",
+            "",
+            "No confirmation prompt — consistent with 'backup delete' and 'items cover",
+            "remove'. Mirrors the ABS web UI's delete behaviour.");
+        command.AddExamples(
+            "abs-cli authors delete --id \"aut_xyz\"");
+        command.SetAction(async parseResult =>
+        {
+            var id = parseResult.GetValue(idOption)!;
+            var (client, _) = CommandHelper.BuildClient();
+            var service = new AuthorsService(client);
+            await service.DeleteAsync(id);
+            ConsoleOutput.WriteJson(new Dictionary<string, string> { ["success"] = "true" });
+        });
+        return command;
     }
 }
