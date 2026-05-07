@@ -333,8 +333,8 @@ assert_json_expr "authors lookup returns object for known author" \
 
 output=$($CLI authors lookup --name "ZzzNotARealAuthorXyz" 2>/dev/null)
 # null body deserialises to Python None
-assert_test "authors lookup returns null for missing author" \
-    "[ \"$output\" = \"null\" ]"
+assert_json_expr "authors lookup returns null for missing author" \
+    "d is None" "$output"
 
 # --- match ---
 output=$($CLI authors match --id "$AUTHOR_ID" --name "Brandon Sanderson" 2>/dev/null)
