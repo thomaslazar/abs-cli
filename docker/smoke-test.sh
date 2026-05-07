@@ -351,10 +351,43 @@ output=$($CLI authors update --id "$AUTHOR_ID" --description "" 2>/dev/null)
 assert_json_expr "authors update cleared description" \
     "d['author'].get('description') in (None, '')" "$output"
 
-# --- delete (against a throwaway author created via PATCH side-effect of merge,
-#     skipped here to avoid mutating the seeded library; covered in
-#     integration tests with a dedicated test user / library)
-echo "(authors delete: covered in integration suite, not smoke)"
+# --- delete (add a throwaway co-author to a book, delete it, restore book) ---
+ORIGINAL_AUTHORS=$(echo "$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)" \
+    | python3 -c "
+import sys,json
+authors = json.load(sys.stdin)['media']['metadata']['authors']
+print(json.dumps([{'name': a['name']} for a in authors]))
+")
+THROWAWAY_PAYLOAD=$(echo "$ORIGINAL_AUTHORS" | python3 -c "
+import sys,json
+authors = json.load(sys.stdin)
+authors.append({'name': 'Smoke Test Throwaway'})
+print(json.dumps({'metadata': {'authors': authors}}))
+")
+$CLI items update --id "$FIRST_ITEM_ID" --input "$THROWAWAY_PAYLOAD" 2>/dev/null > /dev/null
+
+output=$($CLI authors list 2>/dev/null)
+assert_json_expr "authors update added throwaway author" \
+    "any(a['name']=='Smoke Test Throwaway' for a in d['authors'])" "$output"
+THROWAWAY_ID=$(echo "$output" | python3 -c "
+import sys,json
+print(next(a['id'] for a in json.load(sys.stdin)['authors'] if a['name']=='Smoke Test Throwaway'))
+")
+
+output=$($CLI authors delete --id "$THROWAWAY_ID" 2>/dev/null)
+assert_json_expr "authors delete returns success" "d.get('success')=='true'" "$output"
+
+output=$($CLI authors list 2>/dev/null)
+assert_json_expr "authors delete removed throwaway" \
+    "not any(a['name']=='Smoke Test Throwaway' for a in d['authors'])" "$output"
+assert_json_expr "authors list back to 6 authors" "len(d['authors'])==6" "$output"
+
+# Restore book to original authors
+RESTORE_PAYLOAD=$(python3 -c "
+import json
+print(json.dumps({'metadata': {'authors': json.loads('$ORIGINAL_AUTHORS')}}))
+")
+$CLI items update --id "$FIRST_ITEM_ID" --input "$RESTORE_PAYLOAD" 2>/dev/null > /dev/null
 
 # ============================================================
 echo ""
