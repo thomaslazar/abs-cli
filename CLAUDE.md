@@ -22,6 +22,13 @@ docs: update testing strategy for AOT validation
 test: add metadata update assertion to smoke tests
 ```
 
+## Pre-PR verification
+
+- Run `docker/smoke-test.sh` against the local docker-compose dev stack before opening any PR. Unit tests and `self-test` are not enough — many regressions only surface in the live HTTP path.
+- The compose stack lives at `docker/docker-compose.yml`; bring it up with `cd docker && docker compose up -d`. Resolve the container IP via `docker inspect docker-audiobookshelf-1 -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}'` and run the smoke as `ABS_URL=http://<container-ip>:80 bash docker/smoke-test.sh` — the `host.docker.internal` default does not work from inside the dev container.
+- Seed first if the stack is freshly created: `ABS_URL=http://<container-ip>:80 bash docker/seed.sh`.
+- Only mark "smoke test passed" in a PR description after actually running it. Do not copy the checkbox forward unverified.
+
 ## Code Formatting
 
 - `.editorconfig` (from dotnet/runtime) enforces style. CI checks with `dotnet format --verify-no-changes`.
