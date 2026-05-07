@@ -57,4 +57,22 @@ public class AuthorsCommandTests
         Assert.Contains("\"updated\"", output);
         Assert.Contains("\"author\"", output);
     }
+
+    [Fact]
+    public void AuthorsLookup_Help_DocumentsNameOnly()
+    {
+        var output = RenderHelp("authors", "lookup");
+        Assert.Contains("--name", output);
+        Assert.DoesNotContain("--id", output);
+        Assert.DoesNotContain("--asin", output);
+        Assert.DoesNotContain("--region", output);
+    }
+
+    [Fact]
+    public void AuthorsLookup_Help_DocumentsReadOnlyAndNullCaveats()
+    {
+        var output = RenderHelp("authors", "lookup");
+        Assert.Contains("Read-only", output);
+        Assert.Contains("null", output);
+    }
 }

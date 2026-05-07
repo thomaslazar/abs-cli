@@ -24,6 +24,7 @@ public static class AuthorsCommand
         command.Subcommands.Add(CreateListCommand());
         command.Subcommands.Add(CreateGetCommand());
         command.Subcommands.Add(CreateMatchCommand());
+        command.Subcommands.Add(CreateLookupCommand());
         return command;
     }
 
@@ -119,6 +120,35 @@ public static class AuthorsCommand
             };
             var result = await service.MatchAsync(id, request);
             ConsoleOutput.WriteJson(result, AppJsonContext.Default.AuthorMatchResponse);
+        });
+        return command;
+    }
+
+    private static Command CreateLookupCommand()
+    {
+        var nameOption = new Option<string>("--name") { Description = "Author name to search Audnexus", Required = true };
+        var command = new Command("lookup", "Read-only Audnexus probe by author name") { nameOption };
+        command.AddHelpSection("Notes", HelpSectionPosition.Top,
+            "Read-only Audnexus probe. Does not touch any ABS author record.",
+            "",
+            "ABS reduces multiple Audnexus candidates to the closest-Levenshtein single",
+            "match. The candidate list is not exposed.",
+            "",
+            "Returns the literal JSON 'null' (HTTP 200) when no match is found — agents",
+            "check the JSON value, not the HTTP status. The CLI does not exit non-zero",
+            "for this case.",
+            "",
+            "Region selection is not supported (the underlying endpoint does not accept",
+            "one); ASIN lookup is not available (this is a name-only search).");
+        command.AddExamples(
+            "abs-cli authors lookup --name \"Brandon Sanderson\"");
+        command.SetAction(async parseResult =>
+        {
+            var name = parseResult.GetValue(nameOption)!;
+            var (client, _) = CommandHelper.BuildClient();
+            var service = new AuthorsService(client);
+            var json = await service.LookupAsync(name);
+            ConsoleOutput.WriteRawJson(json);
         });
         return command;
     }
