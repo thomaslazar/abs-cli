@@ -1,5 +1,8 @@
 # CLAUDE.md
 
+## Main rule
+be brief
+
 ## Git Conventions
 
 - **Always ask the user before committing.** Do not commit automatically after making changes.
