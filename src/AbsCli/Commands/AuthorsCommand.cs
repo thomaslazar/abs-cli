@@ -23,6 +23,7 @@ public static class AuthorsCommand
             "state.");
         command.Subcommands.Add(CreateListCommand());
         command.Subcommands.Add(CreateGetCommand());
+        command.Subcommands.Add(CreateMatchCommand());
         return command;
     }
 
@@ -65,6 +66,59 @@ public static class AuthorsCommand
             var result = await service.GetAsync(id);
             ConsoleOutput.WriteJson(result, AppJsonContext.Default.AuthorItem);
             return 0;
+        });
+        return command;
+    }
+
+    private static Command CreateMatchCommand()
+    {
+        var idOption = new Option<string>("--id") { Description = "Author ID", Required = true };
+        var nameOption = new Option<string?>("--name") { Description = "Search Audnexus by name (mutually exclusive with --asin)" };
+        var asinOption = new Option<string?>("--asin") { Description = "Look up Audnexus author by ASIN (mutually exclusive with --name)" };
+        var regionOption = new Option<string?>("--region") { Description = "Audnexus region override (defaults to 'us' server-side)" };
+        var command = new Command("match", "Apply Audnexus author data to an existing ABS author")
+        {
+            idOption, nameOption, asinOption, regionOption
+        };
+        command.AddHelpSection("Notes", HelpSectionPosition.Top,
+            "Destructive on hit: writes ASIN, description, and image onto the author",
+            "and emits an 'author_updated' socket event. Image is written only when",
+            "the author had no prior image or the ASIN changed.",
+            "",
+            "Audnexus may return multiple candidates for a name. ABS picks the closest",
+            "Levenshtein match and silently discards alternatives — for two real-world",
+            "authors with the same name, the wrong one may be picked. Pass --asin to",
+            "disambiguate.",
+            "",
+            "404 means 'no upstream match found' — useful when scanning for unmatched",
+            "authors. The ABS author record is untouched on 404.");
+        command.AddExamples(
+            "abs-cli authors match --id \"aut_xyz\" --name \"Brandon Sanderson\"",
+            "abs-cli authors match --id \"aut_xyz\" --asin \"B000AP9DSU\"",
+            "abs-cli authors match --id \"aut_xyz\" --name \"Bob Bunyon\" --region \"uk\"");
+        command.AddResponseExample<AuthorMatchResponse>();
+        command.SetAction(async parseResult =>
+        {
+            var id = parseResult.GetValue(idOption)!;
+            var name = parseResult.GetValue(nameOption);
+            var asin = parseResult.GetValue(asinOption);
+            var region = parseResult.GetValue(regionOption);
+            var sources = new[] { name, asin }.Count(s => !string.IsNullOrEmpty(s));
+            if (sources != 1)
+            {
+                ConsoleOutput.WriteError("Specify exactly one of --name or --asin");
+                Environment.Exit(1);
+            }
+            var (client, _) = CommandHelper.BuildClient();
+            var service = new AuthorsService(client);
+            var request = new AuthorMatchRequest
+            {
+                Q = string.IsNullOrEmpty(name) ? null : name,
+                Asin = string.IsNullOrEmpty(asin) ? null : asin,
+                Region = string.IsNullOrEmpty(region) ? null : region
+            };
+            var result = await service.MatchAsync(id, request);
+            ConsoleOutput.WriteJson(result, AppJsonContext.Default.AuthorMatchResponse);
         });
         return command;
     }
