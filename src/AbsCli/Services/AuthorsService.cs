@@ -23,9 +23,9 @@ public class AuthorsService
         return await _client.GetAsync(ApiEndpoints.AuthorById(id) + "?include=items", AppJsonContext.Default.AuthorItem);
     }
 
-    public async Task<AuthorMatchResponse> MatchAsync(string id, AuthorMatchRequest request)
+    public async Task<AuthorMatchResponse> MatchAsync(string id, AuthorMatchRequest body)
     {
-        var json = JsonSerializer.Serialize(request, AppJsonContext.Default.AuthorMatchRequest);
+        var json = JsonSerializer.Serialize(body, AppJsonContext.Default.AuthorMatchRequest);
         return await _client.PostAsync(
             ApiEndpoints.AuthorMatch(id),
             json,
@@ -39,6 +39,12 @@ public class AuthorsService
         return await _client.GetAsync(endpoint);
     }
 
+    /// <summary>
+    /// PATCH the author. <paramref name="body"/> values are null-significant:
+    /// pass a <c>null</c> value to clear that field server-side, or omit a key
+    /// entirely to leave it unchanged. The dictionary's nullable annotation is
+    /// erased at runtime so STJ emits JSON <c>null</c> for the cleared keys.
+    /// </summary>
     public async Task<AuthorUpdateResponse> UpdateAsync(string id, Dictionary<string, string> body)
     {
         var json = JsonSerializer.Serialize(body, AppJsonContext.Default.DictionaryStringString);

@@ -100,7 +100,7 @@ public static class AuthorsCommand
             "abs-cli authors match --id \"aut_xyz\" --asin \"B000AP9DSU\"",
             "abs-cli authors match --id \"aut_xyz\" --name \"Bob Bunyon\" --region \"uk\"");
         command.AddResponseExample<AuthorMatchResponse>();
-        command.SetAction(async parseResult =>
+        command.SetAction(async (parseResult, cancellationToken) =>
         {
             var id = parseResult.GetValue(idOption)!;
             var name = parseResult.GetValue(nameOption);
@@ -114,14 +114,15 @@ public static class AuthorsCommand
             }
             var (client, _) = CommandHelper.BuildClient();
             var service = new AuthorsService(client);
-            var request = new AuthorMatchRequest
+            var body = new AuthorMatchRequest
             {
                 Q = string.IsNullOrEmpty(name) ? null : name,
                 Asin = string.IsNullOrEmpty(asin) ? null : asin,
                 Region = string.IsNullOrEmpty(region) ? null : region
             };
-            var result = await service.MatchAsync(id, request);
+            var result = await service.MatchAsync(id, body);
             ConsoleOutput.WriteJson(result, AppJsonContext.Default.AuthorMatchResponse);
+            return 0;
         });
         return command;
     }
@@ -144,13 +145,14 @@ public static class AuthorsCommand
             "one); ASIN lookup is not available (this is a name-only search).");
         command.AddExamples(
             "abs-cli authors lookup --name \"Brandon Sanderson\"");
-        command.SetAction(async parseResult =>
+        command.SetAction(async (parseResult, cancellationToken) =>
         {
             var name = parseResult.GetValue(nameOption)!;
             var (client, _) = CommandHelper.BuildClient();
             var service = new AuthorsService(client);
             var json = await service.LookupAsync(name);
             ConsoleOutput.WriteRawJson(json);
+            return 0;
         });
         return command;
     }
@@ -186,7 +188,7 @@ public static class AuthorsCommand
             "abs-cli authors update --id \"aut_xyz\" --asin \"\"",
             "abs-cli authors update --id \"aut_xyz\" --name \"Brandon Sanderson\" --description \"American author of high fantasy\" --asin \"B000AP9DSU\"");
         command.AddResponseExample<AuthorUpdateResponse>();
-        command.SetAction(async parseResult =>
+        command.SetAction(async (parseResult, cancellationToken) =>
         {
             var id = parseResult.GetValue(idOption)!;
             var name = parseResult.GetValue(nameOption);
@@ -207,6 +209,7 @@ public static class AuthorsCommand
             var service = new AuthorsService(client);
             var result = await service.UpdateAsync(id, body);
             ConsoleOutput.WriteJson(result, AppJsonContext.Default.AuthorUpdateResponse);
+            return 0;
         });
         return command;
     }
@@ -242,13 +245,14 @@ public static class AuthorsCommand
             "remove'. Mirrors the ABS web UI's delete behaviour.");
         command.AddExamples(
             "abs-cli authors delete --id \"aut_xyz\"");
-        command.SetAction(async parseResult =>
+        command.SetAction(async (parseResult, cancellationToken) =>
         {
             var id = parseResult.GetValue(idOption)!;
             var (client, _) = CommandHelper.BuildClient();
             var service = new AuthorsService(client);
             await service.DeleteAsync(id);
             ConsoleOutput.WriteJson(new Dictionary<string, string> { ["success"] = "true" });
+            return 0;
         });
         return command;
     }

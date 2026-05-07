@@ -19,15 +19,10 @@ public class AuthorsCommandTests
     }
 
     [Fact]
-    public void Authors_TopLevel_Help_ListsAllSixVerbs()
+    public void Authors_HasAllSixSubcommands()
     {
-        var output = RenderHelp("authors");
-        Assert.Contains("list", output);
-        Assert.Contains("get", output);
-        Assert.Contains("match", output);
-        Assert.Contains("lookup", output);
-        Assert.Contains("update", output);
-        Assert.Contains("delete", output);
+        var verbs = AuthorsCommand.Create().Subcommands.Select(c => c.Name).ToList();
+        Assert.Equal(new[] { "list", "get", "match", "lookup", "update", "delete" }, verbs);
     }
 
     [Fact]
@@ -122,12 +117,11 @@ public class AuthorsCommandTests
         var body = AuthorsCommand.BuildUpdateBodyForTesting(name, description, asin);
         var json = System.Text.Json.JsonSerializer.Serialize(
             body, AbsCli.Models.AppJsonContext.Default.DictionaryStringString);
-        var expectedFragments = expected.Trim('{', '}').Split(',');
+        var expectedFragments = expected.Trim('{', '}').Split(',')
+            .Where(f => !string.IsNullOrEmpty(f)).ToList();
+        Assert.Equal(expectedFragments.Count, body.Count);
         foreach (var fragment in expectedFragments)
-        {
-            if (!string.IsNullOrEmpty(fragment))
-                Assert.Contains(fragment, json);
-        }
+            Assert.Contains(fragment, json);
     }
 
     [Fact]
