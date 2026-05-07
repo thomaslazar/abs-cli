@@ -476,6 +476,77 @@ public static class SelfTestCommand
             });
 
             Console.Error.WriteLine();
+            Console.Error.WriteLine("=== Author Models ===");
+
+            Check("AuthorMatchRequest round-trip", () =>
+            {
+                var obj = new AuthorMatchRequest
+                {
+                    Q = "Brandon Sanderson",
+                    Region = "us"
+                };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.AuthorMatchRequest);
+                Assert(json.Contains("\"q\""), $"q present: {json}");
+                Assert(json.Contains("\"region\""), $"region present: {json}");
+                Assert(!json.Contains("\"asin\""), $"asin absent (WhenWritingNull): {json}");
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.AuthorMatchRequest)!;
+                Assert(back.Q == "Brandon Sanderson", $"q: {back.Q}");
+                Assert(back.Region == "us", $"region: {back.Region}");
+                Assert(back.Asin is null, $"asin: {back.Asin}");
+            });
+
+            Check("AuthorMatchResponse round-trip", () =>
+            {
+                var obj = new AuthorMatchResponse
+                {
+                    Updated = true,
+                    Author = new AuthorItem { Id = "aut_xyz", Name = "Brandon Sanderson", Asin = "B000AP9DSU" }
+                };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.AuthorMatchResponse);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.AuthorMatchResponse)!;
+                Assert(back.Updated == true, $"updated: {back.Updated}");
+                Assert(back.Author?.Name == "Brandon Sanderson", $"author.name: {back.Author?.Name}");
+                Assert(back.Author?.Asin == "B000AP9DSU", $"author.asin: {back.Author?.Asin}");
+            });
+
+            Check("AuthorUpdateResponse normal-shape round-trip", () =>
+            {
+                var obj = new AuthorUpdateResponse
+                {
+                    Updated = true,
+                    Author = new AuthorItem { Id = "aut_xyz", Name = "Brandon Sanderson" }
+                };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.AuthorUpdateResponse);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.AuthorUpdateResponse)!;
+                Assert(back.Updated == true, $"updated: {back.Updated}");
+                Assert(back.Merged is null, $"merged: {back.Merged}");
+                Assert(back.Author?.Name == "Brandon Sanderson", $"author.name: {back.Author?.Name}");
+            });
+
+            Check("AuthorUpdateResponse merge-shape round-trip", () =>
+            {
+                var json = "{\"merged\":true,\"author\":{\"id\":\"aut_existing\",\"name\":\"Brandon Sanderson\"}}";
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.AuthorUpdateResponse)!;
+                Assert(back.Merged == true, $"merged: {back.Merged}");
+                Assert(back.Updated is null, $"updated: {back.Updated}");
+                Assert(back.Author?.Id == "aut_existing", $"author.id: {back.Author?.Id}");
+            });
+
+            Check("Update-body Dictionary tri-state serialization", () =>
+            {
+                var body = new Dictionary<string, string>
+                {
+                    ["name"] = "Brandon Sanderson",
+                    ["description"] = null!,
+                    ["asin"] = "B000AP9DSU"
+                };
+                var json = JsonSerializer.Serialize(body, AppJsonContext.Default.DictionaryStringString);
+                Assert(json.Contains("\"name\"") && json.Contains("Brandon Sanderson"), $"name: {json}");
+                Assert(json.Contains("\"description\"") && json.Contains("null"), $"description null: {json}");
+                Assert(json.Contains("\"asin\"") && json.Contains("B000AP9DSU"), $"asin: {json}");
+            });
+
+            Console.Error.WriteLine();
             Console.Error.WriteLine("=== Embedded resources ===");
 
             Check("CHANGELOG.md embedded and parseable", () =>
