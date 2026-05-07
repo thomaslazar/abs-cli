@@ -20,6 +20,7 @@ public static class ApiEndpoints
 
     public static string SeriesById(string id) => $"/api/series/{id}";
     public static string AuthorById(string id) => $"/api/authors/{id}";
+    public static string AuthorMatch(string id) => $"/api/authors/{id}/match";
 
     // Backup
     public const string Backups = "/api/backups";
@@ -39,6 +40,7 @@ public static class ApiEndpoints
     public const string SearchBooks = "/api/search/books";
     public const string SearchProviders = "/api/search/providers";
     public const string SearchCovers = "/api/search/covers";
+    public const string SearchAuthors = "/api/search/authors";
 
     // Tasks
     public const string Tasks = "/api/tasks";
