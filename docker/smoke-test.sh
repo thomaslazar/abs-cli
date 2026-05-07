@@ -389,6 +389,34 @@ print(json.dumps({'metadata': {'authors': json.loads('$ORIGINAL_AUTHORS')}}))
 ")
 $CLI items update --id "$FIRST_ITEM_ID" --input "$RESTORE_PAYLOAD" 2>/dev/null > /dev/null
 
+# --- update merge-on-rename (rename throwaway into an existing author) ---
+MERGEE_PAYLOAD=$(echo "$ORIGINAL_AUTHORS" | python3 -c "
+import sys,json
+authors = json.load(sys.stdin)
+authors.append({'name': 'Smoke Test Mergee'})
+print(json.dumps({'metadata': {'authors': authors}}))
+")
+$CLI items update --id "$FIRST_ITEM_ID" --input "$MERGEE_PAYLOAD" 2>/dev/null > /dev/null
+
+MERGEE_ID=$($CLI authors list 2>/dev/null | python3 -c "
+import sys,json
+print(next(a['id'] for a in json.load(sys.stdin)['authors'] if a['name']=='Smoke Test Mergee'))
+")
+
+output=$($CLI authors update --id "$MERGEE_ID" --name "Jim Butcher" 2>/dev/null)
+assert_json_expr "authors update rename-into-existing returned merged:true" \
+    "d.get('merged')==True" "$output"
+assert_json_expr "authors update merge response carries the existing author" \
+    "d['author']['name']=='Jim Butcher'" "$output"
+
+output=$($CLI authors list 2>/dev/null)
+assert_json_expr "authors update merge removed throwaway" \
+    "not any(a['name']=='Smoke Test Mergee' for a in d['authors'])" "$output"
+assert_json_expr "authors list still 6 after merge" "len(d['authors'])==6" "$output"
+
+# Restore book to original authors (merge added Jim Butcher to FIRST_ITEM_ID)
+$CLI items update --id "$FIRST_ITEM_ID" --input "$RESTORE_PAYLOAD" 2>/dev/null > /dev/null
+
 # ============================================================
 echo ""
 echo "=== Search Command (top-level) ==="
