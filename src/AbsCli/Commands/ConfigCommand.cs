@@ -18,8 +18,7 @@ public static class ConfigCommand
     {
         var command = new Command("get", "Show current configuration");
         command.AddExamples(
-            "abs-cli config get",
-            "abs-cli config get | jq '.server'");
+            "abs-cli config get");
         command.SetAction(parseResult =>
         {
             var configManager = new ConfigManager();

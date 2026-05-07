@@ -11,16 +11,12 @@ public static class AuthorsCommand
     {
         var command = new Command("authors", "Manage authors");
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
-            "Authors are derived from book metadata. An author record exists while at",
-            "least one library item references it. When the last referencing item is",
-            "removed or re-tagged, the scanner deletes the author on its next run",
-            "(unless a custom image is set). To remove an author, update the books",
-            "that reference it.",
+            "Authors are derived from book metadata. The scanner removes orphaned",
+            "authors on its next run (unless a custom image is set). Use 'delete' to",
+            "remove one explicitly.",
             "",
-            "Author matching uses the Audnexus provider (audnex.us), the same backend",
-            "the ABS web UI uses. 'match' writes ASIN/description/image onto the ABS",
-            "author record; 'lookup' is a read-only probe that does not touch ABS",
-            "state.");
+            "'match' and 'lookup' both query Audnexus (audnex.us, same backend as the",
+            "ABS web UI). 'match' writes; 'lookup' is read-only.");
         command.Subcommands.Add(CreateListCommand());
         command.Subcommands.Add(CreateGetCommand());
         command.Subcommands.Add(CreateMatchCommand());
@@ -37,8 +33,7 @@ public static class AuthorsCommand
             "List authors in a library (returns all, no pagination)") { libraryOption };
         command.AddExamples(
             "abs-cli authors list",
-            "abs-cli authors list | jq '.authors[] | {name, numBooks}'",
-            "abs-cli authors list | jq '.authors | sort_by(.numBooks) | reverse | .[:5]'");
+            "abs-cli authors list --library \"My Library\"");
         command.AddResponseExample<AuthorListResponse>();
         command.SetAction(async (parseResult, cancellationToken) =>
         {
@@ -58,8 +53,7 @@ public static class AuthorsCommand
         var idOption = new Option<string>("--id") { Description = "Author ID", Required = true };
         var command = new Command("get", "Get a single author") { idOption };
         command.AddExamples(
-            "abs-cli authors get --id \"aut_abc123\"",
-            "abs-cli authors get --id \"aut_abc123\" | jq '.name'");
+            "abs-cli authors get --id \"aut_abc123\"");
         command.AddResponseExample<AuthorItem>();
         command.SetAction(async (parseResult, cancellationToken) =>
         {
@@ -84,17 +78,13 @@ public static class AuthorsCommand
             idOption, nameOption, asinOption, regionOption
         };
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
-            "Destructive on hit: writes ASIN, description, and image onto the author",
-            "and emits an 'author_updated' socket event. Image is written only when",
-            "the author had no prior image or the ASIN changed.",
+            "Destructive: writes ASIN, description, and image onto the author.",
             "",
-            "Audnexus may return multiple candidates for a name. ABS picks the closest",
-            "Levenshtein match and silently discards alternatives — for two real-world",
-            "authors with the same name, the wrong one may be picked. Pass --asin to",
-            "disambiguate.",
+            "Audnexus picks the closest Levenshtein match by name and silently drops",
+            "alternatives — pass --asin to disambiguate same-name authors.",
             "",
-            "404 means 'no upstream match found' — useful when scanning for unmatched",
-            "authors. The ABS author record is untouched on 404.");
+            "No upstream match → exit 2, stderr \"Not found. Author not found\";",
+            "the ABS author record is unchanged.");
         command.AddExamples(
             "abs-cli authors match --id \"aut_xyz\" --name \"Brandon Sanderson\"",
             "abs-cli authors match --id \"aut_xyz\" --asin \"B000AP9DSU\"",
@@ -132,17 +122,12 @@ public static class AuthorsCommand
         var nameOption = new Option<string>("--name") { Description = "Author name to search Audnexus", Required = true };
         var command = new Command("lookup", "Read-only Audnexus probe by author name") { nameOption };
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
-            "Read-only Audnexus probe. Does not touch any ABS author record.",
+            "Read-only Audnexus probe; does not touch ABS state.",
             "",
-            "ABS reduces multiple Audnexus candidates to the closest-Levenshtein single",
-            "match. The candidate list is not exposed.",
+            "Returns a single best-guess match. If the result looks wrong, look up",
+            "the specific author by ASIN via 'authors match'.",
             "",
-            "Returns the literal JSON 'null' (HTTP 200) when no match is found — agents",
-            "check the JSON value, not the HTTP status. The CLI does not exit non-zero",
-            "for this case.",
-            "",
-            "Region selection is not supported (the underlying endpoint does not accept",
-            "one); ASIN lookup is not available (this is a name-only search).");
+            "No match → prints literal JSON null and exits 0.");
         command.AddExamples(
             "abs-cli authors lookup --name \"Brandon Sanderson\"");
         command.SetAction(async (parseResult, cancellationToken) =>
@@ -168,20 +153,14 @@ public static class AuthorsCommand
             idOption, nameOption, descriptionOption, asinOption
         };
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
-            "Merge-on-rename: if --name is set to a name that already exists in the",
-            "same library, ABS auto-merges the two authors. All books of the source",
-            "author are reassigned to the existing author and the source author is",
-            "deleted. Books are not lost; the operation is recoverable by re-editing",
-            "books. The response becomes { merged: true, author: <existingAuthor> }",
-            "instead of the usual { updated, author }.",
+            "Merge-on-rename: renaming to an existing author's name in the same",
+            "library merges the two — books move to the target, source is deleted.",
+            "Response becomes { merged: true, author: <target> } instead of",
+            "{ updated, author }. Any other fields supplied alongside the rename are",
+            "silently dropped.",
             "",
-            "When the merge path runs, any also-supplied --description / --asin is",
-            "silently dropped. The merged-into author keeps its original description",
-            "and asin.",
-            "",
-            "Empty string for --description or --asin clears the field on the server",
-            "(JSON null). Empty --name is rejected client-side. At least one of",
-            "--name / --description / --asin must be supplied.");
+            "Empty string for --description or --asin clears the field. Empty --name",
+            "is rejected. At least one editable flag is required.");
         command.AddExamples(
             "abs-cli authors update --id \"aut_xyz\" --name \"Brandon Sanderson\"",
             "abs-cli authors update --id \"aut_xyz\" --description \"American author of high fantasy\"",
@@ -236,13 +215,9 @@ public static class AuthorsCommand
         var idOption = new Option<string>("--id") { Description = "Author ID", Required = true };
         var command = new Command("delete", "Delete an author and unlink it from all books") { idOption };
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
-            "Removes the author from all books and deletes the record. Books lose",
-            "their author tag; the scanner may re-derive the author on its next run",
-            "if file metadata still references the name (see the group-level lifecycle",
-            "note).",
-            "",
-            "No confirmation prompt — consistent with 'backup delete' and 'items cover",
-            "remove'. Mirrors the ABS web UI's delete behaviour.");
+            "Removes the author from all books and deletes the record. The scanner",
+            "may re-derive it on the next run if a book's file metadata still names",
+            "it.");
         command.AddExamples(
             "abs-cli authors delete --id \"aut_xyz\"");
         command.SetAction(async (parseResult, cancellationToken) =>

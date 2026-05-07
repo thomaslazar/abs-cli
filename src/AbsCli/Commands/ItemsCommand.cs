@@ -60,8 +60,7 @@ public static class ItemsCommand
             "abs-cli items list --filter \"languages=English\" --sort \"media.metadata.title\"",
             "abs-cli items list --filter \"genres=Fantasy\" --desc",
             "abs-cli items list --filter \"series=se_abc123\" --sort sequence",
-            "abs-cli items list --sort \"addedAt\" --desc --limit 10",
-            "abs-cli items list | jq '.results[] | select(.media.metadata.isbn == null)'");
+            "abs-cli items list --sort \"addedAt\" --desc --limit 10");
         command.AddResponseExample(typeof(PaginatedResponse), typeof(LibraryItemMinified));
         command.AddMediaUnionShapes();
         command.SetAction(async (parseResult, cancellationToken) =>
@@ -87,8 +86,7 @@ public static class ItemsCommand
         var idOption = new Option<string>("--id") { Description = "Item ID", Required = true };
         var command = new Command("get", "Get a single library item by ID") { idOption };
         command.AddExamples(
-            "abs-cli items get --id \"li_abc123\"",
-            "abs-cli items get --id \"li_abc123\" | jq '.media.metadata'");
+            "abs-cli items get --id \"li_abc123\"");
         command.AddResponseExample<LibraryItemMinified>();
         command.AddMediaUnionShapes();
         command.SetAction(async (parseResult, cancellationToken) =>
@@ -127,12 +125,11 @@ public static class ItemsCommand
             "Genres: name",
             "NOT searched: description, publisher");
         command.AddHelpSection("Note",
-            "The response populates book, podcast, authors, series, narrators,",
-            "tags and genres arrays — not just books. This command is kept as",
-            "an alias; prefer top-level 'abs-cli search'. See roadmap for removal.");
+            "Alias of 'abs-cli search'; prefer that. Response is multi-bucket",
+            "(book, authors, series, narrators, tags, genres) — not just books.");
         command.AddExamples(
             "abs-cli items search --query \"Mistborn\"",
-            "abs-cli items search --query \"Brandon Sanderson\" | jq '.authors[].name'",
+            "abs-cli items search --query \"Brandon Sanderson\"",
             "abs-cli items search --query \"978-0\" --limit 20");
         command.AddResponseExample<SearchResult>();
         command.AddMediaUnionShapes();
@@ -244,8 +241,7 @@ public static class ItemsCommand
         var idOption = new Option<string>("--id") { Description = "Item ID", Required = true };
         var command = new Command("scan", "Scan a single library item (admin-only, sync)") { idOption };
         command.AddExamples(
-            "abs-cli items scan --id \"li_abc123\"",
-            "abs-cli items scan --id \"li_abc123\" | jq '.result'");
+            "abs-cli items scan --id \"li_abc123\"");
         command.AddResponseExample<ScanResult>();
         command.SetAction(async (parseResult, cancellationToken) =>
         {

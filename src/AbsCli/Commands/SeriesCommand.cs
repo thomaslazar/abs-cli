@@ -11,13 +11,12 @@ public static class SeriesCommand
     {
         var command = new Command("series", "Manage series");
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
-            "Series are derived from book metadata. A series exists while at least one",
-            "library item references it. When the last referencing item is removed or",
-            "re-tagged, the scanner deletes the series on its next run. To remove a",
-            "series, update the books that reference it.",
+            "Series are derived from book metadata. The scanner removes orphaned",
+            "series on its next run. To remove a series, retag the books that",
+            "reference it.",
             "",
-            "Neither 'series list' nor 'series get' returns the books in a series —",
-            "they return series entities only. To list books in a specific series:",
+            "'series list' and 'series get' return series entities only. To list",
+            "books in a series:",
             "  abs-cli items list --filter \"series=<series-id>\" --sort sequence");
         command.Subcommands.Add(CreateListCommand());
         command.Subcommands.Add(CreateGetCommand());
@@ -34,8 +33,7 @@ public static class SeriesCommand
         { libraryOption, limitOption, pageOption };
         command.AddExamples(
             "abs-cli series list",
-            "abs-cli series list --limit 10 --page 0",
-            "abs-cli series list --limit 100 | jq '.results[].name'");
+            "abs-cli series list --limit 10 --page 0");
         command.AddResponseExample(typeof(PaginatedResponse), typeof(SeriesItem));
         command.SetAction(async (parseResult, cancellationToken) =>
         {
@@ -57,8 +55,7 @@ public static class SeriesCommand
         var idOption = new Option<string>("--id") { Description = "Series ID", Required = true };
         var command = new Command("get", "Get a single series") { idOption };
         command.AddExamples(
-            "abs-cli series get --id \"se_abc123\"",
-            "abs-cli series get --id \"se_abc123\" | jq '.name'");
+            "abs-cli series get --id \"se_abc123\"");
         command.AddResponseExample<SeriesItem>();
         command.SetAction(async (parseResult, cancellationToken) =>
         {

@@ -32,8 +32,7 @@ public static class SearchCommand
         command.AddExamples(
             "abs-cli search --query \"Brandon Sanderson\"",
             "abs-cli search --query \"Mistborn\" --limit 5",
-            "abs-cli search --query \"978-0\" --limit 20    # search by ISBN prefix",
-            "abs-cli search --query \"Fantasy\" | jq '.book[].libraryItem.media.metadata.title'");
+            "abs-cli search --query \"978-0\" --limit 20    # search by ISBN prefix");
         command.AddResponseExample<SearchResult>();
         command.AddMediaUnionShapes();
         command.SetAction(async (parseResult, cancellationToken) =>
