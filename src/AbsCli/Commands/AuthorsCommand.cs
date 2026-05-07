@@ -25,6 +25,7 @@ public static class AuthorsCommand
         command.Subcommands.Add(CreateGetCommand());
         command.Subcommands.Add(CreateMatchCommand());
         command.Subcommands.Add(CreateLookupCommand());
+        command.Subcommands.Add(CreateUpdateCommand());
         return command;
     }
 
@@ -151,5 +152,78 @@ public static class AuthorsCommand
             ConsoleOutput.WriteRawJson(json);
         });
         return command;
+    }
+
+    private static Command CreateUpdateCommand()
+    {
+        var idOption = new Option<string>("--id") { Description = "Author ID", Required = true };
+        var nameOption = new Option<string?>("--name") { Description = "New name (renaming to an existing name in the same library merges authors — see Notes)" };
+        var descriptionOption = new Option<string?>("--description") { Description = "New description; empty string clears the field" };
+        var asinOption = new Option<string?>("--asin") { Description = "New ASIN; empty string clears the field" };
+        var command = new Command("update", "Edit an author's name, description, and/or ASIN")
+        {
+            idOption, nameOption, descriptionOption, asinOption
+        };
+        command.AddHelpSection("Notes", HelpSectionPosition.Top,
+            "Merge-on-rename: if --name is set to a name that already exists in the",
+            "same library, ABS auto-merges the two authors. All books of the source",
+            "author are reassigned to the existing author and the source author is",
+            "deleted. Books are not lost; the operation is recoverable by re-editing",
+            "books. The response becomes { merged: true, author: <existingAuthor> }",
+            "instead of the usual { updated, author }.",
+            "",
+            "When the merge path runs, any also-supplied --description / --asin is",
+            "silently dropped. The merged-into author keeps its original description",
+            "and asin.",
+            "",
+            "Empty string for --description or --asin clears the field on the server",
+            "(JSON null). Empty --name is rejected client-side. At least one of",
+            "--name / --description / --asin must be supplied.");
+        command.AddExamples(
+            "abs-cli authors update --id \"aut_xyz\" --name \"Brandon Sanderson\"",
+            "abs-cli authors update --id \"aut_xyz\" --description \"American author of high fantasy\"",
+            "abs-cli authors update --id \"aut_xyz\" --asin \"\"",
+            "abs-cli authors update --id \"aut_xyz\" --name \"Brandon Sanderson\" --description \"American author of high fantasy\" --asin \"B000AP9DSU\"");
+        command.AddResponseExample<AuthorUpdateResponse>();
+        command.SetAction(async parseResult =>
+        {
+            var id = parseResult.GetValue(idOption)!;
+            var name = parseResult.GetValue(nameOption);
+            var description = parseResult.GetValue(descriptionOption);
+            var asin = parseResult.GetValue(asinOption);
+            if (name is not null && string.IsNullOrEmpty(name))
+            {
+                ConsoleOutput.WriteError("--name cannot be empty");
+                Environment.Exit(1);
+            }
+            var body = BuildUpdateBodyForTesting(name, description, asin);
+            if (body.Count == 0)
+            {
+                ConsoleOutput.WriteError("Specify at least one of --name, --description, --asin");
+                Environment.Exit(1);
+            }
+            var (client, _) = CommandHelper.BuildClient();
+            var service = new AuthorsService(client);
+            var result = await service.UpdateAsync(id, body);
+            ConsoleOutput.WriteJson(result, AppJsonContext.Default.AuthorUpdateResponse);
+        });
+        return command;
+    }
+
+    /// <summary>
+    /// Build the PATCH body honouring the tri-state semantics: null = field
+    /// absent (omit from JSON), empty string = clear (send JSON null),
+    /// non-empty = set value. Exposed internally for unit testing.
+    /// </summary>
+    internal static Dictionary<string, string> BuildUpdateBodyForTesting(string? name, string? description, string? asin)
+    {
+        var body = new Dictionary<string, string>();
+        if (!string.IsNullOrEmpty(name))
+            body["name"] = name;
+        if (description is not null)
+            body["description"] = description == "" ? null! : description;
+        if (asin is not null)
+            body["asin"] = asin == "" ? null! : asin;
+        return body;
     }
 }

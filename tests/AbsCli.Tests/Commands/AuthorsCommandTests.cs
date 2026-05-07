@@ -75,4 +75,58 @@ public class AuthorsCommandTests
         Assert.Contains("Read-only", output);
         Assert.Contains("null", output);
     }
+
+    [Fact]
+    public void AuthorsUpdate_Help_DocumentsAllThreeFields()
+    {
+        var output = RenderHelp("authors", "update");
+        Assert.Contains("--id", output);
+        Assert.Contains("--name", output);
+        Assert.Contains("--description", output);
+        Assert.Contains("--asin", output);
+    }
+
+    [Fact]
+    public void AuthorsUpdate_Help_DocumentsMergeOnRenameCaveat()
+    {
+        var output = RenderHelp("authors", "update");
+        Assert.Contains("merge", output, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("rename", output, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void AuthorsUpdate_Help_DocumentsClearSemantics()
+    {
+        var output = RenderHelp("authors", "update");
+        Assert.Contains("Empty string", output);
+        Assert.Contains("clear", output);
+    }
+
+    [Fact]
+    public void AuthorsUpdate_Help_ShowsResponseShape()
+    {
+        var output = RenderHelp("authors", "update");
+        Assert.Contains("Response shape:", output);
+        Assert.Contains("\"updated\"", output);
+        Assert.Contains("\"author\"", output);
+    }
+
+    [Theory]
+    [InlineData("Foo", null, null, "{\"name\": \"Foo\"}")]
+    [InlineData(null, "", null, "{\"description\": null}")]
+    [InlineData(null, null, "", "{\"asin\": null}")]
+    [InlineData(null, "Bio", null, "{\"description\": \"Bio\"}")]
+    [InlineData("Foo", "", "", "{\"name\": \"Foo\",\"description\": null,\"asin\": null}")]
+    public void AuthorsUpdate_BuildBody_TriState(string? name, string? description, string? asin, string expected)
+    {
+        var body = AuthorsCommand.BuildUpdateBodyForTesting(name, description, asin);
+        var json = System.Text.Json.JsonSerializer.Serialize(
+            body, AbsCli.Models.AppJsonContext.Default.DictionaryStringString);
+        var expectedFragments = expected.Trim('{', '}').Split(',');
+        foreach (var fragment in expectedFragments)
+        {
+            if (!string.IsNullOrEmpty(fragment))
+                Assert.Contains(fragment, json);
+        }
+    }
 }
