@@ -541,9 +541,9 @@ public static class SelfTestCommand
                     ["asin"] = "B000AP9DSU"
                 };
                 var json = JsonSerializer.Serialize(body, AppJsonContext.Default.DictionaryStringString);
-                Assert(json.Contains("\"name\"") && json.Contains("Brandon Sanderson"), $"name: {json}");
-                Assert(json.Contains("\"description\"") && json.Contains("null"), $"description null: {json}");
-                Assert(json.Contains("\"asin\"") && json.Contains("B000AP9DSU"), $"asin: {json}");
+                Assert(json.Contains("\"name\": \"Brandon Sanderson\""), $"name: {json}");
+                Assert(json.Contains("\"description\": null"), $"description null: {json}");
+                Assert(json.Contains("\"asin\": \"B000AP9DSU\""), $"asin: {json}");
             });
 
             Console.Error.WriteLine();

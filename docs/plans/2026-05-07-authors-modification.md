@@ -251,9 +251,9 @@ Add this block immediately after the last `Check(...)` call in the cover models 
                     ["asin"] = "B000AP9DSU"
                 };
                 var json = JsonSerializer.Serialize(body, AppJsonContext.Default.DictionaryStringString);
-                Assert(json.Contains("\"name\":\"Brandon Sanderson\""), $"name: {json}");
-                Assert(json.Contains("\"description\":null"), $"description null: {json}");
-                Assert(json.Contains("\"asin\":\"B000AP9DSU\""), $"asin: {json}");
+                Assert(json.Contains("\"name\": \"Brandon Sanderson\""), $"name: {json}");
+                Assert(json.Contains("\"description\": null"), $"description null: {json}");
+                Assert(json.Contains("\"asin\": \"B000AP9DSU\""), $"asin: {json}");
             });
 ```
 
