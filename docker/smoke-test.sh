@@ -312,21 +312,49 @@ echo "=== Authors Commands ==="
 output=$($CLI authors list 2>/dev/null)
 assert_json_key "authors list has authors" "authors" "$output"
 assert_json_expr "authors list has 6 authors" "len(d['authors'])==6" "$output"
-
-# Check a known author exists
 assert_json_expr "authors list contains Brandon Sanderson" \
     "any(a['name']=='Brandon Sanderson' for a in d['authors'])" "$output"
 
-# Get a specific author
 AUTHOR_ID=$(echo "$output" | python3 -c "
 import sys,json
 authors = json.load(sys.stdin)['authors']
 bs = next(a for a in authors if a['name']=='Brandon Sanderson')
 print(bs['id'])
 ")
+
 output=$($CLI authors get --id "$AUTHOR_ID" 2>/dev/null)
 assert_json_key "authors get has id" "id" "$output"
 assert_json_expr "authors get is Brandon Sanderson" "d['name']=='Brandon Sanderson'" "$output"
+
+# --- lookup ---
+output=$($CLI authors lookup --name "Brandon Sanderson" 2>/dev/null)
+assert_json_expr "authors lookup returns object for known author" \
+    "isinstance(d, dict) and d.get('name')" "$output"
+
+output=$($CLI authors lookup --name "ZzzNotARealAuthorXyz" 2>/dev/null)
+# null body deserialises to Python None
+assert_test "authors lookup returns null for missing author" \
+    "[ \"$output\" = \"null\" ]"
+
+# --- match ---
+output=$($CLI authors match --id "$AUTHOR_ID" --name "Brandon Sanderson" 2>/dev/null)
+assert_json_key "authors match returns updated key" "updated" "$output"
+assert_json_key "authors match returns author key" "author" "$output"
+
+# --- update (description set, then clear) ---
+output=$($CLI authors update --id "$AUTHOR_ID" --description "Smoke-test description" 2>/dev/null)
+assert_json_key "authors update returns updated key" "updated" "$output"
+assert_json_expr "authors update set description" \
+    "d['author']['description']=='Smoke-test description'" "$output"
+
+output=$($CLI authors update --id "$AUTHOR_ID" --description "" 2>/dev/null)
+assert_json_expr "authors update cleared description" \
+    "d['author'].get('description') in (None, '')" "$output"
+
+# --- delete (against a throwaway author created via PATCH side-effect of merge,
+#     skipped here to avoid mutating the seeded library; covered in
+#     integration tests with a dedicated test user / library)
+echo "(authors delete: covered in integration suite, not smoke)"
 
 # ============================================================
 echo ""
