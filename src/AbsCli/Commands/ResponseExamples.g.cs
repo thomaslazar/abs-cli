@@ -11,10 +11,12 @@ internal static class ResponseExamples
 {
     private static readonly Dictionary<Type, string> Samples = new()
     {
+        { typeof(AbsCli.Models.AuthorImageRequest),
+          "{\n  \"url\": \"<string>\"\n}" },
+        { typeof(AbsCli.Models.AuthorImageResponse),
+          "{\n  \"author\": {\n    \"id\": \"<string>\",\n    \"asin\": null,\n    \"name\": \"<string>\",\n    \"description\": null,\n    \"imagePath\": null,\n    \"libraryId\": \"<string>\",\n    \"addedAt\": 0,\n    \"updatedAt\": 0,\n    \"numBooks\": 0,\n    \"lastFirst\": null\n  }\n}" },
         { typeof(AbsCli.Models.AuthorItem),
           "{\n  \"id\": \"<string>\",\n  \"asin\": null,\n  \"name\": \"<string>\",\n  \"description\": null,\n  \"imagePath\": null,\n  \"libraryId\": \"<string>\",\n  \"addedAt\": 0,\n  \"updatedAt\": 0,\n  \"numBooks\": 0,\n  \"lastFirst\": null\n}" },
-        { typeof(AbsCli.Models.AuthorListResponse),
-          "{\n  \"authors\": [\n    {\n      \"id\": \"<string>\",\n      \"asin\": null,\n      \"name\": \"<string>\",\n      \"description\": null,\n      \"imagePath\": null,\n      \"libraryId\": \"<string>\",\n      \"addedAt\": 0,\n      \"updatedAt\": 0,\n      \"numBooks\": 0,\n      \"lastFirst\": null\n    }\n  ]\n}" },
         { typeof(AbsCli.Models.AuthorMatchRequest),
           "{}" },
         { typeof(AbsCli.Models.AuthorMatchResponse),
