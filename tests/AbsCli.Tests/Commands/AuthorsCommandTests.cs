@@ -140,4 +140,25 @@ public class AuthorsCommandTests
         var output = RenderHelp("authors", "delete");
         Assert.Contains("removes the author from all books", output, StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public void AuthorsList_Help_DocumentsPaginationFlags()
+    {
+        var output = RenderHelp("authors", "list");
+        Assert.Contains("--limit", output);
+        Assert.Contains("--page", output);
+        Assert.Contains("--sort", output);
+        Assert.Contains("--desc", output);
+    }
+
+    [Fact]
+    public void AuthorsList_Help_ShowsPaginatedResponseShape()
+    {
+        var output = RenderHelp("authors", "list");
+        Assert.Contains("Response shape:", output);
+        Assert.Contains("\"results\"", output);
+        Assert.Contains("\"total\"", output);
+        Assert.Contains("\"limit\"", output);
+        Assert.Contains("\"page\"", output);
+    }
 }

@@ -34,9 +34,3 @@ public class AuthorItem
     [JsonPropertyName("lastFirst")]
     public string? LastFirst { get; set; }
 }
-
-public class AuthorListResponse
-{
-    [JsonPropertyName("authors")]
-    public List<AuthorItem> Authors { get; set; } = new();
-}

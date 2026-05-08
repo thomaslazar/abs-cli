@@ -29,20 +29,29 @@ public static class AuthorsCommand
     private static Command CreateListCommand()
     {
         var libraryOption = new Option<string?>("--library") { Description = "Library ID" };
-        var command = new Command("list",
-            "List authors in a library (returns all, no pagination)") { libraryOption };
+        var limitOption = new Option<int>("--limit") { Description = "Results per page (default 50)", DefaultValueFactory = _ => 50 };
+        var pageOption = new Option<int?>("--page") { Description = "Page number (0-indexed)" };
+        var sortOption = new Option<string?>("--sort") { Description = "Sort field (name | lastFirst | addedAt | updatedAt | numBooks); default name" };
+        var descOption = new Option<bool>("--desc") { Description = "Sort descending" };
+        var command = new Command("list", "List authors in a library (paginated)")
+        { libraryOption, limitOption, pageOption, sortOption, descOption };
         command.AddExamples(
             "abs-cli authors list",
-            "abs-cli authors list --library \"lib_abc123\"");
-        command.AddResponseExample<AuthorListResponse>();
+            "abs-cli authors list --limit 100 --page 0",
+            "abs-cli authors list --sort numBooks --desc --limit 10");
+        command.AddResponseExample(typeof(PaginatedResponse), typeof(AuthorItem));
         command.SetAction(async (parseResult, cancellationToken) =>
         {
             var library = parseResult.GetValue(libraryOption);
+            var limit = parseResult.GetValue(limitOption);
+            var page = parseResult.GetValue(pageOption);
+            var sort = parseResult.GetValue(sortOption) ?? "name";
+            var desc = parseResult.GetValue(descOption);
             var (client, config) = CommandHelper.BuildClient(libraryOverride: library);
             var libraryId = CommandHelper.RequireLibrary(config);
             var service = new AuthorsService(client);
-            var result = await service.ListAsync(libraryId);
-            ConsoleOutput.WriteJson(result, AppJsonContext.Default.AuthorListResponse);
+            var result = await service.ListAsync(libraryId, limit, page, sort, desc);
+            ConsoleOutput.WriteJson(result, AppJsonContext.Default.PaginatedResponse);
             return 0;
         });
         return command;
