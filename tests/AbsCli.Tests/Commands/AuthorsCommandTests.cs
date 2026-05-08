@@ -19,10 +19,10 @@ public class AuthorsCommandTests
     }
 
     [Fact]
-    public void Authors_HasAllSixSubcommands()
+    public void Authors_HasAllSevenSubcommands()
     {
         var verbs = AuthorsCommand.Create().Subcommands.Select(c => c.Name).ToList();
-        Assert.Equal(new[] { "list", "get", "match", "lookup", "update", "delete" }, verbs);
+        Assert.Equal(new[] { "list", "get", "match", "lookup", "update", "delete", "image" }, verbs);
     }
 
     [Fact]

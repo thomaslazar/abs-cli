@@ -23,6 +23,7 @@ public static class AuthorsCommand
         command.Subcommands.Add(CreateLookupCommand());
         command.Subcommands.Add(CreateUpdateCommand());
         command.Subcommands.Add(CreateDeleteCommand());
+        command.Subcommands.Add(CreateImageCommand());
         return command;
     }
 
@@ -238,6 +239,99 @@ public static class AuthorsCommand
             var service = new AuthorsService(client);
             await service.DeleteAsync(id);
             ConsoleOutput.WriteJson(new Dictionary<string, string> { ["success"] = "true" });
+            return 0;
+        });
+        return command;
+    }
+
+    private static Command CreateImageCommand()
+    {
+        var command = new Command("image", "Manage author images (set, get, remove)");
+        command.Subcommands.Add(CreateImageSetCommand());
+        command.Subcommands.Add(CreateImageGetCommand());
+        command.Subcommands.Add(CreateImageRemoveCommand());
+        return command;
+    }
+
+    private static Command CreateImageSetCommand()
+    {
+        var idOption = new Option<string>("--id") { Description = "Author ID", Required = true };
+        var urlOption = new Option<string>("--url") { Description = "Image URL (http or https) — ABS server downloads it", Required = true };
+        var command = new Command("set", "Set the author image from a URL")
+        { idOption, urlOption };
+        command.AddExamples(
+            "abs-cli authors image set --id \"aut_xyz\" --url \"https://example.com/author.png\"");
+        command.AddResponseExample<AuthorImageResponse>();
+        command.SetAction(async (parseResult, cancellationToken) =>
+        {
+            var id = parseResult.GetValue(idOption)!;
+            var url = parseResult.GetValue(urlOption)!;
+            var (client, _) = CommandHelper.BuildClient();
+            var service = new AuthorsService(client);
+            var result = await service.SetImageAsync(id, url);
+            ConsoleOutput.WriteJson(result, AppJsonContext.Default.AuthorImageResponse);
+            return 0;
+        });
+        return command;
+    }
+
+    private static Command CreateImageGetCommand()
+    {
+        var idOption = new Option<string>("--id") { Description = "Author ID", Required = true };
+        var outputOption = new Option<string>("--output") { Description = "Output file path, or '-' for binary to stdout", Required = true };
+        var rawOption = new Option<bool>("--raw") { Description = "Fetch the original unprocessed image (default: ABS-resized)" };
+        var command = new Command("get", "Download the author image")
+        { idOption, outputOption, rawOption };
+        command.AddExamples(
+            "abs-cli authors image get --id \"aut_xyz\" --output author.jpg",
+            "abs-cli authors image get --id \"aut_xyz\" --output author.png --raw",
+            "abs-cli authors image get --id \"aut_xyz\" --output - > author.jpg");
+        command.AddResponseExample<CoverFileSavedDescriptor>();
+        command.SetAction(async (parseResult, cancellationToken) =>
+        {
+            var id = parseResult.GetValue(idOption)!;
+            var output = parseResult.GetValue(outputOption)!;
+            var raw = parseResult.GetValue(rawOption);
+            var (client, _) = CommandHelper.BuildClient();
+            var service = new AuthorsService(client);
+            await using var stream = await service.GetImageStreamAsync(id, raw);
+            if (output == "-")
+            {
+                await using var stdout = Console.OpenStandardOutput();
+                await stream.CopyToAsync(stdout);
+                return 0;
+            }
+            long bytes;
+            await using (var fileStream = new FileStream(output, FileMode.Create, FileAccess.Write))
+            {
+                await stream.CopyToAsync(fileStream);
+                bytes = fileStream.Length;
+            }
+            var descriptor = new CoverFileSavedDescriptor { Path = output, Bytes = bytes };
+            ConsoleOutput.WriteJson(descriptor, AppJsonContext.Default.CoverFileSavedDescriptor);
+            return 0;
+        });
+        return command;
+    }
+
+    private static Command CreateImageRemoveCommand()
+    {
+        var idOption = new Option<string>("--id") { Description = "Author ID", Required = true };
+        var command = new Command("remove", "Remove the author image")
+        { idOption };
+        command.AddHelpSection("Notes", HelpSectionPosition.Top,
+            "No current image → exit 2, stderr \"Bad request. Author has no image",
+            "path set\". Check imagePath via 'authors get' first if needed.");
+        command.AddExamples(
+            "abs-cli authors image remove --id \"aut_xyz\"");
+        command.AddResponseExample<AuthorImageResponse>();
+        command.SetAction(async (parseResult, cancellationToken) =>
+        {
+            var id = parseResult.GetValue(idOption)!;
+            var (client, _) = CommandHelper.BuildClient();
+            var service = new AuthorsService(client);
+            var result = await service.RemoveImageAsync(id);
+            ConsoleOutput.WriteJson(result, AppJsonContext.Default.AuthorImageResponse);
             return 0;
         });
         return command;
