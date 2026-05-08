@@ -310,17 +310,45 @@ echo "=== Authors Commands ==="
 # ============================================================
 
 output=$($CLI authors list 2>/dev/null)
-assert_json_key "authors list has authors" "authors" "$output"
-assert_json_expr "authors list has 6 authors" "len(d['authors'])==6" "$output"
+assert_json_key "authors list returns paginated shape (results)" "results" "$output"
+assert_json_key "authors list returns paginated shape (total)" "total" "$output"
+assert_json_expr "authors list has 6 authors" "d['total']==6 and len(d['results'])==6" "$output"
 assert_json_expr "authors list contains Brandon Sanderson" \
-    "any(a['name']=='Brandon Sanderson' for a in d['authors'])" "$output"
+    "any(a['name']=='Brandon Sanderson' for a in d['results'])" "$output"
 
 AUTHOR_ID=$(echo "$output" | python3 -c "
 import sys,json
-authors = json.load(sys.stdin)['authors']
+authors = json.load(sys.stdin)['results']
 bs = next(a for a in authors if a['name']=='Brandon Sanderson')
 print(bs['id'])
 ")
+
+# Pagination round-trip
+output=$($CLI authors list --limit 3 --page 0 2>/dev/null)
+assert_json_expr "authors list page 0 returns 3 results" "len(d['results'])==3" "$output"
+assert_json_expr "authors list page 0 reports total 6" "d['total']==6" "$output"
+PAGE0_NAMES=$(echo "$output" | python3 -c "import sys,json; print(','.join(sorted(a['name'] for a in json.load(sys.stdin)['results'])))")
+
+output=$($CLI authors list --limit 3 --page 1 2>/dev/null)
+assert_json_expr "authors list page 1 returns 3 results" "len(d['results'])==3" "$output"
+assert_json_expr "authors list page 1 reports total 6" "d['total']==6" "$output"
+PAGE1_NAMES=$(echo "$output" | python3 -c "import sys,json; print(','.join(sorted(a['name'] for a in json.load(sys.stdin)['results'])))")
+
+if [ "$PAGE0_NAMES" != "$PAGE1_NAMES" ]; then
+    pass "authors list pages do not overlap"
+else
+    fail "authors list pages do not overlap" "page 0 and page 1 returned the same names"
+fi
+
+# Reverse sort by name — first result should NOT be the alphabetically-first name
+output=$($CLI authors list --sort name --desc 2>/dev/null)
+FIRST_NAME=$(echo "$output" | python3 -c "import sys,json; print(json.load(sys.stdin)['results'][0]['name'])")
+ALPHA_FIRST=$(echo "$output" | python3 -c "import sys,json; print(sorted(a['name'] for a in json.load(sys.stdin)['results'])[0])")
+if [ "$FIRST_NAME" != "$ALPHA_FIRST" ]; then
+    pass "authors list --sort name --desc starts with last name alphabetically"
+else
+    fail "authors list --sort name --desc starts with last name alphabetically" "first result was the alphabetically-first name"
+fi
 
 output=$($CLI authors get --id "$AUTHOR_ID" 2>/dev/null)
 assert_json_key "authors get has id" "id" "$output"
@@ -368,10 +396,10 @@ $CLI items update --id "$FIRST_ITEM_ID" --input "$THROWAWAY_PAYLOAD" 2>/dev/null
 
 output=$($CLI authors list 2>/dev/null)
 assert_json_expr "authors update added throwaway author" \
-    "any(a['name']=='Smoke Test Throwaway' for a in d['authors'])" "$output"
+    "any(a['name']=='Smoke Test Throwaway' for a in d['results'])" "$output"
 THROWAWAY_ID=$(echo "$output" | python3 -c "
 import sys,json
-print(next(a['id'] for a in json.load(sys.stdin)['authors'] if a['name']=='Smoke Test Throwaway'))
+print(next(a['id'] for a in json.load(sys.stdin)['results'] if a['name']=='Smoke Test Throwaway'))
 ")
 
 output=$($CLI authors delete --id "$THROWAWAY_ID" 2>/dev/null)
@@ -379,8 +407,8 @@ assert_json_expr "authors delete returns success" "d.get('success')=='true'" "$o
 
 output=$($CLI authors list 2>/dev/null)
 assert_json_expr "authors delete removed throwaway" \
-    "not any(a['name']=='Smoke Test Throwaway' for a in d['authors'])" "$output"
-assert_json_expr "authors list back to 6 authors" "len(d['authors'])==6" "$output"
+    "not any(a['name']=='Smoke Test Throwaway' for a in d['results'])" "$output"
+assert_json_expr "authors list back to 6 authors" "len(d['results'])==6" "$output"
 
 # Restore book to original authors
 RESTORE_PAYLOAD=$(python3 -c "
@@ -400,7 +428,7 @@ $CLI items update --id "$FIRST_ITEM_ID" --input "$MERGEE_PAYLOAD" 2>/dev/null > 
 
 MERGEE_ID=$($CLI authors list 2>/dev/null | python3 -c "
 import sys,json
-print(next(a['id'] for a in json.load(sys.stdin)['authors'] if a['name']=='Smoke Test Mergee'))
+print(next(a['id'] for a in json.load(sys.stdin)['results'] if a['name']=='Smoke Test Mergee'))
 ")
 
 output=$($CLI authors update --id "$MERGEE_ID" --name "Jim Butcher" 2>/dev/null)
@@ -411,8 +439,8 @@ assert_json_expr "authors update merge response carries the existing author" \
 
 output=$($CLI authors list 2>/dev/null)
 assert_json_expr "authors update merge removed throwaway" \
-    "not any(a['name']=='Smoke Test Mergee' for a in d['authors'])" "$output"
-assert_json_expr "authors list still 6 after merge" "len(d['authors'])==6" "$output"
+    "not any(a['name']=='Smoke Test Mergee' for a in d['results'])" "$output"
+assert_json_expr "authors list still 6 after merge" "len(d['results'])==6" "$output"
 
 # Restore book to original authors (merge added Jim Butcher to FIRST_ITEM_ID)
 $CLI items update --id "$FIRST_ITEM_ID" --input "$RESTORE_PAYLOAD" 2>/dev/null > /dev/null
