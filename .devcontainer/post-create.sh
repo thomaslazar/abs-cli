@@ -24,6 +24,15 @@ with open(cfg_path, 'w') as f:
     json.dump(cfg, f, indent=2)
 " 2>/dev/null || true
 
+# --- Claude Code statusline ---
+# Install the statusline script and register it in settings.json.
+install -m 755 .devcontainer/statusline.sh ~/.claude/statusline.sh
+SETTINGS=~/.claude/settings.json
+[ -f "$SETTINGS" ] || echo '{}' > "$SETTINGS"
+tmp=$(mktemp)
+jq '. + {statusLine: {type: "command", command: "/home/vscode/.claude/statusline.sh"}}' \
+  "$SETTINGS" > "$tmp" && mv "$tmp" "$SETTINGS"
+
 # --- Superpowers setup ---
 # Structured development workflow (brainstorming, planning, TDD, debugging, code review).
 claude plugin marketplace add obra/superpowers 2>/dev/null || true
