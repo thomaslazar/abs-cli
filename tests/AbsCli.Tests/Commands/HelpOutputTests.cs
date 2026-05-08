@@ -47,7 +47,7 @@ public class HelpOutputTests
         var output = RenderHelp("authors", "list");
         Assert.Contains("Response shape:", output);
         Assert.Contains("\"numBooks\"", output);
-        Assert.Contains("\"authors\"", output);
+        Assert.Contains("\"results\"", output);
     }
 
     [Fact]

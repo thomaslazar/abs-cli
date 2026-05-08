@@ -19,7 +19,6 @@ namespace AbsCli.Models;
 [JsonSerializable(typeof(BatchGetResponse))]
 [JsonSerializable(typeof(SeriesItem))]
 [JsonSerializable(typeof(AuthorItem))]
-[JsonSerializable(typeof(AuthorListResponse))]
 [JsonSerializable(typeof(AuthorMatchRequest))]
 [JsonSerializable(typeof(AuthorMatchResponse))]
 [JsonSerializable(typeof(AuthorUpdateResponse))]

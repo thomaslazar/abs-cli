@@ -203,16 +203,14 @@ public static class SelfTestCommand
                 Assert(back.NumBooks == 4, $"numBooks: {back.NumBooks}");
             });
 
-            Check("AuthorListResponse round-trip", () =>
+            Check("PaginatedResponse (authors) round-trip", () =>
             {
-                var obj = new AuthorListResponse
-                {
-                    Authors = new List<AuthorItem> { new() { Id = "aut_1", Name = "Test" } }
-                };
-                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.AuthorListResponse);
-                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.AuthorListResponse)!;
-                Assert(back.Authors.Count == 1, $"count: {back.Authors.Count}");
-                Assert(back.Authors[0].Name == "Test", $"name: {back.Authors[0].Name}");
+                var obj = new PaginatedResponse { Total = 1, Limit = 50, Page = 0 };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.PaginatedResponse);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.PaginatedResponse)!;
+                Assert(back.Total == 1, $"total: {back.Total}");
+                Assert(back.Limit == 50, $"limit: {back.Limit}");
+                Assert(back.Page == 0, $"page: {back.Page}");
             });
 
             Check("BackupItem round-trip", () =>

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Web;
 using AbsCli.Api;
 using AbsCli.Models;
 
@@ -13,9 +14,20 @@ public class AuthorsService
         _client = client;
     }
 
-    public async Task<AuthorListResponse> ListAsync(string libraryId)
+    public async Task<PaginatedResponse> ListAsync(string libraryId, int limit, int? page, string? sort, bool desc)
     {
-        return await _client.GetAsync(ApiEndpoints.LibraryAuthors(libraryId), AppJsonContext.Default.AuthorListResponse);
+        var query = HttpUtility.ParseQueryString("");
+        // Always send numeric limit and page so ABS returns the paginated
+        // shape unconditionally. ABS's authors endpoint switches between
+        // {authors:[...]} and {results, total, ...} based on whether both
+        // are present and numeric — see LibraryController.js:1022.
+        query["limit"] = limit.ToString();
+        query["page"] = (page ?? 0).ToString();
+        if (sort != null) query["sort"] = sort;
+        if (desc) query["desc"] = "1";
+
+        var url = ApiEndpoints.LibraryAuthors(libraryId) + "?" + query;
+        return await _client.GetAsync(url, AppJsonContext.Default.PaginatedResponse);
     }
 
     public async Task<AuthorItem> GetAsync(string id)
