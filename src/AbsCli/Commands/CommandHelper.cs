@@ -36,7 +36,7 @@ public static class CommandHelper
         if (string.IsNullOrEmpty(config.DefaultLibrary))
         {
             ConsoleOutput.WriteError(
-                "No library specified. Use --library <id|name> or set a default with: abs-cli config set default-library <id|name>");
+                "No library specified. Use --library <id> or set a default with: abs-cli config set defaultLibrary <id>");
             Environment.Exit(1);
         }
         return config.DefaultLibrary!;

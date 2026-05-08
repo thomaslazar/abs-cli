@@ -25,7 +25,7 @@ public static class SeriesCommand
 
     private static Command CreateListCommand()
     {
-        var libraryOption = new Option<string?>("--library") { Description = "Library ID or name" };
+        var libraryOption = new Option<string?>("--library") { Description = "Library ID" };
         var limitOption = new Option<int>("--limit") { Description = "Results per page (default 50, pass higher value to retrieve more)", DefaultValueFactory = _ => 50 };
         var pageOption = new Option<int?>("--page") { Description = "Page number (0-indexed)" };
         var command = new Command("list",

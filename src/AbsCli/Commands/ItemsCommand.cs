@@ -23,7 +23,7 @@ public static class ItemsCommand
 
     private static Command CreateListCommand()
     {
-        var libraryOption = new Option<string?>("--library") { Description = "Library ID or name" };
+        var libraryOption = new Option<string?>("--library") { Description = "Library ID" };
         var filterOption = new Option<string?>("--filter") { Description = "Filter expression (e.g. 'genres=Sci Fi')" };
         var sortOption = new Option<string?>("--sort") { Description = "Sort field (e.g. 'media.metadata.title')" };
         var descOption = new Option<bool>("--desc") { Description = "Sort descending" };
@@ -54,7 +54,8 @@ public static class ItemsCommand
             "size                          — file size",
             "birthtimeMs                   — file creation time",
             "mtimeMs                       — file modification time",
-            "random                        — random order");
+            "random                        — random order",
+            "sequence                      — series sequence (only with --filter \"series=<id>\")");
         command.AddExamples(
             "abs-cli items list",
             "abs-cli items list --filter \"languages=English\" --sort \"media.metadata.title\"",
@@ -104,7 +105,7 @@ public static class ItemsCommand
     private static Command CreateSearchCommand()
     {
         var queryOption = new Option<string>("--query") { Description = "Search text", Required = true };
-        var libraryOption = new Option<string?>("--library") { Description = "Library ID or name" };
+        var libraryOption = new Option<string?>("--library") { Description = "Library ID" };
         var limitOption = new Option<int>("--limit") { Description = "Max results (default 50, pass higher value to retrieve more)", DefaultValueFactory = _ => 50 };
         var command = new Command("search",
             "Search across a library (substring match, case-insensitive, defaults to 50 results). Alias for 'abs-cli search' — same endpoint, same response shape.")
@@ -270,7 +271,7 @@ public static class ItemsCommand
         var urlOption = new Option<string?>("--url") { Description = "Cover image URL — ABS server downloads it" };
         var fileOption = new Option<string?>("--file") { Description = "Local cover image file to upload" };
         var serverPathOption = new Option<string?>("--server-path") { Description = "Path to a file already on the ABS server's filesystem" };
-        var command = new Command("set", "Apply a cover to a book by URL, local file, or existing server-side path") { idOption, urlOption, fileOption, serverPathOption };
+        var command = new Command("set", "Apply a cover to a library item by URL, local file, or existing server-side path") { idOption, urlOption, fileOption, serverPathOption };
         command.AddExamples(
             "abs-cli items cover set --id \"li_abc123\" --url \"https://example.com/cover.jpg\"",
             "abs-cli items cover set --id \"li_abc123\" --file ./cover.jpg",
@@ -318,7 +319,7 @@ public static class ItemsCommand
         var idOption = new Option<string>("--id") { Description = "Library item ID", Required = true };
         var outputOption = new Option<string>("--output") { Description = "Output file path, or '-' for binary to stdout", Required = true };
         var rawOption = new Option<bool>("--raw") { Description = "Fetch the original unprocessed image (default: ABS-resized)" };
-        var command = new Command("get", "Download the cover image for a book") { idOption, outputOption, rawOption };
+        var command = new Command("get", "Download the cover image for a library item") { idOption, outputOption, rawOption };
         command.AddExamples(
             "abs-cli items cover get --id \"li_abc123\" --output cover.jpg",
             "abs-cli items cover get --id \"li_abc123\" --output cover.jpg --raw",
@@ -353,9 +354,11 @@ public static class ItemsCommand
     private static Command CreateCoverRemoveCommand()
     {
         var idOption = new Option<string>("--id") { Description = "Library item ID", Required = true };
-        var command = new Command("remove", "Remove the cover from a book") { idOption };
+        var command = new Command("remove", "Remove the cover from a library item") { idOption };
         command.AddExamples(
             "abs-cli items cover remove --id \"li_abc123\"");
+        command.AddHelpSection("Response shape", HelpSectionPosition.Bottom,
+            "{ \"success\": \"true\" }");
         command.SetAction(async parseResult =>
         {
             var id = parseResult.GetValue(idOption)!;

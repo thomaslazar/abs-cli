@@ -66,7 +66,7 @@ public static class LoginCommand
                 if (config.DefaultLibrary != null)
                     Console.Error.WriteLine($"Default library: {config.DefaultLibrary}");
                 else
-                    Console.Error.WriteLine("No default library set. Use: abs-cli config set default-library <id|name>");
+                    Console.Error.WriteLine("No default library set. Use: abs-cli config set defaultLibrary <id>");
             }
             catch (HttpRequestException ex)
             {

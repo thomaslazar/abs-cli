@@ -28,12 +28,12 @@ public static class AuthorsCommand
 
     private static Command CreateListCommand()
     {
-        var libraryOption = new Option<string?>("--library") { Description = "Library ID or name" };
+        var libraryOption = new Option<string?>("--library") { Description = "Library ID" };
         var command = new Command("list",
             "List authors in a library (returns all, no pagination)") { libraryOption };
         command.AddExamples(
             "abs-cli authors list",
-            "abs-cli authors list --library \"My Library\"");
+            "abs-cli authors list --library \"lib_abc123\"");
         command.AddResponseExample<AuthorListResponse>();
         command.SetAction(async (parseResult, cancellationToken) =>
         {
@@ -220,6 +220,8 @@ public static class AuthorsCommand
             "it.");
         command.AddExamples(
             "abs-cli authors delete --id \"aut_xyz\"");
+        command.AddHelpSection("Response shape", HelpSectionPosition.Bottom,
+            "{ \"success\": \"true\" }");
         command.SetAction(async (parseResult, cancellationToken) =>
         {
             var id = parseResult.GetValue(idOption)!;

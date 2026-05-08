@@ -10,7 +10,7 @@ public static class UploadCommand
 {
     public static Command Create()
     {
-        var libraryOption = new Option<string?>("--library") { Description = "Library ID or name" };
+        var libraryOption = new Option<string?>("--library") { Description = "Library ID" };
         var folderOption = new Option<string?>("--folder") { Description = "Folder ID (auto-resolved if library has one folder)" };
         var titleOption = new Option<string>("--title") { Description = "Book title", Required = true };
         var authorOption = new Option<string?>("--author") { Description = "Book author" };
