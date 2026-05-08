@@ -18,9 +18,7 @@ public static class TasksCommand
     {
         var command = new Command("list", "List active and recent tasks");
         command.AddExamples(
-            "abs-cli tasks list",
-            "abs-cli tasks list | jq '.tasks[] | select(.isFinished==false)'",
-            "abs-cli tasks list | jq '.tasks[] | {action, title, isFinished}'");
+            "abs-cli tasks list");
         command.AddResponseExample<TaskListResponse>();
         command.SetAction(async (parseResult, cancellationToken) =>
         {

@@ -10,7 +10,7 @@ public static class UploadCommand
 {
     public static Command Create()
     {
-        var libraryOption = new Option<string?>("--library") { Description = "Library ID or name" };
+        var libraryOption = new Option<string?>("--library") { Description = "Library ID" };
         var folderOption = new Option<string?>("--folder") { Description = "Folder ID (auto-resolved if library has one folder)" };
         var titleOption = new Option<string>("--title") { Description = "Book title", Required = true };
         var authorOption = new Option<string?>("--author") { Description = "Book author" };
@@ -45,17 +45,13 @@ public static class UploadCommand
             "Author/Series/Title                — when --author and --series are given",
             "Author/Series/{N}. - {Title}       — when --sequence N is also given (requires --series)");
         command.AddHelpSection("Filename collisions",
-            "ABS silently overwrites files with the same name in one upload — the CLI",
-            "refuses to do this. By default duplicate basenames in --files cause an error.",
+            "ABS silently overwrites same-named files within one upload; the CLI",
+            "rejects duplicate basenames by default. To resolve collisions:",
             "",
-            "--prefix-source-dir   Prepend each file's parent directory name to the",
-            "                      uploaded filename. Good for multi-disc / multi-part",
-            "                      audiobooks where parent dir names sort correctly",
-            "                      (e.g. \"Part 1-2\" before \"Part 3\").",
-            "",
-            "--files-manifest <p>  JSON file (or '-' for stdin) mapping each source path",
-            "                      to the name ABS should save it as. Use when you need",
-            "                      explicit per-file naming. Schema: [{\"src\":\"path\",\"as\":\"name\"}, ...]");
+            "  --prefix-source-dir    prepend each file's parent directory to the",
+            "                         uploaded name (multi-disc / multi-part).",
+            "  --files-manifest <p>   JSON mapping source paths to upload names.",
+            "                         Schema: [{\"src\":\"path\",\"as\":\"name\"}, ...]");
         command.AddExamples(
             "abs-cli upload --title \"The Hobbit\" --author \"J.R.R. Tolkien\" --files hobbit.m4b",
             "abs-cli upload --title \"The Final Empire\" --author \"Brandon Sanderson\" --series \"Mistborn\" --sequence 1 --files part1.mp3 part2.mp3",
@@ -63,20 +59,13 @@ public static class UploadCommand
             "abs-cli upload --title \"My Audiobook\" --files-manifest manifest.json",
             "cat manifest.json | abs-cli upload --title \"My Audiobook\" --files-manifest -");
         command.AddHelpSection("Output",
-            "Without --wait: returns a receipt ({uploaded, title, author, series,",
-            "                libraryId, folderId, relPath, files}) once the HTTP",
-            "                upload completes. ABS writes the files synchronously",
-            "                but creates the library item on its next scan tick, so",
-            "                the receipt confirms files landed, not that the item",
-            "                exists yet. Use receipt.relPath to locate the resulting",
-            "                library item later, e.g.:",
-            "                  abs-cli items list --sort addedAt --desc \\",
-            "                    | jq '.results[] | select(.relPath == \"<relPath>\")'",
-            "With --wait:    polls items list for an item whose relPath matches the",
-            "                receipt.relPath above, returns it as a LibraryItemMinified.",
-            "                If the item doesn't appear within ~2 minutes the receipt",
-            "                is emitted on stdout and the command exits 1 — ABS may",
-            "                still be scanning; re-check with 'items list --sort addedAt --desc'.");
+            "Without --wait: returns an upload receipt (the files have landed but the",
+            "library item has not been scanned yet). The receipt's relPath identifies",
+            "the item once 'items scan' or the next scan tick picks it up.",
+            "",
+            "With --wait: polls until the item appears, returns it as a",
+            "LibraryItemMinified. On timeout (~2 min) the receipt is emitted to stdout",
+            "and the command exits 1.");
         command.AddResponseExample<UploadReceipt>();
         command.AddHelpSection("Response shape (with --wait, on success)",
             "LibraryItemMinified — same shape as 'abs-cli items get --help'.");

@@ -23,8 +23,7 @@ public static class BackupCommand
     {
         var command = new Command("create", "Create a new server backup");
         command.AddExamples(
-            "abs-cli backup create",
-            "abs-cli backup create | jq '.backups | length'");
+            "abs-cli backup create");
         command.AddResponseExample<BackupListResponse>();
         command.SetAction(async (parseResult, cancellationToken) =>
         {
@@ -41,8 +40,7 @@ public static class BackupCommand
     {
         var command = new Command("list", "List all server backups");
         command.AddExamples(
-            "abs-cli backup list",
-            "abs-cli backup list | jq '.backups[] | {id, filename, datePretty}'");
+            "abs-cli backup list");
         command.AddResponseExample<BackupListResponse>();
         command.SetAction(async (parseResult, cancellationToken) =>
         {
@@ -60,8 +58,7 @@ public static class BackupCommand
         var idOption = new Option<string>("--id") { Description = "Backup ID", Required = true };
         var command = new Command("apply", "Apply (restore) a server backup") { idOption };
         command.AddExamples(
-            "abs-cli backup apply --id \"2024-01-15T0000\"",
-            "abs-cli backup apply --id \"2024-01-15T0000\" | jq '.success'");
+            "abs-cli backup apply --id \"2024-01-15T0000\"");
         command.SetAction(async (parseResult, cancellationToken) =>
         {
             var id = parseResult.GetValue(idOption)!;
@@ -99,8 +96,7 @@ public static class BackupCommand
         var idOption = new Option<string>("--id") { Description = "Backup ID", Required = true };
         var command = new Command("delete", "Delete a server backup") { idOption };
         command.AddExamples(
-            "abs-cli backup delete --id \"2024-01-15T0000\"",
-            "abs-cli backup delete --id \"2024-01-15T0000\" | jq '.backups | length'");
+            "abs-cli backup delete --id \"2024-01-15T0000\"");
         command.AddResponseExample<BackupListResponse>();
         command.SetAction(async (parseResult, cancellationToken) =>
         {
@@ -120,7 +116,7 @@ public static class BackupCommand
         var command = new Command("upload", "Upload a backup file to the server") { fileOption };
         command.AddExamples(
             "abs-cli backup upload --file backup.audiobookshelf",
-            "abs-cli backup upload --file /tmp/abs-backup.audiobookshelf | jq '.backups | length'");
+            "abs-cli backup upload --file /tmp/abs-backup.audiobookshelf");
         command.AddResponseExample<BackupListResponse>();
         command.SetAction(async (parseResult, cancellationToken) =>
         {

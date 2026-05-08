@@ -47,8 +47,7 @@ public static class MetadataCommand
     {
         var command = new Command("providers", "List available metadata providers");
         command.AddExamples(
-            "abs-cli metadata providers",
-            "abs-cli metadata providers | jq '.providers.books[].value'");
+            "abs-cli metadata providers");
         command.AddResponseExample<MetadataProvidersResponse>();
         command.SetAction(async (parseResult, cancellationToken) =>
         {

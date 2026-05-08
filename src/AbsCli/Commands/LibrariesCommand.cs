@@ -22,8 +22,7 @@ public static class LibrariesCommand
         var tokenOption = new Option<string?>("--token") { Description = "Token override" };
         var command = new Command("list", "List all libraries") { serverOption, tokenOption };
         command.AddExamples(
-            "abs-cli libraries list",
-            "abs-cli libraries list | jq '.libraries[].name'");
+            "abs-cli libraries list");
         command.AddResponseExample<LibraryListResponse>();
         command.SetAction(async (parseResult, cancellationToken) =>
         {
@@ -45,8 +44,7 @@ public static class LibrariesCommand
         var tokenOption = new Option<string?>("--token") { Description = "Token override" };
         var command = new Command("get", "Get a single library") { idOption, serverOption, tokenOption };
         command.AddExamples(
-            "abs-cli libraries get --id \"lib_abc123\"",
-            "abs-cli libraries get --id \"lib_abc123\" | jq '.name'");
+            "abs-cli libraries get --id \"lib_abc123\"");
         command.AddResponseExample<Library>();
         command.SetAction(async (parseResult, cancellationToken) =>
         {

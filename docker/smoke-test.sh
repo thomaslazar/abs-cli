@@ -312,21 +312,110 @@ echo "=== Authors Commands ==="
 output=$($CLI authors list 2>/dev/null)
 assert_json_key "authors list has authors" "authors" "$output"
 assert_json_expr "authors list has 6 authors" "len(d['authors'])==6" "$output"
-
-# Check a known author exists
 assert_json_expr "authors list contains Brandon Sanderson" \
     "any(a['name']=='Brandon Sanderson' for a in d['authors'])" "$output"
 
-# Get a specific author
 AUTHOR_ID=$(echo "$output" | python3 -c "
 import sys,json
 authors = json.load(sys.stdin)['authors']
 bs = next(a for a in authors if a['name']=='Brandon Sanderson')
 print(bs['id'])
 ")
+
 output=$($CLI authors get --id "$AUTHOR_ID" 2>/dev/null)
 assert_json_key "authors get has id" "id" "$output"
 assert_json_expr "authors get is Brandon Sanderson" "d['name']=='Brandon Sanderson'" "$output"
+
+# --- lookup ---
+output=$($CLI authors lookup --name "Brandon Sanderson" 2>/dev/null)
+assert_json_expr "authors lookup returns object for known author" \
+    "isinstance(d, dict) and d.get('name')" "$output"
+
+output=$($CLI authors lookup --name "ZzzNotARealAuthorXyz" 2>/dev/null)
+# null body deserialises to Python None
+assert_json_expr "authors lookup returns null for missing author" \
+    "d is None" "$output"
+
+# --- match ---
+output=$($CLI authors match --id "$AUTHOR_ID" --name "Brandon Sanderson" 2>/dev/null)
+assert_json_key "authors match returns updated key" "updated" "$output"
+assert_json_key "authors match returns author key" "author" "$output"
+
+# --- update (description set, then clear) ---
+output=$($CLI authors update --id "$AUTHOR_ID" --description "Smoke-test description" 2>/dev/null)
+assert_json_key "authors update returns updated key" "updated" "$output"
+assert_json_expr "authors update set description" \
+    "d['author']['description']=='Smoke-test description'" "$output"
+
+output=$($CLI authors update --id "$AUTHOR_ID" --description "" 2>/dev/null)
+assert_json_expr "authors update cleared description" \
+    "d['author'].get('description') in (None, '')" "$output"
+
+# --- delete (add a throwaway co-author to a book, delete it, restore book) ---
+ORIGINAL_AUTHORS=$(echo "$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)" \
+    | python3 -c "
+import sys,json
+authors = json.load(sys.stdin)['media']['metadata']['authors']
+print(json.dumps([{'name': a['name']} for a in authors]))
+")
+THROWAWAY_PAYLOAD=$(echo "$ORIGINAL_AUTHORS" | python3 -c "
+import sys,json
+authors = json.load(sys.stdin)
+authors.append({'name': 'Smoke Test Throwaway'})
+print(json.dumps({'metadata': {'authors': authors}}))
+")
+$CLI items update --id "$FIRST_ITEM_ID" --input "$THROWAWAY_PAYLOAD" 2>/dev/null > /dev/null
+
+output=$($CLI authors list 2>/dev/null)
+assert_json_expr "authors update added throwaway author" \
+    "any(a['name']=='Smoke Test Throwaway' for a in d['authors'])" "$output"
+THROWAWAY_ID=$(echo "$output" | python3 -c "
+import sys,json
+print(next(a['id'] for a in json.load(sys.stdin)['authors'] if a['name']=='Smoke Test Throwaway'))
+")
+
+output=$($CLI authors delete --id "$THROWAWAY_ID" 2>/dev/null)
+assert_json_expr "authors delete returns success" "d.get('success')=='true'" "$output"
+
+output=$($CLI authors list 2>/dev/null)
+assert_json_expr "authors delete removed throwaway" \
+    "not any(a['name']=='Smoke Test Throwaway' for a in d['authors'])" "$output"
+assert_json_expr "authors list back to 6 authors" "len(d['authors'])==6" "$output"
+
+# Restore book to original authors
+RESTORE_PAYLOAD=$(python3 -c "
+import json
+print(json.dumps({'metadata': {'authors': json.loads('$ORIGINAL_AUTHORS')}}))
+")
+$CLI items update --id "$FIRST_ITEM_ID" --input "$RESTORE_PAYLOAD" 2>/dev/null > /dev/null
+
+# --- update merge-on-rename (rename throwaway into an existing author) ---
+MERGEE_PAYLOAD=$(echo "$ORIGINAL_AUTHORS" | python3 -c "
+import sys,json
+authors = json.load(sys.stdin)
+authors.append({'name': 'Smoke Test Mergee'})
+print(json.dumps({'metadata': {'authors': authors}}))
+")
+$CLI items update --id "$FIRST_ITEM_ID" --input "$MERGEE_PAYLOAD" 2>/dev/null > /dev/null
+
+MERGEE_ID=$($CLI authors list 2>/dev/null | python3 -c "
+import sys,json
+print(next(a['id'] for a in json.load(sys.stdin)['authors'] if a['name']=='Smoke Test Mergee'))
+")
+
+output=$($CLI authors update --id "$MERGEE_ID" --name "Jim Butcher" 2>/dev/null)
+assert_json_expr "authors update rename-into-existing returned merged:true" \
+    "d.get('merged')==True" "$output"
+assert_json_expr "authors update merge response carries the existing author" \
+    "d['author']['name']=='Jim Butcher'" "$output"
+
+output=$($CLI authors list 2>/dev/null)
+assert_json_expr "authors update merge removed throwaway" \
+    "not any(a['name']=='Smoke Test Mergee' for a in d['authors'])" "$output"
+assert_json_expr "authors list still 6 after merge" "len(d['authors'])==6" "$output"
+
+# Restore book to original authors (merge added Jim Butcher to FIRST_ITEM_ID)
+$CLI items update --id "$FIRST_ITEM_ID" --input "$RESTORE_PAYLOAD" 2>/dev/null > /dev/null
 
 # ============================================================
 echo ""

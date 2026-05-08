@@ -10,7 +10,7 @@ public static class SearchCommand
     public static Command Create()
     {
         var queryOption = new Option<string>("--query") { Description = "Search text", Required = true };
-        var libraryOption = new Option<string?>("--library") { Description = "Library ID or name" };
+        var libraryOption = new Option<string?>("--library") { Description = "Library ID" };
         var limitOption = new Option<int>("--limit") { Description = "Max results (default 50, pass higher value to retrieve more)", DefaultValueFactory = _ => 50 };
         var command = new Command("search", "Search across a library (defaults to 50 results)")
         {
@@ -32,8 +32,7 @@ public static class SearchCommand
         command.AddExamples(
             "abs-cli search --query \"Brandon Sanderson\"",
             "abs-cli search --query \"Mistborn\" --limit 5",
-            "abs-cli search --query \"978-0\" --limit 20    # search by ISBN prefix",
-            "abs-cli search --query \"Fantasy\" | jq '.book[].libraryItem.media.metadata.title'");
+            "abs-cli search --query \"978-0\" --limit 20    # search by ISBN prefix");
         command.AddResponseExample<SearchResult>();
         command.AddMediaUnionShapes();
         command.SetAction(async (parseResult, cancellationToken) =>
