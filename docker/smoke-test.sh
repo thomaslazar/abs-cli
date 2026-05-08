@@ -445,6 +445,45 @@ assert_json_expr "authors list still 6 after merge" "len(d['results'])==6" "$out
 # Restore book to original authors (merge added Jim Butcher to FIRST_ITEM_ID)
 $CLI items update --id "$FIRST_ITEM_ID" --input "$RESTORE_PAYLOAD" 2>/dev/null > /dev/null
 
+# --- image set/get/remove ---
+output=$($CLI authors image set --id "$AUTHOR_ID" --url "https://placehold.co/64x64.png" 2>/dev/null)
+assert_json_key "authors image set returns author" "author" "$output"
+assert_json_expr "authors image set populated imagePath" \
+    "d['author'].get('imagePath') is not None and d['author']['imagePath']!=''" "$output"
+
+IMG_TMP=$(mktemp --suffix=.png)
+output=$($CLI authors image get --id "$AUTHOR_ID" --output "$IMG_TMP" 2>/dev/null)
+assert_json_expr "authors image get descriptor reports bytes" "d['bytes']>0" "$output"
+if [ -s "$IMG_TMP" ]; then
+    pass "authors image get wrote non-empty file"
+else
+    fail "authors image get wrote non-empty file" "file is empty or missing"
+fi
+rm -f "$IMG_TMP"
+
+IMG_TMP_RAW=$(mktemp --suffix=.png)
+output=$($CLI authors image get --id "$AUTHOR_ID" --output "$IMG_TMP_RAW" --raw 2>/dev/null)
+assert_json_expr "authors image get --raw descriptor reports bytes" "d['bytes']>0" "$output"
+if [ -s "$IMG_TMP_RAW" ]; then
+    pass "authors image get --raw wrote non-empty file"
+else
+    fail "authors image get --raw wrote non-empty file" "file is empty or missing"
+fi
+rm -f "$IMG_TMP_RAW"
+
+output=$($CLI authors image remove --id "$AUTHOR_ID" 2>/dev/null)
+assert_json_key "authors image remove returns author" "author" "$output"
+assert_json_expr "authors image remove cleared imagePath" \
+    "d['author'].get('imagePath') is None" "$output"
+
+# Removing again should fail with 400 (the documented quirk)
+error_output=$($CLI authors image remove --id "$AUTHOR_ID" 2>&1 || true)
+if echo "$error_output" | grep -q "Bad request"; then
+    pass "authors image remove on no-image surfaces as 400"
+else
+    fail "authors image remove on no-image surfaces as 400" "got: ${error_output:0:200}"
+fi
+
 # ============================================================
 echo ""
 echo "=== Search Command (top-level) ==="
