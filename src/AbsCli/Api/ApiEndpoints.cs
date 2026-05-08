@@ -21,6 +21,7 @@ public static class ApiEndpoints
     public static string SeriesById(string id) => $"/api/series/{id}";
     public static string AuthorById(string id) => $"/api/authors/{id}";
     public static string AuthorMatch(string id) => $"/api/authors/{id}/match";
+    public static string AuthorImage(string id) => $"/api/authors/{id}/image";
 
     // Backup
     public const string Backups = "/api/backups";

@@ -21,3 +21,13 @@ public class AuthorMatchRequest
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Region { get; set; }
 }
+
+/// <summary>
+/// Body for POST /api/authors/:id/image. ABS validates that the URL
+/// starts with http:/https: and downloads the image server-side.
+/// </summary>
+public class AuthorImageRequest
+{
+    [JsonPropertyName("url")]
+    public string Url { get; set; } = "";
+}
