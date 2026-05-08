@@ -19,12 +19,12 @@ public class AuthorsImageCommandTests
     }
 
     [Fact]
-    public void AuthorsImage_TopLevel_Help_ListsThreeVerbs()
+    public void AuthorsImage_HasThreeSubcommands()
     {
-        var output = RenderHelp("authors", "image");
-        Assert.Contains("set", output);
-        Assert.Contains("get", output);
-        Assert.Contains("remove", output);
+        var authors = AuthorsCommand.Create();
+        var image = authors.Subcommands.First(c => c.Name == "image");
+        var verbs = image.Subcommands.Select(c => c.Name).ToList();
+        Assert.Equal(new[] { "set", "get", "remove" }, verbs);
     }
 
     [Fact]
