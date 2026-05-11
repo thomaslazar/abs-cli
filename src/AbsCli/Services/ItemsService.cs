@@ -34,14 +34,6 @@ public class ItemsService
         return await _client.GetAsync(ApiEndpoints.Item(id), AppJsonContext.Default.LibraryItemMinified);
     }
 
-    public async Task<SearchResult> SearchAsync(string libraryId, string query, int? limit)
-    {
-        var qs = HttpUtility.ParseQueryString("");
-        qs["q"] = query;
-        if (limit.HasValue) qs["limit"] = limit.Value.ToString();
-        return await _client.GetAsync(ApiEndpoints.LibrarySearch(libraryId) + "?" + qs, AppJsonContext.Default.SearchResult);
-    }
-
     public async Task<UpdateMediaResponse> UpdateMediaAsync(string id, string jsonBody)
     {
         return await _client.PatchAsync(ApiEndpoints.ItemMedia(id), jsonBody, AppJsonContext.Default.UpdateMediaResponse);
