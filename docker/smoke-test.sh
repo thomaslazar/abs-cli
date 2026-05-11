@@ -874,15 +874,18 @@ if [ -n "$SERVER_COVER_PATH" ]; then
 fi
 
 # --- Mode 3: --url (POST with {url}; ABS server downloads) ---
-# Uses the google metadata provider against a known-seeded book to obtain a
-# real cover URL. Google + Storm Front (or whichever the first seeded book
-# is) is reliable enough to run unconditionally.
+# Looks up the first seeded item's title/author in-flight so the cover
+# query always tracks whatever the current seed actually contains, then
+# asks ABS's `best` meta-provider for cover URLs. `best` aggregates across
+# Google, FantLab, Amazon, etc., which is far more reliable than pinning
+# to any single provider (e.g. Google returns no covers at all for some
+# seeded titles like "Rivers of London").
 item_json=$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)
 item_title=$(echo "$item_json" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['media']['metadata'].get('title') or '')")
 item_author=$(echo "$item_json" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['media']['metadata'].get('authorName') or '')")
 
 if [ -n "$item_title" ]; then
-    covers_json=$($CLI metadata covers --provider google --title "$item_title" --author "$item_author" 2>/dev/null)
+    covers_json=$($CLI metadata covers --provider best --title "$item_title" --author "$item_author" 2>/dev/null)
     cover_url=$(echo "$covers_json" | python3 -c "import sys,json; d=json.load(sys.stdin); r=d.get('results',[]); print(r[0] if r else '')" 2>/dev/null)
 
     if [ -n "$cover_url" ]; then
@@ -905,7 +908,7 @@ if [ -n "$item_title" ]; then
 
         $CLI items cover remove --id "$FIRST_ITEM_ID" > /dev/null 2>&1
     else
-        fail "metadata covers returned a URL for seeded book" "google returned no URLs for '$item_title'"
+        fail "metadata covers returned a URL for seeded book" "best returned no URLs for '$item_title'"
     fi
 else
     fail "items get readable for --url cover test" "could not read item title"
