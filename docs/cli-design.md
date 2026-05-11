@@ -19,7 +19,11 @@ and any future media types.
 | `abs-cli items get --id <id>` | `GET /api/items/{id}` | Get single item with full metadata |
 | `abs-cli items update --id <id>` | `PATCH /api/items/{id}/media` | Update single item metadata |
 | `abs-cli items batch-update --input file.json` | `PATCH /api/items/batch/update` | Batch update from JSON file |
-| `abs-cli items batch-get --input file.json` | `GET /api/items/batch` | Batch get multiple items by ID |
+| `abs-cli items batch-get --input file.json` | `POST /api/items/batch/get` | Batch get multiple items by ID |
+| `abs-cli items scan --id <id>` | `POST /api/items/{id}/scan` | Scan a single item (admin, sync) |
+| `abs-cli items cover set --id <id> [--url \| --file \| --server-path]` | `POST/PATCH /api/items/{id}/cover` | Apply a cover image |
+| `abs-cli items cover get --id <id> --output <path>` | `GET /api/items/{id}/cover` | Download the cover image |
+| `abs-cli items cover remove --id <id>` | `DELETE /api/items/{id}/cover` | Remove the cover |
 
 ## Libraries
 
@@ -27,6 +31,7 @@ and any future media types.
 |---------|-------------|-------------|
 | `abs-cli libraries list` | `GET /api/libraries` | List all libraries |
 | `abs-cli libraries get --id <id>` | `GET /api/libraries/{id}` | Get single library |
+| `abs-cli libraries scan [--force]` | `POST /api/libraries/{id}/scan` | Trigger a library scan (admin, async) |
 
 ## Series
 
@@ -39,14 +44,65 @@ and any future media types.
 
 | Command | ABS Endpoint | Description |
 |---------|-------------|-------------|
-| `abs-cli authors list` | `GET /api/libraries/{id}/authors` | List authors in library |
+| `abs-cli authors list` | `GET /api/libraries/{id}/authors` | List authors. Paginated with `--limit`, `--page`, `--sort`, `--desc`, `--filter` |
 | `abs-cli authors get --id <id>` | `GET /api/authors/{id}` | Get single author |
+| `abs-cli authors match --id <id>` | `POST /api/authors/{id}/match` | Apply Audnexus data to an existing author (destructive — writes asin/imagePath/description) |
+| `abs-cli authors lookup --name <text>` | `GET /api/search/authors?q=` | Read-only Audnexus probe by name |
+| `abs-cli authors update --id <id>` | `PATCH /api/authors/{id}` | Edit name / description / asin. Surfaces ABS's auto-merge-on-rename |
+| `abs-cli authors delete --id <id>` | `DELETE /api/authors/{id}` | Delete author and unlink from all books |
+| `abs-cli authors image set --id <id> [--url \| --file]` | `POST /api/authors/{id}/image` | Apply an author image |
+| `abs-cli authors image get --id <id> --output <path>` | `GET /api/authors/{id}/image` | Download the author image |
+| `abs-cli authors image remove --id <id>` | `DELETE /api/authors/{id}/image` | Remove the author image |
 
 ## Search
 
 | Command | ABS Endpoint | Description |
 |---------|-------------|-------------|
-| `abs-cli search --query <text>` | `GET /api/libraries/{id}/search?q=` | Search library. Returns books, series, authors, tags grouped |
+| `abs-cli search --query <text>` | `GET /api/libraries/{id}/search?q=` | Search library. Returns books, series, authors, narrators, tags, genres grouped |
+
+## Backup
+
+Admin-only. Server-side backup files include the SQLite DB and optionally the metadata directory.
+
+| Command | ABS Endpoint | Description |
+|---------|-------------|-------------|
+| `abs-cli backup create` | `POST /api/backups` | Create a server backup |
+| `abs-cli backup list` | `GET /api/backups` | List available backups |
+| `abs-cli backup apply --id <id>` | `POST /api/backups/{id}/apply` | Restore from a backup |
+| `abs-cli backup download --id <id> --output <path>` | `GET /api/backups/{id}/download` | Download a backup file |
+| `abs-cli backup delete --id <id>` | `DELETE /api/backups/{id}` | Delete a backup |
+| `abs-cli backup upload --file <path>` | `POST /api/backups/upload` | Upload a backup file |
+
+## Upload
+
+| Command | ABS Endpoint | Description |
+|---------|-------------|-------------|
+| `abs-cli upload` | `POST /api/upload` | Upload audiobook / ebook files with author/series/sequence naming. Supports `--wait`, `--prefix-source-dir`, `--files-manifest` |
+
+## Metadata providers
+
+Stateless provider discovery — no ABS entity attached. Lookups go to the ABS-configured providers (Audible, Google Books, etc.) and return raw results for the agent to pick from.
+
+| Command | ABS Endpoint | Description |
+|---------|-------------|-------------|
+| `abs-cli metadata search` | `GET /api/search/books` | Search a provider for book metadata |
+| `abs-cli metadata providers` | `GET /api/search/providers` | List available metadata providers |
+| `abs-cli metadata covers` | `GET /api/search/covers` | Search for cover images |
+
+## Tasks
+
+| Command | ABS Endpoint | Description |
+|---------|-------------|-------------|
+| `abs-cli tasks list` | `GET /api/tasks` | List active and recent tasks (poll background work) |
+
+## Changelog
+
+Local — reads the bundled `CHANGELOG.md` embedded in the AOT binary. No network needed.
+
+| Command | Description |
+|---------|-------------|
+| `abs-cli changelog` | Print the most recent release entry |
+| `abs-cli changelog --all` | Print the full file |
 
 ## Filtering
 

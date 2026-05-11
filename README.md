@@ -200,10 +200,20 @@ abs-cli config set defaultLibrary <library-id>
 | `items batch-update` | Batch update items (`--input <file>` or `--stdin`) |
 | `items batch-get` | Batch get items by ID (`--input <file>` or `--stdin`) |
 | `items scan --id <id>` | Scan a single item (admin, sync) |
+| `items cover set --id <id> [--url \| --file \| --server-path]` | Apply a cover image |
+| `items cover get --id <id> --output <path>` | Download the cover image |
+| `items cover remove --id <id>` | Remove the cover |
 | `series list` | List series (`--limit`, `--page`) |
 | `series get --id <id>` | Get a single series |
-| `authors list` | List authors |
+| `authors list` | List authors (paginated: `--limit`, `--page`, `--sort`, `--desc`, `--filter`) |
 | `authors get --id <id>` | Get a single author |
+| `authors match --id <id>` | Apply Audnexus author data (destructive — writes asin / imagePath / description) |
+| `authors lookup --name <text>` | Read-only Audnexus probe by name |
+| `authors update --id <id>` | Edit name / description / asin (surfaces ABS's auto-merge-on-rename) |
+| `authors delete --id <id>` | Delete author and unlink from all books |
+| `authors image set --id <id> [--url \| --file]` | Apply an author image |
+| `authors image get --id <id> --output <path>` | Download the author image |
+| `authors image remove --id <id>` | Remove the author image |
 | `search --query <text>` | Search across a library |
 | `upload` | Upload files to a library (`--title`, `--author`, `--series`, `--sequence`, `--wait`, `--files`, `--prefix-source-dir`, `--files-manifest`) |
 | `backup create` | Create a server backup (admin) |
@@ -216,6 +226,7 @@ abs-cli config set defaultLibrary <library-id>
 | `metadata providers` | List available metadata providers |
 | `metadata covers` | Search for cover images (`--provider`, `--title`, `--author`) |
 | `tasks list` | List active and recent tasks |
+| `changelog [--all]` | Print release notes from the bundled `CHANGELOG.md` (offline) |
 | `self-test` | Verify binary integrity (AOT validation, no network required) |
 
 Every command supports `--help` with examples and reference sections.
@@ -248,13 +259,16 @@ docker compose -f docker/docker-compose.yml down -v
 src/AbsCli/
   Commands/       # CLI command definitions (System.CommandLine)
   Services/       # Business logic (API orchestration)
-  Api/            # HTTP client, endpoints, filter encoder, token helper
-  Models/         # DTOs matching ABS API JSON exactly
+  Api/            # HTTP client, endpoints, filter encoder, filename sanitizer, token helper
+  Models/         # DTOs matching ABS API JSON exactly (all registered in JsonContext for AOT)
   Configuration/  # Config file, env var, flag resolution
   Output/         # JSON stdout, stderr error helpers
 tests/AbsCli.Tests/
+  Api/            # FilterEncoder, TokenHelper, FilenameSanitizer unit tests
+  Commands/       # Help output, response-shape drift, command-specific tests
   Configuration/  # ConfigManager unit tests
-  Api/            # FilterEncoder, TokenHelper unit tests
+tools/
+  GenerateResponseExamples/  # Generates ResponseExamples.g.cs (sample JSON per type for --help)
 docker/
   docker-compose.yml  # Local ABS instance for testing
   seed.sh             # Seed test data (15 books, 6 authors, 3 series, 3 users)
