@@ -44,13 +44,13 @@ and any future media types.
 
 | Command | ABS Endpoint | Description |
 |---------|-------------|-------------|
-| `abs-cli authors list` | `GET /api/libraries/{id}/authors` | List authors. Paginated with `--limit`, `--page`, `--sort`, `--desc`, `--filter` |
+| `abs-cli authors list` | `GET /api/libraries/{id}/authors` | List authors. Paginated with `--limit`, `--page`, `--sort`, `--desc` |
 | `abs-cli authors get --id <id>` | `GET /api/authors/{id}` | Get single author |
 | `abs-cli authors match --id <id>` | `POST /api/authors/{id}/match` | Apply Audnexus data to an existing author (destructive — writes asin/imagePath/description) |
 | `abs-cli authors lookup --name <text>` | `GET /api/search/authors?q=` | Read-only Audnexus probe by name |
 | `abs-cli authors update --id <id>` | `PATCH /api/authors/{id}` | Edit name / description / asin. Surfaces ABS's auto-merge-on-rename |
 | `abs-cli authors delete --id <id>` | `DELETE /api/authors/{id}` | Delete author and unlink from all books |
-| `abs-cli authors image set --id <id> [--url \| --file]` | `POST /api/authors/{id}/image` | Apply an author image |
+| `abs-cli authors image set --id <id> --url <url>` | `POST /api/authors/{id}/image` | Apply an author image (URL only — ABS downloads) |
 | `abs-cli authors image get --id <id> --output <path>` | `GET /api/authors/{id}/image` | Download the author image |
 | `abs-cli authors image remove --id <id>` | `DELETE /api/authors/{id}/image` | Remove the author image |
 

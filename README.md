@@ -205,13 +205,13 @@ abs-cli config set defaultLibrary <library-id>
 | `items cover remove --id <id>` | Remove the cover |
 | `series list` | List series (`--limit`, `--page`) |
 | `series get --id <id>` | Get a single series |
-| `authors list` | List authors (paginated: `--limit`, `--page`, `--sort`, `--desc`, `--filter`) |
+| `authors list` | List authors (paginated: `--limit`, `--page`, `--sort`, `--desc`) |
 | `authors get --id <id>` | Get a single author |
 | `authors match --id <id>` | Apply Audnexus author data (destructive — writes asin / imagePath / description) |
 | `authors lookup --name <text>` | Read-only Audnexus probe by name |
 | `authors update --id <id>` | Edit name / description / asin (surfaces ABS's auto-merge-on-rename) |
 | `authors delete --id <id>` | Delete author and unlink from all books |
-| `authors image set --id <id> [--url \| --file]` | Apply an author image |
+| `authors image set --id <id> --url <url>` | Apply an author image (URL only — ABS downloads) |
 | `authors image get --id <id> --output <path>` | Download the author image |
 | `authors image remove --id <id>` | Remove the author image |
 | `search --query <text>` | Search across a library |

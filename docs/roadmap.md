@@ -55,10 +55,10 @@ Expand the author surface so agents can identify and clean up unmatched
 authors; drop the duplicate `items search` subcommand.
 
 - **Author pagination** — `abs-cli authors list` switched to the paginated
-  response shape (`{ results, total, limit, page, sortBy, sortDesc, filterBy, minified, include }`)
-  with `--limit`, `--page`, `--sort` (`name` / `lastFirst` / `addedAt` /
-  `updatedAt` / `numBooks`), `--desc`, `--filter`. The unpaginated shape
-  has a separate model so existing call sites are not disturbed.
+  response shape (`{ results, total, limit, page }`) with `--limit`,
+  `--page`, `--sort` (`name` / `lastFirst` / `addedAt` / `updatedAt` /
+  `numBooks`), `--desc`. The unpaginated `{ authors: [...] }` model is
+  gone; callers that read `.authors` must switch to `.results`.
 - **Author matching** — `abs-cli authors match` (Audnexus-backed
   `POST /api/authors/:id/match` — destructive, writes `asin`, `imagePath`,
   `description`, and emits `author_updated`). A 404 leaves the author
@@ -68,10 +68,12 @@ authors; drop the duplicate `items search` subcommand.
   read-only Audnexus probe (`GET /api/search/authors?q=`) — no `region`,
   no ASIN path. Use before `match` when you want to inspect candidates.
 - **Author edit / delete / image** — `abs-cli authors update` (edit
-  `name` / `description` / `asin`; surfaces ABS's auto-merge-on-rename
-  via stderr warnings and `--allow-merge`), `abs-cli authors delete`
-  (unlinks from all books and deletes), and `abs-cli authors image set|get|remove`
-  mirroring `items cover`.
+  `name` / `description` / `asin`; tri-state per field: set / clear via
+  empty string / leave alone). Surfaces ABS's silent-merge-on-rename
+  behaviour by returning `{ merged: true, author: <target> }` instead
+  of `{ updated, author }` when a same-name conflict triggers the merge.
+  `abs-cli authors delete` unlinks from all books and deletes.
+  `abs-cli authors image set|get|remove` mirrors `items cover`.
 - **Remove deprecated `abs-cli items search`** — Hard removal of the
   duplicate subcommand. `items search` and top-level `abs-cli search`
   hit the same endpoint (`GET /api/libraries/:id/search`) with the same
