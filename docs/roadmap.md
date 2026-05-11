@@ -47,41 +47,33 @@ Full notes: see [CHANGELOG.md](../CHANGELOG.md) or `abs-cli changelog`.
 
 ---
 
-## In progress
+### v0.4.0 — Author management & items-search cleanup (shipped 2026-05-11)
 
-### v0.4.0 — Author management & items-search cleanup
+Expand the author surface for agent-driven metadata cleanup, and drop the
+duplicate `items search` subcommand.
 
-Expand the author surface so agents can identify and clean up unmatched
-authors; drop the duplicate `items search` subcommand.
+- **Author pagination (breaking)** — `abs-cli authors list` switched to the
+  paginated response shape `{ results, total, limit, page }` with
+  `--limit`, `--page`, `--sort` (`name` / `lastFirst` / `addedAt` /
+  `updatedAt` / `numBooks`), `--desc`. Callers that read `.authors` must
+  switch to `.results`.
+- **`abs-cli authors match` / `lookup`** — Audnexus-backed match
+  (`POST /api/authors/:id/match`, destructive — writes
+  `asin`/`imagePath`/`description`) and the read-only probe
+  (`GET /api/search/authors?q=`).
+- **`abs-cli authors update` / `delete`** — Edit `name` / `description` /
+  `asin` (tri-state per field: set / clear via empty string / leave alone).
+  Surfaces ABS's silent-merge-on-rename by returning
+  `{ merged: true, author: <target> }` instead of `{ updated, author }`.
+  `delete` unlinks from all books.
+- **`abs-cli authors image set|get|remove`** — Author images via URL
+  download (`set --url`), file/stdout (`get --output`), or DELETE
+  (`remove`).
+- **Deprecated `abs-cli items search` removed (breaking)** — Duplicate of
+  top-level `abs-cli search`. The help-text-level deprecation was in place
+  through v0.2.x and v0.3.0; v0.4.0 ships the hard removal.
 
-- **Author pagination** — `abs-cli authors list` switched to the paginated
-  response shape (`{ results, total, limit, page }`) with `--limit`,
-  `--page`, `--sort` (`name` / `lastFirst` / `addedAt` / `updatedAt` /
-  `numBooks`), `--desc`. The unpaginated `{ authors: [...] }` model is
-  gone; callers that read `.authors` must switch to `.results`.
-- **Author matching** — `abs-cli authors match` (Audnexus-backed
-  `POST /api/authors/:id/match` — destructive, writes `asin`, `imagePath`,
-  `description`, and emits `author_updated`). A 404 leaves the author
-  untouched, which surfaces authors that need cleanup
-  (e.g. `"Joe Bloggs - illustrator"`).
-- **Author lookup** — `abs-cli authors lookup --name <text>` for a
-  read-only Audnexus probe (`GET /api/search/authors?q=`) — no `region`,
-  no ASIN path. Use before `match` when you want to inspect candidates.
-- **Author edit / delete / image** — `abs-cli authors update` (edit
-  `name` / `description` / `asin`; tri-state per field: set / clear via
-  empty string / leave alone). Surfaces ABS's silent-merge-on-rename
-  behaviour by returning `{ merged: true, author: <target> }` instead
-  of `{ updated, author }` when a same-name conflict triggers the merge.
-  `abs-cli authors delete` unlinks from all books and deletes.
-  `abs-cli authors image set|get|remove` mirrors `items cover`.
-- **Remove deprecated `abs-cli items search`** — Hard removal of the
-  duplicate subcommand. `items search` and top-level `abs-cli search`
-  hit the same endpoint (`GET /api/libraries/:id/search`) with the same
-  options and response shape. The `items search` help text has carried
-  an "alias of `abs-cli search`; prefer that" note through v0.2.x and
-  v0.3.0; v0.4.0 ships the removal.
-  Spec: [docs/specs/2026-05-11-remove-items-search-subcommand.md](specs/2026-05-11-remove-items-search-subcommand.md).
-  Plan: [docs/plans/2026-05-11-remove-items-search-subcommand.md](plans/2026-05-11-remove-items-search-subcommand.md).
+Full notes: see [CHANGELOG.md](../CHANGELOG.md) or `abs-cli changelog`.
 
 ---
 
