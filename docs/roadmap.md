@@ -89,11 +89,11 @@ authors; drop the duplicate `items search` subcommand.
 
 ### v0.5.0 — Audio file management
 
-Three primitives for working with the audio files behind a library item:
-merge multi-file audiobooks into a single tagged `.m4b`, detect items that
-are already in that shape, and pull external chapter metadata. All three
-target the admin/agent metadata-cleanup loop, and all three sit on top of
-existing ABS endpoints (no proxy work, no new server features).
+Two primitives for working with the audio files behind a library item:
+merge multi-file audiobooks into a single tagged `.m4b`, and pull
+external chapter metadata. Both target the admin/agent metadata-cleanup
+loop and both sit on top of existing ABS endpoints (no proxy work, no
+new server features).
 
 - **Encode to single `.m4b`** — Wrap ABS's
   `POST /api/tools/item/:id/encode-m4b` (admin-only) so agents can
@@ -107,16 +107,6 @@ existing ABS endpoints (no proxy work, no new server features).
   for in-CLI blocking. `DELETE /api/tools/item/:id/encode-m4b` cancels
   a running task. Research:
   [docs/specs/research/2026-05-11-m4b-encode-merge.md](specs/research/2026-05-11-m4b-encode-merge.md).
-- **Detect already-encoded `.m4b` items** — No new endpoint; the
-  determination is purely a derived property of `items get`'s
-  `media.audioFiles[]`. An item is "already a single `.m4b`" when
-  `numAudioFiles == 1` and that file's `format` is `M4B` (or the file
-  extension is `.m4b`). Useful for filtering encode-m4b candidates,
-  surfacing items that are already done, and short-circuiting agent
-  workflows that would otherwise re-encode. Shape TBD — could be a
-  filter group, a derived `--m4b-only` flag on `items list`, or a
-  client-side computation documented in `--help`. Research:
-  [docs/specs/research/2026-05-11-m4b-detection.md](specs/research/2026-05-11-m4b-detection.md).
 - **External chapter metadata lookup** — Expose
   `GET /api/search/chapters?asin=<asin>&region=<r>` (Audnexus-backed,
   same backing service as `authors match`/`lookup`). Returns Audnexus's
