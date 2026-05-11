@@ -16,6 +16,7 @@
 - Modify: `src/AbsCli/Services/ItemsService.cs` — drop `SearchAsync(...)`.
 - Modify: `docker/smoke-test.sh` — remove `items search` leaf-help entry and the two `items search` assertion blocks.
 - Modify: `docs/cli-design.md` — drop the `abs-cli items search` table row.
+- Modify: `README.md` — drop the `items search` table row and update the agent-fixes-metadata narrative to use top-level `search`.
 - Modify: `docs/roadmap.md` — drop the "Remove `abs-cli items search`" row from "Planned breaking changes"; since it's the only row, drop the section header and lead-in too.
 
 ## Testing strategy note
@@ -245,10 +246,11 @@ git commit -m "test: drop 'items search' smoke assertions"
 
 ---
 
-### Task 6: Update CLI reference and roadmap
+### Task 6: Update README, CLI reference, and roadmap
 
 **Files:**
 - Modify: `docs/cli-design.md`
+- Modify: `README.md`
 - Modify: `docs/roadmap.md`
 
 - [ ] **Step 1: Remove the `cli-design.md` row**
@@ -258,6 +260,22 @@ In `docs/cli-design.md`, find and delete the table row (currently line 20):
 | `abs-cli items search --query <text>` | `GET /api/libraries/{id}/search?q=` | Search items in library |
 ```
 The corresponding top-level row (`| \`abs-cli search --query <text>\` | ...`) further down in the same file stays.
+
+- [ ] **Step 1b: Remove the README command-reference row**
+
+In `README.md`, find and delete the table row (currently line 199):
+```
+| `items search --query <text>` | Search items in a library |
+```
+The top-level `search` row a few rows below (`| \`search --query <text>\` | Search across a library |`) stays.
+
+- [ ] **Step 1c: Update the README agent-fixes-metadata example**
+
+In `README.md`, find the bullet (currently line 163):
+```
+2. Searches for affected items (`abs-cli items search`, `abs-cli items list --limit 200` with pagination for broader checks)
+```
+Replace `abs-cli items search` with `abs-cli search`. The rest of the sentence (including the `abs-cli items list ...` reference) stays unchanged.
 
 - [ ] **Step 2: Remove the `roadmap.md` "Planned breaking changes" section**
 
@@ -276,11 +294,11 @@ Scheduled for a future minor release with a prior deprecation window.
 
 The file should now end with the previous section (the "Not in scope" table that ends with the `items files / items progress` row). Make sure the file ends with exactly one trailing newline.
 
-- [ ] **Step 3: Verify both files**
+- [ ] **Step 3: Verify all three files**
 
 Run:
 ```bash
-grep -n "items search" docs/cli-design.md docs/roadmap.md
+grep -n "items search" docs/cli-design.md docs/roadmap.md README.md
 ```
 Expected: no output.
 
@@ -294,8 +312,8 @@ Expected: the last meaningful line is the "Not in scope" table's `items files / 
 
 Run:
 ```bash
-git add docs/cli-design.md docs/roadmap.md
-git commit -m "docs: remove 'items search' from CLI reference and roadmap"
+git add docs/cli-design.md docs/roadmap.md README.md
+git commit -m "docs: remove 'items search' from README, CLI reference, and roadmap"
 ```
 
 ---

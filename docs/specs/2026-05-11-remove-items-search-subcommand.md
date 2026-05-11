@@ -85,6 +85,14 @@ No other production code references the deleted method
     (currently line 20). The corresponding row for top-level
     `abs-cli search` remains.
 
+- `README.md`
+  - Remove the `items search --query <text>` row from the command
+    reference table (currently line 199). The top-level
+    `search --query <text>` row a few rows below stays.
+  - In the "agent fixes metadata" example (currently line 163),
+    replace `abs-cli items search` with `abs-cli search`. The rest
+    of the sentence stays.
+
 - `docs/roadmap.md`
   - Remove the "Remove `abs-cli items search`" row from the
     "Planned breaking changes" table. If that leaves the section
