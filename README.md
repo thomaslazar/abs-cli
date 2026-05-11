@@ -229,16 +229,16 @@ The repo includes a dev container with .NET 8, clang, and Docker support. Open i
 ### Running tests
 
 ```bash
-# Unit tests (14 tests)
+# Unit tests (132 tests)
 dotnet test tests/AbsCli.Tests/AbsCli.Tests.csproj
 
-# Self-test (33 AOT integrity checks, no network needed)
+# Self-test (45 AOT integrity checks, no network needed)
 dotnet run --project src/AbsCli/AbsCli.csproj -- self-test
 
-# Full smoke test against a live ABS instance (108 assertions)
+# Full smoke test against a live ABS instance (155 assertions)
 docker compose -f docker/docker-compose.yml up -d
 bash docker/seed.sh
-bash docker/smoke-test.sh                          # builds AOT binary + runs 108 assertions
+bash docker/smoke-test.sh                          # builds AOT binary + runs 155 assertions
 docker compose -f docker/docker-compose.yml down -v
 ```
 

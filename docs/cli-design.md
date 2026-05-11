@@ -115,6 +115,6 @@ network access. Used by CI to validate every platform binary.
 
 | Command | Description |
 |---------|-------------|
-| `abs-cli self-test` | Run 14 offline assertions (JSON round-trips, config, filter encoder, token helper) |
+| `abs-cli self-test` | Run 45 offline assertions (JSON round-trips, config, filter encoder, token helper, embedded CHANGELOG) |
 
 Returns exit code 0 on success, 1 on failure. Output goes to stderr.
