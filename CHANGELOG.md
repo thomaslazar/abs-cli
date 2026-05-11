@@ -3,6 +3,120 @@
 All notable changes to abs-cli are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## 0.4.0 — 2026-05-11
+
+### Highlights
+- **Full author-management surface.** Agents can now paginate authors,
+  match them against Audnexus, look them up read-only, edit them with
+  merge-on-rename visibility, delete them, and set / get / remove author
+  images. `abs-cli authors lookup --name "..."` is the non-destructive
+  Audnexus probe (`GET /api/search/authors?q=`); `abs-cli authors match
+  --id <id>` is the destructive write that fills in `asin`, `imagePath`,
+  and `description` from Audnexus. `abs-cli authors update` edits `name`,
+  `description`, and `asin` — pass a flag to set, pass `--description ""`
+  or `--asin ""` to clear, omit to leave alone (`--name ""` is rejected).
+  It surfaces ABS's silent-merge-on-rename behaviour explicitly: a
+  same-name conflict reassigns all books to the existing author and
+  deletes the source, and the CLI returns `{ merged: true, author: <target> }`
+  instead of the usual `{ updated, author }` so callers can detect it.
+  `abs-cli authors delete` unlinks and removes. The new `abs-cli authors
+  image set|get|remove` mirrors the `items cover` set/get/remove shape;
+  `set` accepts a single `--url` (ABS downloads from there), `get` writes
+  to file or stdout with an optional `--raw` to bypass server-side resize,
+  `remove` deletes.
+- **`abs-cli authors list` is now paginated (breaking response shape).**
+  Moves from the unpaginated `{ authors: [...] }` to the paged shape
+  `{ results, total, limit, page }`. New flags: `--limit`, `--page`,
+  `--sort` (`name` / `lastFirst` / `addedAt` / `updatedAt` / `numBooks`),
+  `--desc`. Any caller that read `.authors` from the response must
+  switch to `.results`.
+- **Deprecated `abs-cli items search` removed (breaking).** It was a
+  duplicate of top-level `abs-cli search` — same endpoint
+  (`/api/libraries/{id}/search`), same options, same response. The
+  help-text-level deprecation was in place through v0.2.x and v0.3.0
+  per `docs/roadmap.md`; v0.4.0 ships the hard removal. Migrate by
+  dropping the `items` segment.
+- **`--help` quality pass.** Misleading command descriptions corrected
+  across the tree; Audnexus provider notes, ASIN support on
+  `metadata search`, and the merge-on-rename caveat on `authors update`
+  are now documented inline so agents don't have to read specs to use
+  the CLI safely.
+- **Smoke and docs brought current.** Smoke now covers the entire
+  authors lifecycle (lookup / match / update with merge-on-rename /
+  delete via throwaway co-author / image set-get-remove) and pinned
+  the cover-URL flake by switching from a single provider to ABS's
+  `best` meta-provider. README, `docs/cli-design.md`,
+  `docs/architecture.md`, `docs/testing.md`, and `docs/roadmap.md`
+  updated to reflect the .NET 10 base, the 0.3.0+ command surface
+  (`changelog`, `items cover`, the new `authors` subtree), and the
+  current test counts (132 unit, 45 self-test, 155 smoke).
+
+### Features
+- feat: add 'authors delete' command
+- feat: add 'authors image set/get/remove' subcommand group
+- feat: add 'authors lookup' command
+- feat: add 'authors match' command
+- feat: add 'authors update' command with tri-state body
+- feat: add author image request/response models and endpoint
+- feat: add author match and search endpoints
+- feat: add author match/update request and response models
+- feat: extend AuthorsService with match/lookup/update/delete
+- feat: extend AuthorsService with set/get/remove image
+- feat!: paginate authors list
+
+### Refactors
+- refactor: drop 'items search' subcommand from items command tree
+- refactor: drop unused ItemsService.SearchAsync
+- refactor: tighten authors tests and align command signatures
+
+### Fixes
+- fix: correct authors list/image flag claims in docs
+- fix: correct misleading --help descriptions across commands
+- fix: use 'best' provider for smoke cover-URL lookup
+- fix: use assert_json_expr for null-body smoke check
+
+### Tests
+- test: drop 'items search' smoke assertions
+- test: self-test round-trip for author image models
+- test: self-test round-trip for author match/update models
+- test: smoke coverage for authors delete via throwaway co-author
+- test: smoke coverage for authors image set/get/remove
+- test: smoke coverage for authors lookup/match/update
+- test: smoke coverage for authors update merge-on-rename
+- test: smoke coverage for paginated authors list
+- test: tighten author update-body tri-state assertions
+- test: tighten authors image top-level subcommand assertion
+
+### Chores
+- chore: bump version to 0.4.0
+- chore: persist Claude Code statusline across devcontainer rebuilds
+- chore: regenerate ResponseExamples.g.cs with AuthorImage types
+- chore: regenerate ResponseExamples.g.cs with author match/update entries
+
+### Docs
+- docs: add 'be brief' main rule to CLAUDE.md
+- docs: add v0.4.0 author management roadmap entries
+- docs: extend 'items search' removal scope to cover README
+- docs: extend authors --help with Audnexus provider note
+- docs: flatten v0.4.0 roadmap section (drop shipped/pending split)
+- docs: improve line break in authors image remove notes
+- docs: note 'items search' removal in v0.4.0 roadmap section
+- docs: note ASIN support in metadata search help
+- docs: plan for v0.4.0 authors image
+- docs: plan for v0.4.0 authors list pagination
+- docs: plan for v0.4.0 authors modification
+- docs: refresh command surface and project structure for 0.3.0+ work
+- docs: refresh README .NET 10 references and install-script examples
+- docs: refresh test counts (132 unit, 45 self-test, 155 smoke)
+- docs: remove 'items search' from README, CLI reference, and roadmap
+- docs: require smoke test before opening PRs
+- docs: restructure roadmap — v0.3.0 shipped, v0.4.0 split into shipped/pending
+- docs: spec and plan for removing 'items search' subcommand
+- docs: spec for v0.4.0 authors image
+- docs: spec for v0.4.0 authors list pagination
+- docs: spec for v0.4.0 authors modification
+- docs: tighten --help notes and drop jq examples
+
 ## 0.3.0 — 2026-04-29
 
 ### Highlights
