@@ -107,6 +107,15 @@ delete / image primitives so agents can act on what they find.
   passed), and the help text for `authors update` must call it out so
   agents and users don't get bitten.
 
+- **Remove deprecated `abs-cli items search`** — Hard removal of the
+  duplicate subcommand. `items search` and top-level `abs-cli search`
+  hit the same endpoint (`GET /api/libraries/:id/search`) with the same
+  options and response shape. The `items search` help text has carried
+  an "alias of `abs-cli search`; prefer that" note through v0.2.x and
+  v0.3.0; v0.4.0 ships the removal.
+  Spec: [docs/specs/2026-05-11-remove-items-search-subcommand.md](specs/2026-05-11-remove-items-search-subcommand.md).
+  Plan: [docs/plans/2026-05-11-remove-items-search-subcommand.md](plans/2026-05-11-remove-items-search-subcommand.md).
+
 ---
 
 ## Ideas
