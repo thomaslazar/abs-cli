@@ -160,7 +160,7 @@ You notice a problem in your library — lots of audiobooks missing the language
 The agent:
 
 1. Creates a backup (`abs-cli backup create`)
-2. Searches for affected items (`abs-cli items search`, `abs-cli items list --limit 200` with pagination for broader checks)
+2. Searches for affected items (`abs-cli search`, `abs-cli items list --limit 200` with pagination for broader checks)
 3. For each affected item, inspects existing metadata (author name, title, description) to infer the language — or searches a provider to confirm (`abs-cli metadata search --provider audible.de --title "..."`)
 4. Applies fixes it's confident about (`abs-cli items update --id <id> --input '{"metadata":{"language":"German"}}'`)
 5. Asks you about ambiguous cases — "This book has a German author but an English title, which language should I set?"
@@ -196,7 +196,6 @@ abs-cli config set defaultLibrary <library-id>
 | `libraries scan [--force]` | Trigger a library scan (admin, async) |
 | `items list` | List items (`--filter`, `--sort`, `--limit`, `--page`, `--desc`) |
 | `items get --id <id>` | Get a single item |
-| `items search --query <text>` | Search items in a library |
 | `items update --id <id> --input <json>` | Update item metadata |
 | `items batch-update` | Batch update items (`--input <file>` or `--stdin`) |
 | `items batch-get` | Batch get items by ID (`--input <file>` or `--stdin`) |

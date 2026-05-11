@@ -17,7 +17,6 @@ and any future media types.
 |---------|-------------|-------------|
 | `abs-cli items list` | `GET /api/libraries/{id}/items` | List items. Supports `--filter`, `--sort`, `--desc`, `--limit`, `--page` |
 | `abs-cli items get --id <id>` | `GET /api/items/{id}` | Get single item with full metadata |
-| `abs-cli items search --query <text>` | `GET /api/libraries/{id}/search?q=` | Search items in library |
 | `abs-cli items update --id <id>` | `PATCH /api/items/{id}/media` | Update single item metadata |
 | `abs-cli items batch-update --input file.json` | `PATCH /api/items/batch/update` | Batch update from JSON file |
 | `abs-cli items batch-get --input file.json` | `GET /api/items/batch` | Batch get multiple items by ID |
