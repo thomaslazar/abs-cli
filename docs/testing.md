@@ -10,11 +10,15 @@ reflection-based serialization — bugs only surface in the real binary.
 
 ### 1. Unit Tests (xUnit)
 
-14 tests covering pure logic with no network or binary dependency:
+132 tests covering pure logic, help-output assertions, and JSON-shape drift
+guards with no network or binary dependency:
 
-- `ConfigManagerTests` — config load/save round-trip, precedence resolution
-- `FilterEncoderTests` — base64 encoding, pass-through, error cases
-- `TokenHelperTests` — JWT expiry parsing, edge cases
+- `Api/` — `FilterEncoderTests`, `TokenHelperTests`, `FilenameSanitizerTests`
+- `Commands/` — `HelpOutputTests`, `HelpExtensionsTests`, `AuthorsCommandTests`,
+  `AuthorsImageCommandTests`, `ChangelogCommandTests`, `ChangelogReaderTests`,
+  `ItemsCoverCommandTests`, `ResponseExamplesDriftTest`,
+  `ResponseExamplesJsonValidTest`, `SampleJsonWalkerTests`
+- `Configuration/` — `ConfigManagerTests`
 
 ```bash
 dotnet test tests/AbsCli.Tests/AbsCli.Tests.csproj
@@ -22,17 +26,17 @@ dotnet test tests/AbsCli.Tests/AbsCli.Tests.csproj
 
 ### 2. Self-Test (built-in command)
 
-25 checks exercising all AOT-sensitive code paths without network access:
+45 checks exercising all AOT-sensitive code paths without network access:
 
-- Source-generated JSON round-trips for all 15 types in `JsonContext`
-  (AppConfig, LoginRequest, LoginResponse, Dictionary, LibraryListResponse,
-  Library, PaginatedResponse, LibraryItemMinified, SearchResult,
-  UpdateMediaResponse, BatchUpdateResponse, BatchGetResponse, SeriesItem,
-  AuthorItem, AuthorListResponse)
+- Source-generated JSON round-trips for every type registered in
+  `JsonContext.cs` — config + auth, library / item / series / author resources,
+  search + paginated responses, batch update/get, scan, backup, task, upload,
+  cover, metadata, and the author match / image / request DTOs.
 - Config save/load round-trip and precedence resolution
 - Filter encoder (encode, pass-through, reject)
 - Token helper (JWT parse, no-exp, garbage input)
 - Console output (WriteJson, WriteRawJson)
+- CHANGELOG resource embedded and parseable
 
 ```bash
 abs-cli self-test
@@ -43,22 +47,30 @@ attributes, broken source generators, and platform-specific AOT issues.
 
 ### 3. Smoke Tests (bash, against live ABS)
 
-71 assertions running the AOT binary against a real Audiobookshelf Docker
+155 assertions running the AOT binary against a real Audiobookshelf Docker
 instance seeded with 15 books, 6 authors, and 3 series:
 
 - All help screens render correctly (parent commands + leaf commands with examples)
 - Filter groups and sort fields sections present in `items list --help`
 - Config set/get round-trip
-- Libraries list/get — correct count, correct library by ID and name
-- Items list — 15 items, pagination (5 per page, total preserved)
+- Libraries list/get/scan — correct count, correct library by ID and name, scan kicks off
+- Items list — pagination, total preserved, filter groups including `missing=`
 - Items get — single item by ID with media metadata
-- Items search — finds books by title, empty for garbage queries
-- Items update — single field (title), multi-field (description + genres),
-  update from file (publisher), all verified via get after write
-- Items batch-get — fetch 2 items by ID via stdin
-- Series list — 3 series with pagination, single series get by ID
-- Authors list — 6 authors, find by name (Brandon Sanderson), get by ID
-- Search — finds books by title, finds series by name
+- Items update — single field, multi-field, update from file, all verified via get after write
+- Items batch-update / batch-get — stdin + file inputs
+- Items scan — single-item sync scan
+- Items cover — set via `--file` / `--server-path` / `--url`, get to file and to stdout, remove
+- Series list — pagination, single series get by ID
+- Authors list/get — pagination, filter by name, fetch by ID
+- Authors match / lookup / update / delete / image — Audnexus-backed match,
+  read-only lookup, edit fields, delete, image set/get/remove
+- Search — top-level search finds books by title, finds series by name
+- Backup — create, list, apply, download, delete, upload (admin)
+- Upload — single file, multi-file, `--prefix-source-dir`, `--files-manifest`,
+  sanitize-drift coverage, `--wait` polling
+- Metadata — providers list, gated external provider tests
+- Tasks — list active and recent
+- Permission errors — non-admin user gets clear 403 messages
 
 ```bash
 docker compose -f docker/docker-compose.yml up -d
@@ -78,8 +90,8 @@ CLI=./path/to/abs-cli bash docker/smoke-test.sh
 | Job | What | Platforms |
 |-----|------|-----------|
 | unit-test | xUnit tests | ubuntu (any) |
-| smoke-test | AOT binary + live ABS (71 assertions) | linux-x64 only (Docker required) |
-| build | AOT publish + self-test (25 checks) | linux-x64, linux-arm64, osx-arm64, osx-x64, win-x64, win-arm64 |
+| smoke-test | AOT binary + live ABS (155 assertions) | linux-x64 only (Docker required) |
+| build | AOT publish + self-test (45 checks) | linux-x64, linux-arm64, osx-arm64, osx-x64, win-x64, win-arm64 |
 
 The smoke test is Linux-only because it needs a Docker ABS container.
 Self-test runs on all platforms to validate AOT integrity everywhere.

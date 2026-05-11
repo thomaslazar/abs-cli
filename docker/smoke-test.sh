@@ -101,7 +101,7 @@ done
 # Leaf commands must have at least 2 examples (for AI agent usability)
 for cmd in "login" "config get" "config set" \
            "libraries list" "libraries get" "libraries scan" \
-           "items list" "items get" "items search" \
+           "items list" "items get" \
            "items update" "items batch-update" "items batch-get" "items scan" \
            "series list" "series get" \
            "authors list" "authors get" \
@@ -200,15 +200,6 @@ output=$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)
 assert_json_key "items get has id" "id" "$output"
 assert_json_expr "items get correct id" "d['id']=='$FIRST_ITEM_ID'" "$output"
 assert_json_key "items get has media" "media" "$output"
-
-# Search — find a known book by title
-output=$($CLI items search --query "Final Empire" 2>/dev/null)
-assert_json_key "items search has book key" "book" "$output"
-assert_json_expr "items search finds Final Empire" "len(d.get('book',[]))>0" "$output"
-
-# Search — no results
-output=$($CLI items search --query "zzz_nonexistent_xyz" 2>/dev/null)
-assert_json_expr "items search empty for garbage query" "len(d.get('book',[]))==0" "$output"
 
 # Update metadata — change title, verify it sticks
 ORIGINAL_TITLE=$(echo "$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)" \

@@ -20,8 +20,8 @@ Agent verifies prerequisites:
 - On `main` branch, working tree clean
 - Format check (`dotnet format --verify-no-changes`)
 - All unit tests pass (`dotnet test`)
-- AOT build + self-test (25 checks)
-- Smoke test against ABS if Docker available (71 assertions)
+- AOT build + self-test (45 checks)
+- Smoke test against ABS if Docker available (155 assertions)
 - Determine version based on commits since last tag
 
 **Human gate:** Confirm the version number.

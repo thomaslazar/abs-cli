@@ -79,7 +79,6 @@ public class HelpOutputTests
     }
 
     [Theory]
-    [InlineData("search")]
     [InlineData("update")]
     [InlineData("batch-update")]
     [InlineData("batch-get")]
@@ -127,7 +126,6 @@ public class HelpOutputTests
     [Theory]
     [InlineData("items", "get")]
     [InlineData("items", "list")]
-    [InlineData("items", "search")]
     [InlineData("items", "update")]
     [InlineData("items", "batch-get")]
     public void Items_Help_ShowsBothMediaUnionShapes(string group, string sub)
