@@ -54,8 +54,6 @@ Full notes: see [CHANGELOG.md](../CHANGELOG.md) or `abs-cli changelog`.
 Expand the author surface so agents can identify and clean up unmatched
 authors; drop the duplicate `items search` subcommand.
 
-**Shipped to main, awaiting tag:**
-
 - **Author pagination** — `abs-cli authors list` switched to the paginated
   response shape (`{ results, total, limit, page, sortBy, sortDesc, filterBy, minified, include }`)
   with `--limit`, `--page`, `--sort` (`name` / `lastFirst` / `addedAt` /
@@ -74,9 +72,6 @@ authors; drop the duplicate `items search` subcommand.
   via stderr warnings and `--allow-merge`), `abs-cli authors delete`
   (unlinks from all books and deletes), and `abs-cli authors image set|get|remove`
   mirroring `items cover`.
-
-**In this branch, pending merge:**
-
 - **Remove deprecated `abs-cli items search`** — Hard removal of the
   duplicate subcommand. `items search` and top-level `abs-cli search`
   hit the same endpoint (`GET /api/libraries/:id/search`) with the same
