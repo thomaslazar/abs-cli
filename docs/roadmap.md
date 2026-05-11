@@ -47,41 +47,83 @@ Full notes: see [CHANGELOG.md](../CHANGELOG.md) or `abs-cli changelog`.
 
 ---
 
-## In progress
+### v0.4.0 — Author management & items-search cleanup (shipped 2026-05-11)
 
-### v0.4.0 — Author management & items-search cleanup
+Expand the author surface for agent-driven metadata cleanup, and drop the
+duplicate `items search` subcommand.
 
-Expand the author surface so agents can identify and clean up unmatched
-authors; drop the duplicate `items search` subcommand.
+- **Author pagination (breaking)** — `abs-cli authors list` switched to the
+  paginated response shape `{ results, total, limit, page }` with
+  `--limit`, `--page`, `--sort` (`name` / `lastFirst` / `addedAt` /
+  `updatedAt` / `numBooks`), `--desc`. Callers that read `.authors` must
+  switch to `.results`.
+- **`abs-cli authors match` / `lookup`** — Audnexus-backed match
+  (`POST /api/authors/:id/match`, destructive — writes
+  `asin`/`imagePath`/`description`) and the read-only probe
+  (`GET /api/search/authors?q=`).
+- **`abs-cli authors update` / `delete`** — Edit `name` / `description` /
+  `asin` (tri-state per field: set / clear via empty string / leave alone).
+  Surfaces ABS's silent-merge-on-rename by returning
+  `{ merged: true, author: <target> }` instead of `{ updated, author }`.
+  `delete` unlinks from all books.
+- **`abs-cli authors image set|get|remove`** — Author images via URL
+  download (`set --url`), file/stdout (`get --output`), or DELETE
+  (`remove`).
+- **Deprecated `abs-cli items search` removed (breaking)** — Duplicate of
+  top-level `abs-cli search`. The help-text-level deprecation was in place
+  through v0.2.x and v0.3.0; v0.4.0 ships the hard removal.
 
-- **Author pagination** — `abs-cli authors list` switched to the paginated
-  response shape (`{ results, total, limit, page }`) with `--limit`,
-  `--page`, `--sort` (`name` / `lastFirst` / `addedAt` / `updatedAt` /
-  `numBooks`), `--desc`. The unpaginated `{ authors: [...] }` model is
-  gone; callers that read `.authors` must switch to `.results`.
-- **Author matching** — `abs-cli authors match` (Audnexus-backed
-  `POST /api/authors/:id/match` — destructive, writes `asin`, `imagePath`,
-  `description`, and emits `author_updated`). A 404 leaves the author
-  untouched, which surfaces authors that need cleanup
-  (e.g. `"Joe Bloggs - illustrator"`).
-- **Author lookup** — `abs-cli authors lookup --name <text>` for a
-  read-only Audnexus probe (`GET /api/search/authors?q=`) — no `region`,
-  no ASIN path. Use before `match` when you want to inspect candidates.
-- **Author edit / delete / image** — `abs-cli authors update` (edit
-  `name` / `description` / `asin`; tri-state per field: set / clear via
-  empty string / leave alone). Surfaces ABS's silent-merge-on-rename
-  behaviour by returning `{ merged: true, author: <target> }` instead
-  of `{ updated, author }` when a same-name conflict triggers the merge.
-  `abs-cli authors delete` unlinks from all books and deletes.
-  `abs-cli authors image set|get|remove` mirrors `items cover`.
-- **Remove deprecated `abs-cli items search`** — Hard removal of the
-  duplicate subcommand. `items search` and top-level `abs-cli search`
-  hit the same endpoint (`GET /api/libraries/:id/search`) with the same
-  options and response shape. The `items search` help text has carried
-  an "alias of `abs-cli search`; prefer that" note through v0.2.x and
-  v0.3.0; v0.4.0 ships the removal.
-  Spec: [docs/specs/2026-05-11-remove-items-search-subcommand.md](specs/2026-05-11-remove-items-search-subcommand.md).
-  Plan: [docs/plans/2026-05-11-remove-items-search-subcommand.md](plans/2026-05-11-remove-items-search-subcommand.md).
+Full notes: see [CHANGELOG.md](../CHANGELOG.md) or `abs-cli changelog`.
+
+---
+
+## Next
+
+### v0.5.0 — Audio file management
+
+Three primitives for working with the audio files behind a library item:
+merge multi-file audiobooks into a single tagged `.m4b`, pull external
+chapter metadata, and embed ABS's current metadata into the audio files
+themselves (which today's `items update` and friends do not do — they
+only persist to ABS's DB and sidecar). All three target the admin/agent
+metadata-cleanup loop and all three sit on top of existing ABS endpoints
+(no proxy work, no new server features).
+
+- **Encode to single `.m4b`** — Wrap ABS's
+  `POST /api/tools/item/:id/encode-m4b` (admin-only) so agents can
+  consolidate multi-file audiobooks into a single tagged `.m4b`. ABS
+  concatenates `media.includedAudioFiles` through ffmpeg, embeds
+  chapters + cover, writes the result to the item's library directory,
+  **and automatically moves the original tracks out of the library dir**
+  (into the server's metadata cache as a backup) — so the post-task
+  library state is a single-file m4b without any extra CLI cleanup.
+  Pairs with existing `tasks list` for progress polling; add `--wait`
+  for in-CLI blocking. `DELETE /api/tools/item/:id/encode-m4b` cancels
+  a running task. Research:
+  [docs/specs/research/2026-05-11-m4b-encode-merge.md](specs/research/2026-05-11-m4b-encode-merge.md).
+- **External chapter metadata lookup** — Expose
+  `GET /api/search/chapters?asin=<asin>&region=<r>` (Audnexus-backed,
+  same backing service as `authors match`/`lookup`). Returns Audnexus's
+  chapter shape (`{ asin, chapters: [{ title, lengthMs, startOffsetMs,
+  startOffsetSec }, ...], runtimeLengthSec, isAccurate, ... }`) which
+  the agent can diff against an item's existing `media.chapters` and
+  write back via the existing `POST /api/items/:id/chapters` (likely
+  needs a new `items chapters set` command too, plus a units note
+  since Audnexus is ms-based and the write endpoint takes seconds).
+  Research:
+  [docs/specs/research/2026-05-11-external-chapter-metadata.md](specs/research/2026-05-11-external-chapter-metadata.md).
+- **Embed ABS metadata into the audio files** — Expose ABS's
+  `POST /api/tools/item/:id/embed-metadata` (admin-only). The existing
+  ABS metadata write endpoints (and the CLI commands that wrap them —
+  `items update`, planned `items chapters set`, `authors update`, etc.)
+  only update ABS's database and sidecar file; the audio files
+  themselves stay untouched. `embed-metadata` is the in-place ffmpeg
+  pass that reads ABS's current state and bakes the tags, cover, and
+  chapters into the files. Optional `forceEmbedChapters=1` to include
+  chapters on multi-file books; `backup=1` keeps a server-side copy
+  before the rewrite. Batch variant at
+  `POST /api/tools/batch/embed-metadata`. Research:
+  [docs/specs/research/2026-05-11-embed-metadata.md](specs/research/2026-05-11-embed-metadata.md).
 
 ---
 
