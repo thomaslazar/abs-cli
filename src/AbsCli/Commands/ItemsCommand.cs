@@ -12,7 +12,6 @@ public static class ItemsCommand
         var command = new Command("items", "Manage library items");
         command.Subcommands.Add(CreateListCommand());
         command.Subcommands.Add(CreateGetCommand());
-        command.Subcommands.Add(CreateSearchCommand());
         command.Subcommands.Add(CreateUpdateCommand());
         command.Subcommands.Add(CreateBatchUpdateCommand());
         command.Subcommands.Add(CreateBatchGetCommand());
@@ -97,53 +96,6 @@ public static class ItemsCommand
             var service = new ItemsService(client);
             var result = await service.GetAsync(id);
             ConsoleOutput.WriteJson(result, AppJsonContext.Default.LibraryItemMinified);
-            return 0;
-        });
-        return command;
-    }
-
-    private static Command CreateSearchCommand()
-    {
-        var queryOption = new Option<string>("--query") { Description = "Search text", Required = true };
-        var libraryOption = new Option<string?>("--library") { Description = "Library ID" };
-        var limitOption = new Option<int>("--limit") { Description = "Max results (default 50, pass higher value to retrieve more)", DefaultValueFactory = _ => 50 };
-        var command = new Command("search",
-            "Search across a library (substring match, case-insensitive, defaults to 50 results). Alias for 'abs-cli search' — same endpoint, same response shape.")
-        {
-            queryOption, libraryOption, limitOption
-        };
-        command.AddHelpSection("Search behavior",
-            "Substring match, case-insensitive. No operators or wildcards.",
-            "Multi-word queries match as a single phrase (\"brandon sanderson\"",
-            "matches but \"sanderson brandon\" does not).",
-            "Accent-insensitive when the server supports it.");
-        command.AddHelpSection("Fields searched",
-            "Books: title, subtitle, ASIN, ISBN",
-            "Authors: name",
-            "Series: name",
-            "Narrators: name",
-            "Tags: name",
-            "Genres: name",
-            "NOT searched: description, publisher");
-        command.AddHelpSection("Note",
-            "Alias of 'abs-cli search'; prefer that. Response is multi-bucket",
-            "(book, authors, series, narrators, tags, genres) — not just books.");
-        command.AddExamples(
-            "abs-cli items search --query \"Mistborn\"",
-            "abs-cli items search --query \"Brandon Sanderson\"",
-            "abs-cli items search --query \"978-0\" --limit 20");
-        command.AddResponseExample<SearchResult>();
-        command.AddMediaUnionShapes();
-        command.SetAction(async (parseResult, cancellationToken) =>
-        {
-            var query = parseResult.GetValue(queryOption)!;
-            var library = parseResult.GetValue(libraryOption);
-            var limit = parseResult.GetValue(limitOption);
-            var (client, config) = CommandHelper.BuildClient(libraryOverride: library);
-            var libraryId = CommandHelper.RequireLibrary(config);
-            var service = new ItemsService(client);
-            var result = await service.SearchAsync(libraryId, query, limit);
-            ConsoleOutput.WriteJson(result, AppJsonContext.Default.SearchResult);
             return 0;
         });
         return command;
