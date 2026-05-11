@@ -67,6 +67,33 @@ public class AuthorsService
             "'update' permission");
     }
 
+    public async Task<AuthorImageResponse> SetImageAsync(string id, string url)
+    {
+        var json = JsonSerializer.Serialize(
+            new AuthorImageRequest { Url = url },
+            AppJsonContext.Default.AuthorImageRequest);
+        return await _client.PostAsync(
+            ApiEndpoints.AuthorImage(id),
+            json,
+            AppJsonContext.Default.AuthorImageResponse,
+            "'upload' permission");
+    }
+
+    public async Task<Stream> GetImageStreamAsync(string id, bool raw)
+    {
+        var url = ApiEndpoints.AuthorImage(id);
+        if (raw) url += "?raw=1";
+        return await _client.GetStreamAsync(url);
+    }
+
+    public async Task<AuthorImageResponse> RemoveImageAsync(string id)
+    {
+        return await _client.DeleteAsync(
+            ApiEndpoints.AuthorImage(id),
+            AppJsonContext.Default.AuthorImageResponse,
+            "'delete' permission");
+    }
+
     public async Task DeleteAsync(string id)
     {
         await _client.DeleteAsync(ApiEndpoints.AuthorById(id), "'delete' permission");

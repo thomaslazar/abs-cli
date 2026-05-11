@@ -544,6 +544,27 @@ public static class SelfTestCommand
                 Assert(json.Contains("\"asin\": \"B000AP9DSU\""), $"asin: {json}");
             });
 
+            Check("AuthorImageRequest round-trip", () =>
+            {
+                var obj = new AuthorImageRequest { Url = "https://example.com/img.png" };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.AuthorImageRequest);
+                Assert(json.Contains("\"url\": \"https://example.com/img.png\""), $"url: {json}");
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.AuthorImageRequest)!;
+                Assert(back.Url == "https://example.com/img.png", $"url: {back.Url}");
+            });
+
+            Check("AuthorImageResponse round-trip", () =>
+            {
+                var obj = new AuthorImageResponse
+                {
+                    Author = new AuthorItem { Id = "aut_xyz", Name = "Brandon Sanderson", ImagePath = "/m/authors/x.jpg" }
+                };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.AuthorImageResponse);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.AuthorImageResponse)!;
+                Assert(back.Author?.Name == "Brandon Sanderson", $"author.name: {back.Author?.Name}");
+                Assert(back.Author?.ImagePath == "/m/authors/x.jpg", $"author.imagePath: {back.Author?.ImagePath}");
+            });
+
             Console.Error.WriteLine();
             Console.Error.WriteLine("=== Embedded resources ===");
 

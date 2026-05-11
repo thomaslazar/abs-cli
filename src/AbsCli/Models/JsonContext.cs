@@ -22,6 +22,8 @@ namespace AbsCli.Models;
 [JsonSerializable(typeof(AuthorMatchRequest))]
 [JsonSerializable(typeof(AuthorMatchResponse))]
 [JsonSerializable(typeof(AuthorUpdateResponse))]
+[JsonSerializable(typeof(AuthorImageRequest))]
+[JsonSerializable(typeof(AuthorImageResponse))]
 [JsonSerializable(typeof(BackupItem))]
 [JsonSerializable(typeof(BackupListResponse))]
 [JsonSerializable(typeof(ScanResult))]
