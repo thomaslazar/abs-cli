@@ -81,11 +81,13 @@ Full notes: see [CHANGELOG.md](../CHANGELOG.md) or `abs-cli changelog`.
 
 ### v0.5.0 — Audio file management
 
-Two primitives for working with the audio files behind a library item:
-merge multi-file audiobooks into a single tagged `.m4b`, and pull
-external chapter metadata. Both target the admin/agent metadata-cleanup
-loop and both sit on top of existing ABS endpoints (no proxy work, no
-new server features).
+Three primitives for working with the audio files behind a library item:
+merge multi-file audiobooks into a single tagged `.m4b`, pull external
+chapter metadata, and embed ABS's current metadata into the audio files
+themselves (which today's `items update` and friends do not do — they
+only persist to ABS's DB and sidecar). All three target the admin/agent
+metadata-cleanup loop and all three sit on top of existing ABS endpoints
+(no proxy work, no new server features).
 
 - **Encode to single `.m4b`** — Wrap ABS's
   `POST /api/tools/item/:id/encode-m4b` (admin-only) so agents can
@@ -110,6 +112,18 @@ new server features).
   since Audnexus is ms-based and the write endpoint takes seconds).
   Research:
   [docs/specs/research/2026-05-11-external-chapter-metadata.md](specs/research/2026-05-11-external-chapter-metadata.md).
+- **Embed ABS metadata into the audio files** — Expose ABS's
+  `POST /api/tools/item/:id/embed-metadata` (admin-only). The existing
+  ABS metadata write endpoints (and the CLI commands that wrap them —
+  `items update`, planned `items chapters set`, `authors update`, etc.)
+  only update ABS's database and sidecar file; the audio files
+  themselves stay untouched. `embed-metadata` is the in-place ffmpeg
+  pass that reads ABS's current state and bakes the tags, cover, and
+  chapters into the files. Optional `forceEmbedChapters=1` to include
+  chapters on multi-file books; `backup=1` keeps a server-side copy
+  before the rewrite. Batch variant at
+  `POST /api/tools/batch/embed-metadata`. Research:
+  [docs/specs/research/2026-05-11-embed-metadata.md](specs/research/2026-05-11-embed-metadata.md).
 
 ---
 

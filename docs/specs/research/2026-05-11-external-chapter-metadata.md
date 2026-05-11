@@ -54,24 +54,35 @@ When Audnexus has nothing for the ASIN, ABS responds with
 (HTTP 200 with an error body — non-conventional but consistent with the
 rest of the search controller).
 
-### Write back to item
+### Write to ABS state
 
 ```
 POST /api/items/:id/chapters
 ```
 
 (`temp/audiobookshelf/server/routers/ApiRouter.js:122`,
-controller at `LibraryItemController.updateMediaChapters`).
+controller at `LibraryItemController.updateMediaChapters`,
+`LibraryItemController.js:850-904`).
 
 Permissions: `req.user.canUpdate` — the standard update permission
 (not admin). Same level as `items update`.
 
-Validation (`LibraryItemController.js`):
+Validation:
 - Item must not be missing
 - Item must be a book
 - Item must have audio tracks
 - Body must be `{ "chapters": [{ title: string, start: number, end: number }, ...] }`
 - Each chapter requires all three fields; missing or wrong type → 400.
+
+**This endpoint does NOT touch the audio file.** What it does:
+- Updates `media.chapters` in the ABS database.
+- Writes the sidecar metadata file (`metadata.json` / `metadata.opf`)
+  next to the book (`LibraryItem.saveMetadataFile`, `LibraryItem.js:616`).
+- Emits an `item_updated` socket event.
+
+The audio file's embedded chapter atoms / ID3 frames stay untouched.
+Anything that reads chapters directly off the file (a different player,
+a future re-import, ffprobe in a script) will still see the old data.
 
 **Units mismatch with the lookup endpoint.** Audnexus returns
 `startOffsetMs` / `startOffsetSec` / `lengthMs`. The write endpoint
@@ -87,6 +98,58 @@ Or compute everything from `startOffsetMs` for higher precision.
 Either way, the conversion belongs in the agent (or in a CLI
 `apply` mode if we ship one) — the lookup endpoint itself returns
 the raw Audnexus shape.
+
+### Embed chapters into the audio file (separate endpoint)
+
+```
+POST /api/tools/item/:id/embed-metadata?forceEmbedChapters=1&backup=1
+```
+
+Source: `temp/audiobookshelf/server/routers/ApiRouter.js:299`,
+`ToolsController.embedAudioFileMetadata` (`ToolsController.js:84`),
+`AudioMetadataManager.updateMetadataForItem`.
+
+If callers actually want the chapter timings to live inside the audio
+file (not just inside ABS's DB + sidecar), they need this follow-up
+call. It runs an ffmpeg pass that rewrites the audio files in place
+with the cover and the ffmetadata (tags + chapters).
+
+Permissions: **admin only** (same `ToolsController.middleware` as
+`encode-m4b`). Note this is a higher bar than the
+`POST /api/items/:id/chapters` write itself, which only needs
+`canUpdate`.
+
+Query params:
+- `forceEmbedChapters=1` — required for multi-file audiobooks.
+  AudioMetadataManager only embeds chapters automatically when the
+  item has a single audio file (`audioFiles.length == 1`); for
+  multi-file books you must opt in via this flag or chapters stay
+  out of the embedded ffmetadata.
+- `backup=1` — keeps a backup of each audio file in the server
+  metadata cache before the in-place rewrite. Recommended for any
+  bulk run.
+
+Body: empty (POST). Response: `res.sendStatus(200)` — empty, like
+`encode-m4b`. Progress is tracked via the Task system; poll
+`/api/tasks` for type `embed-metadata` with `data.libraryItemId`.
+
+A batch variant exists at `POST /api/tools/batch/embed-metadata`
+that takes `{ libraryItemIds: [...] }` in the body.
+
+### Two- vs. three-step workflow
+
+So the actual "lookup → apply to audio file" loop is two or three
+calls, not one:
+
+1. **Lookup** — `GET /api/search/chapters?asin=...&region=...`
+2. **Write to ABS state** — `POST /api/items/:id/chapters` (DB +
+   sidecar). Stop here if you only care about ABS-aware clients.
+3. **Embed into file** — `POST /api/tools/item/:id/embed-metadata?forceEmbedChapters=1[&backup=1]`,
+   then poll `/api/tasks`. Only needed if the audio file itself
+   has to carry the chapters.
+
+Step 3 is a destructive, in-place rewrite — `--backup` is cheap
+insurance and probably worth defaulting on.
 
 ## Proposed CLI shape
 
