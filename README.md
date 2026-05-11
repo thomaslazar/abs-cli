@@ -37,7 +37,7 @@ Installs to `~/.local/bin/abs-cli`. Override with environment variables:
 
 ```bash
 # specific version
-curl -fsSL https://raw.githubusercontent.com/thomaslazar/abs-cli/main/install.sh | ABS_CLI_VERSION=v0.2.2 bash
+curl -fsSL https://raw.githubusercontent.com/thomaslazar/abs-cli/main/install.sh | ABS_CLI_VERSION=v0.3.0 bash
 
 # custom directory
 curl -fsSL https://raw.githubusercontent.com/thomaslazar/abs-cli/main/install.sh | ABS_CLI_INSTALL_DIR=/usr/local/bin bash
@@ -53,7 +53,7 @@ Installs to `%LOCALAPPDATA%\abs-cli\`. Override with environment variables:
 
 ```powershell
 # specific version
-$env:ABS_CLI_VERSION = "v0.2.2"; irm https://raw.githubusercontent.com/thomaslazar/abs-cli/main/install.ps1 | iex
+$env:ABS_CLI_VERSION = "v0.3.0"; irm https://raw.githubusercontent.com/thomaslazar/abs-cli/main/install.ps1 | iex
 
 # custom directory
 $env:ABS_CLI_INSTALL_DIR = "C:\tools\abs-cli"; irm https://raw.githubusercontent.com/thomaslazar/abs-cli/main/install.ps1 | iex
@@ -64,7 +64,7 @@ $env:ABS_CLI_INSTALL_DIR = "C:\tools\abs-cli"; irm https://raw.githubusercontent
 Download from the [latest release](https://github.com/thomaslazar/abs-cli/releases/latest):
 
 ```bash
-sudo dpkg -i abs-cli_0.2.2_amd64.deb
+sudo dpkg -i abs-cli_0.3.0_amd64.deb
 ```
 
 ### Download a release
@@ -95,11 +95,11 @@ sudo xattr -d com.apple.quarantine abs-cli-osx-arm64
 
 ### Build from source
 
-Requires [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0).
+Requires [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
 
 ```bash
 dotnet publish src/AbsCli/AbsCli.csproj -c Release -r linux-x64 --self-contained true /p:PublishAot=true
-# Binary at: src/AbsCli/bin/Release/net8.0/linux-x64/publish/abs-cli
+# Binary at: src/AbsCli/bin/Release/net10.0/linux-x64/publish/abs-cli
 ```
 
 ## Quick start
@@ -235,7 +235,7 @@ Every command supports `--help` with examples and reference sections.
 
 ### Dev container (recommended)
 
-The repo includes a dev container with .NET 8, clang, and Docker support. Open in VS Code or GitHub Codespaces.
+The repo includes a dev container with .NET 10, clang, and Docker support. Open in VS Code or GitHub Codespaces.
 
 ### Running tests
 
