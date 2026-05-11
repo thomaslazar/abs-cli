@@ -320,8 +320,8 @@ public static class AuthorsCommand
         var command = new Command("remove", "Remove the author image")
         { idOption };
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
-            "No current image → exit 2, stderr \"Bad request. Author has no image",
-            "path set\". Check imagePath via 'authors get' first if needed.");
+            "No current image → exit 2, stderr \"Bad request. Author has no",
+            "image path set\". Check imagePath via 'authors get' first if needed.");
         command.AddExamples(
             "abs-cli authors image remove --id \"aut_xyz\"");
         command.AddResponseExample<AuthorImageResponse>();
