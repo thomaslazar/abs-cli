@@ -37,6 +37,8 @@ namespace AbsCli.Models;
 [JsonSerializable(typeof(CoverApplyByUrlRequest))]
 [JsonSerializable(typeof(CoverLinkExistingRequest))]
 [JsonSerializable(typeof(CoverFileSavedDescriptor))]
+[JsonSerializable(typeof(EncodeM4bOptions))]
+[JsonSerializable(typeof(EncodeM4bStartReceipt))]
 [JsonSerializable(typeof(UploadManifestEntry))]
 [JsonSerializable(typeof(UploadReceipt))]
 [JsonSerializable(typeof(List<UploadManifestEntry>))]
