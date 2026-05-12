@@ -932,9 +932,9 @@ encode_cleanup() {
 }
 trap encode_cleanup EXIT
 
-ffmpeg -y -f lavfi -i "sine=frequency=440:duration=3" -c:a libmp3lame -b:a 128k \
+ffmpeg -y -f lavfi -i "sine=frequency=440:duration=3" -ac 2 -c:a libmp3lame -b:a 128k \
     "$ENCODE_TMP/track1.mp3" > /dev/null 2>&1
-ffmpeg -y -f lavfi -i "sine=frequency=523:duration=3" -c:a libmp3lame -b:a 128k \
+ffmpeg -y -f lavfi -i "sine=frequency=523:duration=3" -ac 2 -c:a libmp3lame -b:a 128k \
     "$ENCODE_TMP/track2.mp3" > /dev/null 2>&1
 
 if [ -s "$ENCODE_TMP/track1.mp3" ] && [ -s "$ENCODE_TMP/track2.mp3" ]; then
