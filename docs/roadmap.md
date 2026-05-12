@@ -102,6 +102,8 @@ ABS endpoints (no proxy work, no new server features).
   for in-CLI blocking. `DELETE /api/tools/item/:id/encode-m4b` cancels
   a running task. Research:
   [docs/specs/research/2026-05-11-m4b-encode-merge.md](specs/research/2026-05-11-m4b-encode-merge.md).
+  Spec: [docs/specs/2026-05-12-v0.5.0-encode-m4b.md](specs/2026-05-12-v0.5.0-encode-m4b.md).
+  Plan: [docs/plans/2026-05-12-v0.5.0-encode-m4b.md](plans/2026-05-12-v0.5.0-encode-m4b.md).
 - **External chapter metadata lookup** — Expose
   `GET /api/search/chapters?asin=<asin>&region=<r>` (Audnexus-backed,
   same backing service as `authors match`/`lookup`). Returns Audnexus's
