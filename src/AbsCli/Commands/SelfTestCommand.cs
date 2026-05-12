@@ -491,7 +491,7 @@ public static class SelfTestCommand
             {
                 var obj = new EncodeM4bOptions { Codec = "copy" };
                 var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.EncodeM4bOptions);
-                Assert(json.Contains("\"codec\"") && json.Contains("copy"), $"codec missing: {json}");
+                Assert(json.Contains("\"codec\": \"copy\""), $"codec missing: {json}");
                 Assert(!json.Contains("bitrate"), $"bitrate should be omitted: {json}");
                 Assert(!json.Contains("channels"), $"channels should be omitted: {json}");
             });
