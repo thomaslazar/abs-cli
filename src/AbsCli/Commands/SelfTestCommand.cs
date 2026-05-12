@@ -474,6 +474,46 @@ public static class SelfTestCommand
             });
 
             Console.Error.WriteLine();
+            Console.Error.WriteLine("=== Encode M4B Models ===");
+
+            Check("EncodeM4bOptions round-trip (all fields set)", () =>
+            {
+                var obj = new EncodeM4bOptions { Codec = "aac", Bitrate = "128k", Channels = 2 };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.EncodeM4bOptions);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.EncodeM4bOptions)!;
+                Assert(back.Codec == "aac", $"codec: {back.Codec}");
+                Assert(back.Bitrate == "128k", $"bitrate: {back.Bitrate}");
+                Assert(back.Channels == 2, $"channels: {back.Channels}");
+                Assert(!json.Contains("null"), $"unset fields should be omitted, got: {json}");
+            });
+
+            Check("EncodeM4bOptions round-trip (omits unset fields)", () =>
+            {
+                var obj = new EncodeM4bOptions { Codec = "copy" };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.EncodeM4bOptions);
+                Assert(json.Contains("\"codec\"") && json.Contains("copy"), $"codec missing: {json}");
+                Assert(!json.Contains("bitrate"), $"bitrate should be omitted: {json}");
+                Assert(!json.Contains("channels"), $"channels should be omitted: {json}");
+            });
+
+            Check("EncodeM4bStartReceipt round-trip", () =>
+            {
+                var obj = new EncodeM4bStartReceipt
+                {
+                    LibraryItemId = "li_abc123",
+                    Action = "encode-m4b",
+                    Started = true,
+                    Options = new EncodeM4bOptions { Codec = "copy" }
+                };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.EncodeM4bStartReceipt);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.EncodeM4bStartReceipt)!;
+                Assert(back.LibraryItemId == "li_abc123", $"libraryItemId: {back.LibraryItemId}");
+                Assert(back.Action == "encode-m4b", $"action: {back.Action}");
+                Assert(back.Started == true, $"started: {back.Started}");
+                Assert(back.Options.Codec == "copy", $"options.codec: {back.Options.Codec}");
+            });
+
+            Console.Error.WriteLine();
             Console.Error.WriteLine("=== Author Models ===");
 
             Check("AuthorMatchRequest round-trip", () =>
