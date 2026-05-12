@@ -144,6 +144,13 @@ ABS endpoints (no proxy work, no new server features).
 
 ---
 
+### v0.6.0 — TBD
+
+- **`items delete`** — Add support for more destructive commands.
+- **`login --username` / `--password`** — Add non-interactive credential parameters to the `login` command.
+
+---
+
 ## Ideas
 
 Not yet scoped — notes to pick up later.
