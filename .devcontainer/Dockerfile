@@ -1,11 +1,14 @@
 FROM mcr.microsoft.com/devcontainers/dotnet:10.0
 
 # Native AOT compilation dependencies + Python (needed by peon-ping installer)
+# + ffmpeg (used by docker/smoke-test.sh to synthesise audio fixtures for the
+#   encode-m4b tests; CI's ubuntu-latest already ships with ffmpeg).
 RUN apt-get update && apt-get install -y --no-install-recommends \
     clang \
     zlib1g-dev \
     python3 \
     python3-pip \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 # Claude Code CLI (native installer) + peon-ping both install to ~/.local/bin
