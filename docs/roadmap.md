@@ -79,15 +79,16 @@ Full notes: see [CHANGELOG.md](../CHANGELOG.md) or `abs-cli changelog`.
 
 ## Next
 
-### v0.5.0 — Audio file management
+### v0.5.0 — File management
 
-Three primitives for working with the audio files behind a library item:
-merge multi-file audiobooks into a single tagged `.m4b`, pull external
-chapter metadata, and embed ABS's current metadata into the audio files
-themselves (which today's `items update` and friends do not do — they
-only persist to ABS's DB and sidecar). All three target the admin/agent
-metadata-cleanup loop and all three sit on top of existing ABS endpoints
-(no proxy work, no new server features).
+Four primitives for working with the files behind a library item: merge
+multi-file audiobooks into a single tagged `.m4b`, pull external chapter
+metadata, embed ABS's current metadata into the audio files themselves
+(which today's `items update` and friends do not do — they only persist
+to ABS's DB and sidecar), and toggle which ebook file is the item's
+primary when multiple formats are present. All four target the
+admin/agent metadata-cleanup loop and all four sit on top of existing
+ABS endpoints (no proxy work, no new server features).
 
 - **Encode to single `.m4b`** — Wrap ABS's
   `POST /api/tools/item/:id/encode-m4b` (admin-only) so agents can
@@ -124,6 +125,22 @@ metadata-cleanup loop and all three sit on top of existing ABS endpoints
   before the rewrite. Batch variant at
   `POST /api/tools/batch/embed-metadata`. Research:
   [docs/specs/research/2026-05-11-embed-metadata.md](specs/research/2026-05-11-embed-metadata.md).
+- **Toggle ebook primary status** — Wrap ABS's
+  `PATCH /api/items/:id/ebook/:fileid/status` for library items that hold
+  more than one ebook file (e.g. `.epub` + `.pdf` of the same book). The
+  endpoint is a *toggle*, not a setter: calling it on a supplementary
+  file promotes it to primary and ABS auto-demotes the previously-primary
+  file in the same call; calling it on the current primary unsets it,
+  leaving the item with no primary ebook (both files end up
+  supplementary). The toggle and the "no primary after unsetting" sharp
+  edge must be documented in `--help`, not just here. `:fileid` is the
+  file's `ino`, already exposed under `libraryFiles[].ino` in `items
+  get`. Likely command shape: `items toggle-ebook-status <itemId>
+  <fileIno>` — matches the server's literal semantics over a
+  friendlier-but-misleading `set-primary`. Audio files have no equivalent
+  endpoint; ABS treats audio tracks as an ordered sequence, not a
+  primary/alternates set. Research:
+  [docs/specs/research/2026-05-12-ebook-primary-toggle.md](specs/research/2026-05-12-ebook-primary-toggle.md).
 
 ---
 
