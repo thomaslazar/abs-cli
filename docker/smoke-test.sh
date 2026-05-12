@@ -923,18 +923,23 @@ echo "=== Encode M4B Commands ==="
 # Generate two real MP3 fixtures with distinct tones via ffmpeg.
 ENCODE_TMP=$(mktemp -d)
 ENCODE_ITEM_ID=""
+CANCEL_TEST_ITEM_ID=""
 encode_cleanup() {
     if [ -n "$ENCODE_ITEM_ID" ]; then
         curl -sf -X DELETE "$ABS_URL/api/items/$ENCODE_ITEM_ID?hard=1" \
+            -H "Authorization: Bearer $ABS_TOKEN" > /dev/null 2>&1 || true
+    fi
+    if [ -n "$CANCEL_TEST_ITEM_ID" ]; then
+        curl -sf -X DELETE "$ABS_URL/api/items/$CANCEL_TEST_ITEM_ID?hard=1" \
             -H "Authorization: Bearer $ABS_TOKEN" > /dev/null 2>&1 || true
     fi
     rm -rf "$ENCODE_TMP"
 }
 trap encode_cleanup EXIT
 
-ffmpeg -y -f lavfi -i "sine=frequency=440:duration=3" -ac 2 -c:a libmp3lame -b:a 128k \
+ffmpeg -y -f lavfi -i "sine=frequency=440:duration=30" -ac 2 -c:a libmp3lame -b:a 128k \
     "$ENCODE_TMP/track1.mp3" > /dev/null 2>&1
-ffmpeg -y -f lavfi -i "sine=frequency=523:duration=3" -ac 2 -c:a libmp3lame -b:a 128k \
+ffmpeg -y -f lavfi -i "sine=frequency=523:duration=30" -ac 2 -c:a libmp3lame -b:a 128k \
     "$ENCODE_TMP/track2.mp3" > /dev/null 2>&1
 
 if [ -s "$ENCODE_TMP/track1.mp3" ] && [ -s "$ENCODE_TMP/track2.mp3" ]; then
@@ -1046,6 +1051,68 @@ if echo "$output" | grep -q "no pending encode-m4b task for item"; then
 else
     fail "encode-m4b cancel: 404 surfaces combined notFoundHint message" "missing hint string"
     echo "    response: ${output:0:200}"
+fi
+
+# Cancel happy path: upload a separate item, start an aac re-encode (slower
+# than copy/remux), cancel mid-flight, verify the item was NOT merged. The
+# 30s fixtures + aac@192k re-encoding gives enough headroom for the cancel to
+# arrive before the task finishes on typical hardware.
+output=$($CLI upload --library "$LIB_ID" --folder "$FOLDER_ID" \
+    --title "ENCODE_M4B_CANCEL_TEST" --author "Smoke Author" \
+    --wait --files "$ENCODE_TMP/track1.mp3" "$ENCODE_TMP/track2.mp3" 2>/dev/null)
+CANCEL_TEST_ITEM_ID=$(echo "$output" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id', ''))" 2>/dev/null)
+if [ -n "$CANCEL_TEST_ITEM_ID" ]; then
+    pass "encode-m4b cancel: upload created cancel-test item (id=$CANCEL_TEST_ITEM_ID)"
+else
+    fail "encode-m4b cancel: upload created cancel-test item" "no id in upload response"
+fi
+
+# Start a slow-ish aac re-encode and immediately fire cancel.
+$CLI items encode-m4b start --id "$CANCEL_TEST_ITEM_ID" \
+    --codec aac --bitrate 192k --channels 2 > /dev/null 2>&1
+cancel_output=$($CLI items encode-m4b cancel --id "$CANCEL_TEST_ITEM_ID" 2>&1)
+cancel_exit=$?
+if [ "$cancel_exit" = "0" ] && [ -z "$cancel_output" ]; then
+    pass "encode-m4b cancel: happy path exits 0 with empty stdout"
+else
+    fail "encode-m4b cancel: happy path exits 0 with empty stdout" "exit=$cancel_exit, output=${cancel_output:0:200}"
+fi
+
+# Poll tasks list until all tasks are gone (cancel + any trailing watcher-scan).
+cancel_poll_ok=0
+for i in $(seq 1 30); do
+    tasks=$($CLI tasks list 2>/dev/null)
+    task_count=$(echo "$tasks" | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+print(len(d.get('tasks', [])))
+" 2>/dev/null)
+    if [ "${task_count:-1}" = "0" ]; then
+        cancel_poll_ok=1
+        break
+    fi
+    sleep 1
+done
+if [ "$cancel_poll_ok" = "1" ]; then
+    pass "encode-m4b cancel: tasks list cleared within 30s after cancel"
+else
+    fail "encode-m4b cancel: tasks list cleared within 30s after cancel" "tasks still pending"
+fi
+
+# Verify the item still has 2 audioFiles (cancel prevented the merge). If the
+# encode finished before cancel landed, this assertion will fail with the item
+# at audioFiles.length == 1 (single .m4b) — diagnose-able.
+output=$($CLI items get --id "$CANCEL_TEST_ITEM_ID" 2>/dev/null)
+if echo "$output" | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+af = d['media']['audioFiles']
+assert len(af) == 2, f'audioFiles count after cancel: {len(af)} (expected 2 — encode may have finished before cancel landed)'
+" 2>/dev/null; then
+    pass "encode-m4b cancel: item retains 2 audioFiles (merge did not complete)"
+else
+    fail "encode-m4b cancel: item retains 2 audioFiles (merge did not complete)" "post-cancel state mismatch"
+    echo "    response: ${output:0:300}"
 fi
 
 # Enum-validation rejection (no HTTP call).
