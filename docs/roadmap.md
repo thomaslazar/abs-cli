@@ -100,7 +100,9 @@ ABS endpoints (no proxy work, no new server features).
   library state is a single-file m4b without any extra CLI cleanup.
   Pairs with existing `tasks list` for progress polling; add `--wait`
   for in-CLI blocking. `DELETE /api/tools/item/:id/encode-m4b` cancels
-  a running task. Research:
+  a running task. Note: cached originals accumulate indefinitely —
+  see the cache purge bullet below for the only way to reclaim that
+  space. Research:
   [docs/specs/research/2026-05-11-m4b-encode-merge.md](specs/research/2026-05-11-m4b-encode-merge.md).
   Spec: [docs/specs/2026-05-12-v0.5.0-encode-m4b.md](specs/2026-05-12-v0.5.0-encode-m4b.md).
   Plan: [docs/plans/2026-05-12-v0.5.0-encode-m4b.md](plans/2026-05-12-v0.5.0-encode-m4b.md).
@@ -143,6 +145,19 @@ ABS endpoints (no proxy work, no new server features).
   endpoint; ABS treats audio tracks as an ordered sequence, not a
   primary/alternates set. Research:
   [docs/specs/research/2026-05-12-ebook-primary-toggle.md](specs/research/2026-05-12-ebook-primary-toggle.md).
+- **Cache purge** — Wrap ABS's `POST /api/cache/items/purge` and
+  `POST /api/cache/purge` (both admin-only) so agents can reclaim disk
+  space consumed by the per-item track backups that `items encode-m4b`
+  leaves behind (and that `items embed-metadata` with `backup=1` also
+  produces). The items-only endpoint nukes
+  `<MetadataPath>/cache/items/` — encode-m4b backups plus any pre-embed
+  copies; the broader endpoint additionally wipes the cover/image
+  render caches under `cache/covers/` and `cache/images/`, which ABS
+  rebuilds lazily on next request. Neither endpoint takes parameters
+  or exposes a listing — purges are all-or-nothing, with no per-item
+  introspection or restore. Hygiene primitive, not a primary
+  audio-file operation; included here because v0.5.0's encode-m4b is
+  what makes the cache grow.
 
 ---
 
