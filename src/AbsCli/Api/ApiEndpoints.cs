@@ -43,6 +43,9 @@ public static class ApiEndpoints
     public const string SearchCovers = "/api/search/covers";
     public const string SearchAuthors = "/api/search/authors";
 
+    // Tools
+    public static string ToolsItemEncodeM4b(string id) => $"/api/tools/item/{id}/encode-m4b";
+
     // Tasks
     public const string Tasks = "/api/tasks";
 }

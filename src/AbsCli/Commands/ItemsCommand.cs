@@ -17,6 +17,7 @@ public static class ItemsCommand
         command.Subcommands.Add(CreateBatchGetCommand());
         command.Subcommands.Add(CreateScanCommand());
         command.Subcommands.Add(CreateCoverCommand());
+        command.Subcommands.Add(CreateEncodeM4bCommand());
         return command;
     }
 
@@ -319,6 +320,91 @@ public static class ItemsCommand
             await service.RemoveAsync(id);
             ConsoleOutput.WriteJson(
                 new Dictionary<string, string> { ["success"] = "true" });
+        });
+        return command;
+    }
+
+    private static Command CreateEncodeM4bCommand()
+    {
+        var command = new Command("encode-m4b", "Merge multi-file audiobook into a single tagged .m4b (admin-only)");
+        command.Subcommands.Add(CreateEncodeM4bStartCommand());
+        command.Subcommands.Add(CreateEncodeM4bCancelCommand());
+        return command;
+    }
+
+    private static readonly string[] ValidEncodeM4bCodecs = { "copy", "aac", "opus" };
+    private static readonly string[] ValidEncodeM4bBitrates = { "32k", "64k", "128k", "192k" };
+
+    private static Command CreateEncodeM4bStartCommand()
+    {
+        var idOption = new Option<string>("--id") { Description = "Library item ID", Required = true };
+        var codecOption = new Option<string?>("--codec") { Description = "Audio codec: copy | aac | opus (copy = remux, source must be AAC)" };
+        var bitrateOption = new Option<string?>("--bitrate") { Description = "Audio bitrate: 32k | 64k | 128k | 192k" };
+        var channelsOption = new Option<int?>("--channels") { Description = "Audio channels: 1 | 2" };
+        var command = new Command("start", "Start an encode-m4b task on a library item")
+        {
+            idOption, codecOption, bitrateOption, channelsOption
+        };
+        command.AddExamples(
+            "abs-cli items encode-m4b start --id \"li_abc123\"",
+            "abs-cli items encode-m4b start --id \"li_abc123\" --codec copy",
+            "abs-cli items encode-m4b start --id \"li_abc123\" --codec aac --bitrate 128k --channels 2");
+        command.AddHelpSection("Caveats",
+            "Fire-and-forget; tasks vanish from 'tasks list' on completion (success or failure).",
+            "Confirm result by re-fetching the item with 'items get'.",
+            "No concurrency guardrail across items — caller serialises for batch.",
+            "Originals moved (not deleted) to ABS metadata cache as backup.");
+        command.AddResponseExample<EncodeM4bStartReceipt>();
+        command.SetAction(async (parseResult, cancellationToken) =>
+        {
+            var id = parseResult.GetValue(idOption)!;
+            var codec = parseResult.GetValue(codecOption);
+            var bitrate = parseResult.GetValue(bitrateOption);
+            var channels = parseResult.GetValue(channelsOption);
+            if (codec != null && !ValidEncodeM4bCodecs.Contains(codec))
+            {
+                ConsoleOutput.WriteError($"--codec must be one of: copy, aac, opus (got '{codec}')");
+                Environment.Exit(1);
+            }
+            if (bitrate != null && !ValidEncodeM4bBitrates.Contains(bitrate))
+            {
+                ConsoleOutput.WriteError($"--bitrate must be one of: 32k, 64k, 128k, 192k (got '{bitrate}')");
+                Environment.Exit(1);
+            }
+            if (channels.HasValue && channels.Value != 1 && channels.Value != 2)
+            {
+                ConsoleOutput.WriteError($"--channels must be 1 or 2 (got {channels.Value})");
+                Environment.Exit(1);
+            }
+            var (client, _) = CommandHelper.BuildClient();
+            var service = new EncodeM4bService(client);
+            var receipt = await service.StartAsync(id, new EncodeM4bOptions
+            {
+                Codec = codec,
+                Bitrate = bitrate,
+                Channels = channels
+            });
+            ConsoleOutput.WriteJson(receipt, AppJsonContext.Default.EncodeM4bStartReceipt);
+            return 0;
+        });
+        return command;
+    }
+
+    private static Command CreateEncodeM4bCancelCommand()
+    {
+        var idOption = new Option<string>("--id") { Description = "Library item ID", Required = true };
+        var command = new Command("cancel", "Cancel a pending encode-m4b task on a library item") { idOption };
+        command.AddExamples(
+            "abs-cli items encode-m4b cancel --id \"li_abc123\"");
+        command.AddHelpSection("Caveats",
+            "404 means either no task is pending or the item does not exist (ABS does not distinguish).");
+        command.SetAction(async (parseResult, cancellationToken) =>
+        {
+            var id = parseResult.GetValue(idOption)!;
+            var (client, _) = CommandHelper.BuildClient();
+            var service = new EncodeM4bService(client);
+            await service.CancelAsync(id);
+            return 0;
         });
         return command;
     }
