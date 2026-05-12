@@ -22,8 +22,7 @@ public class EncodeM4bServiceTests
     {
         var obj = new EncodeM4bOptions { Codec = "copy" };
         var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.EncodeM4bOptions);
-        Assert.Contains("codec", json);
-        Assert.Contains("copy", json);
+        Assert.Contains("\"codec\":\"copy\"", json);
         Assert.DoesNotContain("bitrate", json);
         Assert.DoesNotContain("channels", json);
     }
