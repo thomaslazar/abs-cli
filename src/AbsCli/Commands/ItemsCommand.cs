@@ -1,4 +1,5 @@
 using System.CommandLine;
+using System.Text.Json;
 using AbsCli.Models;
 using AbsCli.Output;
 using AbsCli.Services;
@@ -18,6 +19,7 @@ public static class ItemsCommand
         command.Subcommands.Add(CreateScanCommand());
         command.Subcommands.Add(CreateCoverCommand());
         command.Subcommands.Add(CreateEncodeM4bCommand());
+        command.Subcommands.Add(CreateChaptersCommand());
         return command;
     }
 
@@ -404,6 +406,119 @@ public static class ItemsCommand
             var (client, _) = CommandHelper.BuildClient();
             var service = new EncodeM4bService(client);
             await service.CancelAsync(id);
+            return 0;
+        });
+        return command;
+    }
+
+    private static Command CreateChaptersCommand()
+    {
+        var command = new Command("chapters", "Look up or write chapter metadata for a library item");
+        command.Subcommands.Add(CreateChaptersLookupCommand());
+        command.Subcommands.Add(CreateChaptersSetCommand());
+        return command;
+    }
+
+    private static Command CreateChaptersLookupCommand()
+    {
+        var asinOption = new Option<string>("--asin") { Description = "Audible/Audnexus ASIN", Required = true };
+        var regionOption = new Option<string?>("--region") { Description = "Audnexus region (defaults to 'us' server-side)" };
+        var command = new Command("lookup", "Look up chapter timings on Audnexus by ASIN")
+        {
+            asinOption, regionOption
+        };
+        command.AddExamples(
+            "abs-cli items chapters lookup --asin \"B07TEST1\"",
+            "abs-cli items chapters lookup --asin \"B07TEST1\" --region \"uk\"");
+        command.AddHelpSection("Caveats",
+            "Audnexus-backed (same source as 'authors lookup'/'match').",
+            "Returns ms-based shape; 'items chapters set' takes seconds. No CLI conversion.",
+            "No upstream match / invalid ASIN / invalid region → exit 2 with the error string.");
+        command.AddResponseExample<ChaptersLookupResponse>();
+        command.SetAction(async (parseResult, cancellationToken) =>
+        {
+            var asin = parseResult.GetValue(asinOption)!;
+            var region = parseResult.GetValue(regionOption);
+            var (client, _) = CommandHelper.BuildClient();
+            var service = new ChaptersService(client);
+            var result = await service.LookupAsync(asin, region);
+            if (result.Error != null)
+            {
+                var msg = result.Error.StringKey == "MessageChaptersNotFound"
+                    ? $"Not found. {result.Error.Error}"
+                    : result.Error.Error ?? "Unknown lookup error";
+                ConsoleOutput.WriteError(msg);
+                return 2;
+            }
+            ConsoleOutput.WriteJson(result.Success!, AppJsonContext.Default.ChaptersLookupResponse);
+            return 0;
+        });
+        return command;
+    }
+
+    private static Command CreateChaptersSetCommand()
+    {
+        var idOption = new Option<string>("--id") { Description = "Library item ID", Required = true };
+        var inputOption = new Option<string?>("--input") { Description = "JSON file path" };
+        var stdinOption = new Option<bool>("--stdin") { Description = "Read JSON from stdin" };
+        var command = new Command("set", "Write chapters onto a library item (DB + sidecar; does NOT touch the audio file)")
+        {
+            idOption, inputOption, stdinOption
+        };
+        command.AddExamples(
+            "abs-cli items chapters set --id \"li_abc123\" --input chapters.json",
+            "cat chapters.json | abs-cli items chapters set --id \"li_abc123\" --stdin");
+        command.AddHelpSection("Caveats",
+            "Body must be {chapters:[{title,start,end}]} in seconds.",
+            "Writes ABS DB + sidecar only — use 'items embed-metadata' to bake into the file.",
+            "ABS returns 500 (not 400/404) when item is missing, not a book, or has no audio tracks.",
+            "No semantic validation: end>start and non-overlap are not checked.");
+        command.AddResponseExample<ChaptersSetResponse>();
+        command.SetAction(async (parseResult, cancellationToken) =>
+        {
+            var id = parseResult.GetValue(idOption)!;
+            var input = parseResult.GetValue(inputOption);
+            var stdin = parseResult.GetValue(stdinOption);
+
+            string jsonBody;
+            if (stdin && input != null)
+            {
+                ConsoleOutput.WriteError("Provide exactly one of --input or --stdin (got both)");
+                Environment.Exit(1);
+                return 1;
+            }
+            else if (stdin)
+            {
+                jsonBody = await Console.In.ReadToEndAsync();
+            }
+            else if (input != null)
+            {
+                jsonBody = CommandHelper.ReadJsonInput(input);
+            }
+            else
+            {
+                ConsoleOutput.WriteError("Provide --input <file> or --stdin");
+                Environment.Exit(1);
+                return 1;
+            }
+
+            ChaptersSetRequest parsed;
+            try
+            {
+                parsed = JsonSerializer.Deserialize(jsonBody, AppJsonContext.Default.ChaptersSetRequest)!;
+            }
+            catch (JsonException ex)
+            {
+                ConsoleOutput.WriteError($"Invalid chapters JSON: {ex.Message}");
+                Environment.Exit(1);
+                return 1;
+            }
+            var canonical = JsonSerializer.Serialize(parsed, AppJsonContext.Default.ChaptersSetRequest);
+
+            var (client, _) = CommandHelper.BuildClient();
+            var service = new ChaptersService(client);
+            var result = await service.SetAsync(id, canonical);
+            ConsoleOutput.WriteJson(result, AppJsonContext.Default.ChaptersSetResponse);
             return 0;
         });
         return command;
