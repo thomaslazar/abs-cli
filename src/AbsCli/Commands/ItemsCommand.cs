@@ -20,6 +20,8 @@ public static class ItemsCommand
         command.Subcommands.Add(CreateCoverCommand());
         command.Subcommands.Add(CreateEncodeM4bCommand());
         command.Subcommands.Add(CreateChaptersCommand());
+        command.Subcommands.Add(CreateEmbedMetadataCommand());
+        command.Subcommands.Add(CreateBatchEmbedMetadataCommand());
         return command;
     }
 
@@ -519,6 +521,155 @@ public static class ItemsCommand
             var service = new ChaptersService(client);
             var result = await service.SetAsync(id, canonical);
             ConsoleOutput.WriteJson(result, AppJsonContext.Default.ChaptersSetResponse);
+            return 0;
+        });
+        return command;
+    }
+
+    private static Command CreateEmbedMetadataCommand()
+    {
+        var idOption = new Option<string>("--id") { Description = "Library item ID", Required = true };
+        var noBackupOption = new Option<bool>("--no-backup") { Description = "Skip the server-side pre-rewrite backup (default: backup on)" };
+        var forceEmbedChaptersOption = new Option<bool>("--force-embed-chapters") { Description = "Embed chapters into multi-file items (default: tags + cover only on multi-file)" };
+        var waitOption = new Option<bool>("--wait") { Description = "Block until the embed task disappears from /api/tasks (max 600s)" };
+        var command = new Command("embed-metadata", "Embed ABS state (tags, cover, chapters) into the audio files via in-place ffmpeg rewrite (admin-only)")
+        {
+            idOption, noBackupOption, forceEmbedChaptersOption, waitOption
+        };
+        command.AddExamples(
+            "abs-cli items embed-metadata --id \"li_abc123\"",
+            "abs-cli items embed-metadata --id \"li_abc123\" --wait",
+            "abs-cli items embed-metadata --id \"li_abc123\" --force-embed-chapters --no-backup");
+        command.AddHelpSection("Caveats",
+            "Admin only.",
+            "In-place destructive rewrite — --backup defaults on; pass --no-backup only when you mean it.",
+            "Multi-file books: chapters embedded only with --force-embed-chapters.",
+            "--wait exits 0 when ABS stops processing; this does NOT guarantee success.",
+            "ABS internally queues at MAX_CONCURRENT_TASKS; --wait may sit in queue first.");
+        command.AddResponseExample<EmbedMetadataReceipt>();
+        command.SetAction(async (parseResult, cancellationToken) =>
+        {
+            var id = parseResult.GetValue(idOption)!;
+            var noBackup = parseResult.GetValue(noBackupOption);
+            var forceEmbedChapters = parseResult.GetValue(forceEmbedChaptersOption);
+            var wait = parseResult.GetValue(waitOption);
+            var options = new EmbedMetadataOptions
+            {
+                Backup = !noBackup,
+                ForceEmbedChapters = forceEmbedChapters
+            };
+            var (client, _) = CommandHelper.BuildClient();
+            var service = new EmbedMetadataService(client);
+            var receipt = await service.StartAsync(id, options);
+            if (wait)
+            {
+                var ok = await service.WaitForCompletionAsync(
+                    new[] { id }, TimeSpan.FromSeconds(600), cancellationToken);
+                if (!ok)
+                {
+                    ConsoleOutput.WriteError("Timed out waiting for embed-metadata task to complete");
+                    Environment.Exit(2);
+                    return 2;
+                }
+            }
+            ConsoleOutput.WriteJson(receipt, AppJsonContext.Default.EmbedMetadataReceipt);
+            return 0;
+        });
+        return command;
+    }
+
+    private static Command CreateBatchEmbedMetadataCommand()
+    {
+        var inputOption = new Option<string?>("--input") { Description = "JSON file path with {libraryItemIds:[...]}" };
+        var stdinOption = new Option<bool>("--stdin") { Description = "Read JSON from stdin" };
+        var noBackupOption = new Option<bool>("--no-backup") { Description = "Skip the server-side pre-rewrite backup (default: backup on)" };
+        var forceEmbedChaptersOption = new Option<bool>("--force-embed-chapters") { Description = "Embed chapters into multi-file items (default: tags + cover only on multi-file)" };
+        var waitOption = new Option<bool>("--wait") { Description = "Block until all embed tasks disappear from /api/tasks (max 600s)" };
+        var command = new Command("batch-embed-metadata", "Embed ABS state into multiple items' audio files in one batch (admin-only)")
+        {
+            inputOption, stdinOption, noBackupOption, forceEmbedChaptersOption, waitOption
+        };
+        command.AddExamples(
+            "abs-cli items batch-embed-metadata --input ids.json --wait",
+            "echo '{\"libraryItemIds\":[\"li_a\",\"li_b\"]}' | abs-cli items batch-embed-metadata --stdin");
+        command.AddHelpSection("Caveats",
+            "Admin only.",
+            "Body must be {\"libraryItemIds\":[...]}.",
+            "Batch validates ALL items upfront — any one bad ID aborts the whole batch.",
+            "Same options applied uniformly across every item — no per-item override.",
+            "In-place destructive rewrite — --backup defaults on; pass --no-backup only when you mean it.",
+            "Multi-file books: chapters embedded only with --force-embed-chapters.",
+            "--wait exits 0 when ABS stops processing; this does NOT guarantee success.",
+            "ABS internally queues at MAX_CONCURRENT_TASKS.");
+        command.AddResponseExample<BatchEmbedMetadataReceipt>();
+        command.SetAction(async (parseResult, cancellationToken) =>
+        {
+            var input = parseResult.GetValue(inputOption);
+            var stdin = parseResult.GetValue(stdinOption);
+            var noBackup = parseResult.GetValue(noBackupOption);
+            var forceEmbedChapters = parseResult.GetValue(forceEmbedChaptersOption);
+            var wait = parseResult.GetValue(waitOption);
+
+            string jsonBody;
+            if (stdin && input != null)
+            {
+                ConsoleOutput.WriteError("Provide exactly one of --input or --stdin (got both)");
+                Environment.Exit(1);
+                return 1;
+            }
+            else if (stdin)
+            {
+                jsonBody = await Console.In.ReadToEndAsync();
+            }
+            else if (input != null)
+            {
+                jsonBody = CommandHelper.ReadJsonInput(input);
+            }
+            else
+            {
+                ConsoleOutput.WriteError("Provide --input <file> or --stdin");
+                Environment.Exit(1);
+                return 1;
+            }
+
+            BatchEmbedMetadataRequest request;
+            try
+            {
+                request = JsonSerializer.Deserialize(jsonBody, AppJsonContext.Default.BatchEmbedMetadataRequest)!;
+            }
+            catch (JsonException ex)
+            {
+                ConsoleOutput.WriteError($"Invalid JSON: {ex.Message}");
+                Environment.Exit(1);
+                return 1;
+            }
+            if (request.LibraryItemIds.Count == 0)
+            {
+                ConsoleOutput.WriteError("libraryItemIds must be a non-empty array");
+                Environment.Exit(1);
+                return 1;
+            }
+
+            var options = new EmbedMetadataOptions
+            {
+                Backup = !noBackup,
+                ForceEmbedChapters = forceEmbedChapters
+            };
+            var (client, _) = CommandHelper.BuildClient();
+            var service = new EmbedMetadataService(client);
+            var receipt = await service.StartBatchAsync(request, options);
+            if (wait)
+            {
+                var ok = await service.WaitForCompletionAsync(
+                    request.LibraryItemIds, TimeSpan.FromSeconds(600), cancellationToken);
+                if (!ok)
+                {
+                    ConsoleOutput.WriteError("Timed out waiting for embed-metadata task(s) to complete");
+                    Environment.Exit(2);
+                    return 2;
+                }
+            }
+            ConsoleOutput.WriteJson(receipt, AppJsonContext.Default.BatchEmbedMetadataReceipt);
             return 0;
         });
         return command;
