@@ -36,7 +36,11 @@ public class ItemsService
 
     public async Task<UpdateMediaResponse> UpdateMediaAsync(string id, string jsonBody)
     {
-        return await _client.PatchAsync(ApiEndpoints.ItemMedia(id), jsonBody, AppJsonContext.Default.UpdateMediaResponse);
+        return await _client.PatchAsync(
+            ApiEndpoints.ItemMedia(id),
+            jsonBody,
+            AppJsonContext.Default.UpdateMediaResponse,
+            permissionHint: "'update' permission");
     }
 
     public async Task<BatchUpdateResponse> BatchUpdateAsync(string jsonBody)
@@ -44,7 +48,11 @@ public class ItemsService
         // ABS route is POST /items/batch/update (not PATCH — the single-item
         // /items/:id/media endpoint is PATCH but the batch variant is POST).
         // See temp/audiobookshelf/server/routers/ApiRouter.js.
-        return await _client.PostAsync(ApiEndpoints.ItemsBatchUpdate, jsonBody, AppJsonContext.Default.BatchUpdateResponse);
+        return await _client.PostAsync(
+            ApiEndpoints.ItemsBatchUpdate,
+            jsonBody,
+            AppJsonContext.Default.BatchUpdateResponse,
+            permissionHint: "'update' permission");
     }
 
     public async Task<BatchGetResponse> BatchGetAsync(string jsonBody)

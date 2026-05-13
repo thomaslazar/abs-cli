@@ -734,6 +734,48 @@ fi
 
 export ABS_TOKEN="$SAVE_TOKEN"
 
+# canUpdate denials: testuser AND uploaduser both have update=true in seed.sh,
+# so they can't exercise these paths. readonlyuser has update=false.
+READONLY_TOKEN=$(curl -sf -X POST "$ABS_URL/login" \
+    -H 'Content-Type: application/json' \
+    -H 'X-Return-Tokens: true' \
+    -d '{"username":"readonlyuser","password":"readonlypass"}' \
+    | python3 -c "import sys,json; print(json.load(sys.stdin)['user']['accessToken'])")
+
+export ABS_TOKEN="$READONLY_TOKEN"
+
+error_output=$($CLI items update --id "$FIRST_ITEM_ID" \
+    --input '{"metadata":{"title":"Should Fail"}}' 2>&1 || true)
+if echo "$error_output" | grep -q "'update' permission"; then
+    pass "items update as readonlyuser hits 'update' permission denial"
+else
+    fail "items update as readonlyuser hits 'update' permission denial" "got: ${error_output:0:200}"
+fi
+
+# items batch-update is intentionally NOT covered here. ABS's batch-update
+# route (server/routers/ApiRouter.js:103, controller at
+# server/controllers/LibraryItemController.js:595) has no canUpdate check —
+# readonlyuser successfully writes through it. The CLI's permissionHint on
+# BatchUpdateAsync is wired correctly on principle but won't ever fire
+# until ABS adds the missing middleware.
+
+error_output=$($CLI authors update --id "$AUTHOR_ID" --description "Should Fail" 2>&1 || true)
+if echo "$error_output" | grep -q "'update' permission"; then
+    pass "authors update as readonlyuser hits 'update' permission denial"
+else
+    fail "authors update as readonlyuser hits 'update' permission denial" "got: ${error_output:0:200}"
+fi
+
+error_output=$(echo '{"chapters":[{"title":"x","start":0,"end":1}]}' \
+    | $CLI items chapters set --id "$FIRST_ITEM_ID" --stdin 2>&1 || true)
+if echo "$error_output" | grep -q "'update' permission"; then
+    pass "items chapters set as readonlyuser hits 'update' permission denial"
+else
+    fail "items chapters set as readonlyuser hits 'update' permission denial" "got: ${error_output:0:200}"
+fi
+
+export ABS_TOKEN="$SAVE_TOKEN"
+
 # ============================================================
 echo ""
 echo "=== Scan Commands ==="
@@ -1142,6 +1184,194 @@ fi
 encode_cleanup
 trap - EXIT
 ENCODE_ITEM_ID=""
+
+# ============================================================
+echo ""
+echo "=== Chapter Commands ==="
+
+CHAPTERS_TMP=$(mktemp -d)
+CHAPTERS_ITEM_ID=""
+chapters_cleanup() {
+    if [ -n "$CHAPTERS_ITEM_ID" ]; then
+        curl -sf -X DELETE "$ABS_URL/api/items/$CHAPTERS_ITEM_ID?hard=1" \
+            -H "Authorization: Bearer $ABS_TOKEN" > /dev/null 2>&1 || true
+    fi
+    rm -rf "$CHAPTERS_TMP"
+}
+trap chapters_cleanup EXIT
+
+# Use the real ffmpeg fixture pattern from the encode-m4b block to avoid
+# the synthetic-MP3 + --wait scan timing flakiness seen at line 553.
+ffmpeg -y -f lavfi -i "sine=frequency=440:duration=5" -ac 2 -c:a libmp3lame -b:a 128k \
+    "$CHAPTERS_TMP/test.mp3" > /dev/null 2>&1
+
+SAVE_TOKEN="$ABS_TOKEN"
+export ABS_TOKEN="$UPLOAD_TOKEN"
+output=$($CLI upload --folder "$FOLDER_ID" \
+    --title "CHAPTERS_TEST" --author "Smoke Author" \
+    --wait --files "$CHAPTERS_TMP/test.mp3" 2>/dev/null)
+export ABS_TOKEN="$SAVE_TOKEN"
+CHAPTERS_ITEM_ID=$(echo "$output" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id', ''))" 2>/dev/null)
+if [ -n "$CHAPTERS_ITEM_ID" ]; then
+    pass "chapters: upload created test item (id=$CHAPTERS_ITEM_ID)"
+else
+    fail "chapters: upload created test item" "no id in upload response"
+fi
+
+cat > "$CHAPTERS_TMP/chapters.json" <<EOF
+{"chapters":[
+    {"title":"Test Chapter 1","start":0,"end":0.5},
+    {"title":"Test Chapter 2","start":0.5,"end":1.0}
+]}
+EOF
+
+# Happy path: set returns success/updated=true.
+output=$($CLI items chapters set --id "$CHAPTERS_ITEM_ID" --input "$CHAPTERS_TMP/chapters.json" 2>/dev/null)
+if echo "$output" | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+assert d['success'] is True
+assert d['updated'] is True
+" 2>/dev/null; then
+    pass "chapters set: returns success=true updated=true on first write"
+else
+    fail "chapters set: returns success=true updated=true on first write" "unexpected response"
+    echo "    response: ${output:0:200}"
+fi
+
+# Idempotence: same body again returns updated=false.
+output=$($CLI items chapters set --id "$CHAPTERS_ITEM_ID" --input "$CHAPTERS_TMP/chapters.json" 2>/dev/null)
+if echo "$output" | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+assert d['success'] is True
+assert d['updated'] is False
+" 2>/dev/null; then
+    pass "chapters set: returns updated=false on no-op repeat"
+else
+    fail "chapters set: returns updated=false on no-op repeat" "unexpected response"
+    echo "    response: ${output:0:200}"
+fi
+
+# Chapters visible on items get.
+output=$($CLI items get --id "$CHAPTERS_ITEM_ID" 2>/dev/null)
+if echo "$output" | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+chs = d['media']['chapters']
+assert len(chs) == 2
+assert chs[0]['title'] == 'Test Chapter 1'
+assert chs[0]['start'] == 0
+assert chs[0]['end'] == 0.5
+assert chs[1]['title'] == 'Test Chapter 2'
+" 2>/dev/null; then
+    pass "chapters set: chapters visible on items get"
+else
+    fail "chapters set: chapters visible on items get" "post-state mismatch"
+    echo "    response: ${output:0:300}"
+fi
+
+# Stdin input path.
+output=$(echo '{"chapters":[{"title":"Stdin Ch","start":0,"end":0.7}]}' \
+    | $CLI items chapters set --id "$CHAPTERS_ITEM_ID" --stdin 2>/dev/null)
+if echo "$output" | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+assert d['success'] is True
+assert d['updated'] is True
+" 2>/dev/null; then
+    pass "chapters set: --stdin path writes successfully"
+else
+    fail "chapters set: --stdin path writes successfully" "unexpected response"
+fi
+
+# Mutual-exclusion: both --input and --stdin.
+output=$($CLI items chapters set --id "$CHAPTERS_ITEM_ID" \
+    --input "$CHAPTERS_TMP/chapters.json" --stdin <<< '{"chapters":[]}' 2>&1 || true)
+if echo "$output" | grep -q "exactly one"; then
+    pass "chapters set: rejects both --input and --stdin"
+else
+    fail "chapters set: rejects both --input and --stdin" "missing error string"
+fi
+
+# Mutual-exclusion: neither --input nor --stdin.
+output=$($CLI items chapters set --id "$CHAPTERS_ITEM_ID" 2>&1 || true)
+if echo "$output" | grep -q "Provide --input"; then
+    pass "chapters set: rejects when neither --input nor --stdin given"
+else
+    fail "chapters set: rejects when neither --input nor --stdin given" "missing error string"
+fi
+
+# Malformed JSON: wrong type for start.
+output=$(echo '{"chapters":[{"title":"x","start":"not-a-number","end":1.0}]}' \
+    | $CLI items chapters set --id "$CHAPTERS_ITEM_ID" --stdin 2>&1 || true)
+if echo "$output" | grep -q "Invalid chapters JSON"; then
+    pass "chapters set: wrong-typed start rejected client-side"
+else
+    fail "chapters set: wrong-typed start rejected client-side" "missing error string"
+fi
+
+# 500 quirk on missing item.
+output=$($CLI items chapters set --id "li_does_not_exist_$$" \
+    --input "$CHAPTERS_TMP/chapters.json" 2>&1 || true)
+if [ -n "$output" ]; then
+    pass "chapters set: nonexistent item produces non-zero exit"
+else
+    fail "chapters set: nonexistent item produces non-zero exit" "empty output"
+fi
+
+# 403 (canUpdate denial) is exercised in the Permission Errors section
+# using readonlyuser, alongside items update / batch-update / authors update.
+
+# Chapter lookup tests hit Audnexus via ABS — same external assumption as
+# the already-ungated `authors lookup` / `authors match` tests above (which
+# use Brandon Sanderson). We pair with a Sanderson ASIN here so there's a
+# single class of external dependency, not two.
+
+# Known-good ASIN: Mistborn: The Final Empire (Brandon Sanderson) —
+# 47 Audnexus-indexed chapters, isAccurate=true (verified 2026-05-13).
+# If this ever 404s, find another Sanderson Audible ASIN via
+# `abs-cli metadata search --provider audible --title <title>
+# --author "Brandon Sanderson"` and confirm it via
+# `items chapters lookup` before swapping. Do NOT change the test to
+# expect failure.
+output=$($CLI items chapters lookup --asin "B002V0QCYU" 2>/dev/null || true)
+if echo "$output" | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+assert d['asin'] == 'B002V0QCYU'
+assert len(d['chapters']) > 0
+assert 'isAccurate' in d
+" 2>/dev/null; then
+    pass "chapters lookup: known-good ASIN returns chapters"
+else
+    fail "chapters lookup: known-good ASIN returns chapters" "unexpected response"
+    echo "    response: ${output:0:200}"
+fi
+
+# Well-formed but unknown ASIN → exit 2 with "Chapters not found".
+output=$($CLI items chapters lookup --asin "B000000000" 2>&1 || true)
+if echo "$output" | grep -q "Chapters not found"; then
+    pass "chapters lookup: unknown ASIN surfaces 'Chapters not found'"
+else
+    fail "chapters lookup: unknown ASIN surfaces 'Chapters not found'" "missing error string"
+    echo "    response: ${output:0:200}"
+fi
+
+# Malformed ASIN → exit 2 with "Invalid ASIN". Server-side ABS rejects
+# at `isValidASIN` before any Audnexus call, so this case has zero
+# external dependency.
+output=$($CLI items chapters lookup --asin "not-an-asin" 2>&1 || true)
+if echo "$output" | grep -q "Invalid ASIN"; then
+    pass "chapters lookup: invalid ASIN surfaces 'Invalid ASIN'"
+else
+    fail "chapters lookup: invalid ASIN surfaces 'Invalid ASIN'" "missing error string"
+    echo "    response: ${output:0:200}"
+fi
+
+chapters_cleanup
+trap - EXIT
+CHAPTERS_ITEM_ID=""
 
 # ============================================================
 echo ""

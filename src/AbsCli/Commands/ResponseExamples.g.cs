@@ -11,6 +11,8 @@ internal static class ResponseExamples
 {
     private static readonly Dictionary<Type, string> Samples = new()
     {
+        { typeof(AbsCli.Models.AudnexusChapter),
+          "{\n  \"title\": \"<string>\",\n  \"lengthMs\": 0,\n  \"startOffsetMs\": 0,\n  \"startOffsetSec\": 0\n}" },
         { typeof(AbsCli.Models.AuthorImageRequest),
           "{\n  \"url\": \"<string>\"\n}" },
         { typeof(AbsCli.Models.AuthorImageResponse),
@@ -33,6 +35,16 @@ internal static class ResponseExamples
           "{\n  \"success\": false,\n  \"updates\": 0\n}" },
         { typeof(AbsCli.Models.BookMediaMinified),
           "{\n  \"id\": \"<string>\",\n  \"metadata\": {\n    \"title\": null,\n    \"titleIgnorePrefix\": null,\n    \"subtitle\": null,\n    \"authorName\": null,\n    \"authorNameLF\": null,\n    \"narratorName\": null,\n    \"seriesName\": null,\n    \"genres\": [\n      \"<string>\"\n    ],\n    \"publishedYear\": null,\n    \"publishedDate\": null,\n    \"publisher\": null,\n    \"description\": null,\n    \"isbn\": null,\n    \"asin\": null,\n    \"language\": null,\n    \"explicit\": false,\n    \"abridged\": false\n  },\n  \"coverPath\": null,\n  \"tags\": [\n    \"<string>\"\n  ],\n  \"numTracks\": 0,\n  \"numAudioFiles\": 0,\n  \"numChapters\": 0,\n  \"duration\": 0,\n  \"size\": 0,\n  \"ebookFormat\": null\n}" },
+        { typeof(AbsCli.Models.ChapterWriteEntry),
+          "{\n  \"title\": \"<string>\",\n  \"start\": 0,\n  \"end\": 0\n}" },
+        { typeof(AbsCli.Models.ChaptersLookupError),
+          "{\n  \"error\": null,\n  \"stringKey\": null\n}" },
+        { typeof(AbsCli.Models.ChaptersLookupResponse),
+          "{\n  \"asin\": \"<string>\",\n  \"brandIntroDurationMs\": 0,\n  \"brandOutroDurationMs\": 0,\n  \"chapters\": [\n    {\n      \"title\": \"<string>\",\n      \"lengthMs\": 0,\n      \"startOffsetMs\": 0,\n      \"startOffsetSec\": 0\n    }\n  ],\n  \"isAccurate\": false,\n  \"runtimeLengthMs\": 0,\n  \"runtimeLengthSec\": 0\n}" },
+        { typeof(AbsCli.Models.ChaptersSetRequest),
+          "{\n  \"chapters\": [\n    {\n      \"title\": \"<string>\",\n      \"start\": 0,\n      \"end\": 0\n    }\n  ]\n}" },
+        { typeof(AbsCli.Models.ChaptersSetResponse),
+          "{\n  \"success\": false,\n  \"updated\": false\n}" },
         { typeof(AbsCli.Models.CoverApplyByUrlRequest),
           "{\n  \"url\": \"<string>\"\n}" },
         { typeof(AbsCli.Models.CoverApplyResponse),

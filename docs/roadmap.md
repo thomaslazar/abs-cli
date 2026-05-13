@@ -165,6 +165,7 @@ ABS endpoints (no proxy work, no new server features).
 
 - **`items delete`** — Add support for more destructive commands.
 - **`login --username` / `--password`** — Add non-interactive credential parameters to the `login` command.
+- **`items update --stdin`** — Bring `items update` in line with the batch-* shape (`--input <file>` or `--stdin`), retiring the inline-JSON-or-file `--input` behavior.
 
 ---
 

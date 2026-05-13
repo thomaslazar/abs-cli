@@ -514,6 +514,63 @@ public static class SelfTestCommand
             });
 
             Console.Error.WriteLine();
+            Console.Error.WriteLine("=== Chapter Models ===");
+
+            Check("ChaptersLookupResponse round-trip", () =>
+            {
+                var obj = new ChaptersLookupResponse
+                {
+                    Asin = "B07TEST1",
+                    Chapters = new List<AudnexusChapter>
+                    {
+                        new() { Title = "Ch 1", LengthMs = 12345, StartOffsetMs = 0, StartOffsetSec = 0 }
+                    },
+                    IsAccurate = true,
+                    RuntimeLengthSec = 50.0
+                };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.ChaptersLookupResponse);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.ChaptersLookupResponse)!;
+                Assert(back.Asin == "B07TEST1", $"asin: {back.Asin}");
+                Assert(back.Chapters.Count == 1, $"chapter count: {back.Chapters.Count}");
+                Assert(back.Chapters[0].Title == "Ch 1", $"chapter title: {back.Chapters[0].Title}");
+                Assert(back.IsAccurate == true, $"isAccurate: {back.IsAccurate}");
+            });
+
+            Check("ChaptersLookupError round-trip", () =>
+            {
+                var obj = new ChaptersLookupError { Error = "Chapters not found", StringKey = "MessageChaptersNotFound" };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.ChaptersLookupError);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.ChaptersLookupError)!;
+                Assert(back.Error == "Chapters not found", $"error: {back.Error}");
+                Assert(back.StringKey == "MessageChaptersNotFound", $"stringKey: {back.StringKey}");
+            });
+
+            Check("ChaptersSetRequest round-trip", () =>
+            {
+                var obj = new ChaptersSetRequest
+                {
+                    Chapters = new List<ChapterWriteEntry>
+                    {
+                        new() { Title = "Intro", Start = 0, End = 1.5 }
+                    }
+                };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.ChaptersSetRequest);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.ChaptersSetRequest)!;
+                Assert(back.Chapters.Count == 1, $"count: {back.Chapters.Count}");
+                Assert(back.Chapters[0].Title == "Intro", $"title: {back.Chapters[0].Title}");
+                Assert(back.Chapters[0].End == 1.5, $"end: {back.Chapters[0].End}");
+            });
+
+            Check("ChaptersSetResponse round-trip", () =>
+            {
+                var obj = new ChaptersSetResponse { Success = true, Updated = false };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.ChaptersSetResponse);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.ChaptersSetResponse)!;
+                Assert(back.Success == true, $"success: {back.Success}");
+                Assert(back.Updated == false, $"updated: {back.Updated}");
+            });
+
+            Console.Error.WriteLine();
             Console.Error.WriteLine("=== Author Models ===");
 
             Check("AuthorMatchRequest round-trip", () =>
