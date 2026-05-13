@@ -734,6 +734,48 @@ fi
 
 export ABS_TOKEN="$SAVE_TOKEN"
 
+# canUpdate denials: testuser AND uploaduser both have update=true in seed.sh,
+# so they can't exercise these paths. readonlyuser has update=false.
+READONLY_TOKEN=$(curl -sf -X POST "$ABS_URL/login" \
+    -H 'Content-Type: application/json' \
+    -H 'X-Return-Tokens: true' \
+    -d '{"username":"readonlyuser","password":"readonlypass"}' \
+    | python3 -c "import sys,json; print(json.load(sys.stdin)['user']['accessToken'])")
+
+export ABS_TOKEN="$READONLY_TOKEN"
+
+error_output=$($CLI items update --id "$FIRST_ITEM_ID" \
+    --input '{"metadata":{"title":"Should Fail"}}' 2>&1 || true)
+if echo "$error_output" | grep -q "'update' permission"; then
+    pass "items update as readonlyuser hits 'update' permission denial"
+else
+    fail "items update as readonlyuser hits 'update' permission denial" "got: ${error_output:0:200}"
+fi
+
+# items batch-update is intentionally NOT covered here. ABS's batch-update
+# route (server/routers/ApiRouter.js:103, controller at
+# server/controllers/LibraryItemController.js:595) has no canUpdate check —
+# readonlyuser successfully writes through it. The CLI's permissionHint on
+# BatchUpdateAsync is wired correctly on principle but won't ever fire
+# until ABS adds the missing middleware.
+
+error_output=$($CLI authors update --id "$AUTHOR_ID" --description "Should Fail" 2>&1 || true)
+if echo "$error_output" | grep -q "'update' permission"; then
+    pass "authors update as readonlyuser hits 'update' permission denial"
+else
+    fail "authors update as readonlyuser hits 'update' permission denial" "got: ${error_output:0:200}"
+fi
+
+error_output=$(echo '{"chapters":[{"title":"x","start":0,"end":1}]}' \
+    | $CLI items chapters set --id "$FIRST_ITEM_ID" --stdin 2>&1 || true)
+if echo "$error_output" | grep -q "'update' permission"; then
+    pass "items chapters set as readonlyuser hits 'update' permission denial"
+else
+    fail "items chapters set as readonlyuser hits 'update' permission denial" "got: ${error_output:0:200}"
+fi
+
+export ABS_TOKEN="$SAVE_TOKEN"
+
 # ============================================================
 echo ""
 echo "=== Scan Commands ==="
@@ -1278,10 +1320,8 @@ else
     fail "chapters set: nonexistent item produces non-zero exit" "empty output"
 fi
 
-# 403 not smoke-tested: both seeded non-admin users (testuser, uploaduser)
-# have canUpdate=true (see docker/seed.sh:65,86). The permission-denied path
-# uses the standard permissionHint mechanism shared with `items update` and
-# is documented in the verb's --help text.
+# 403 (canUpdate denial) is exercised in the Permission Errors section
+# using readonlyuser, alongside items update / batch-update / authors update.
 
 # Audnexus lookup tests are gated behind SMOKE_TEST_EXTERNAL=1
 # (same gate as external metadata-provider tests). Hits live audnex.us — slow,

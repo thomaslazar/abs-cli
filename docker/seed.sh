@@ -92,6 +92,29 @@ curl -sf -X POST "$ABS_URL/api/users" \
         }
     }' > /dev/null 2>&1 || true
 
+# Create read-only test user (no update/upload/delete) so smoke tests
+# can exercise 'canUpdate' permission denial on items update, authors
+# update, items batch-update, and items chapters set.
+echo "Creating read-only test user..."
+curl -sf -X POST "$ABS_URL/api/users" \
+    -H "$AUTH" \
+    -H 'Content-Type: application/json' \
+    -d '{
+        "username": "readonlyuser",
+        "password": "readonlypass",
+        "type": "user",
+        "isActive": true,
+        "permissions": {
+            "download": true,
+            "update": false,
+            "delete": false,
+            "upload": false,
+            "accessAllLibraries": true,
+            "accessAllTags": true,
+            "accessExplicitContent": true
+        }
+    }' > /dev/null 2>&1 || true
+
 # --- Upload test audiobooks ---
 # Create a tiny silent MP3 (1 second) for uploads
 TMPDIR=$(mktemp -d)
@@ -182,4 +205,4 @@ echo "ABS_URL=$ABS_URL"
 echo "LIBRARY_ID=$LIBRARY_ID"
 echo "Items: $ITEM_COUNT (6 authors, 3 series, 15 books)"
 echo "Root credentials: root/root"
-echo "Test credentials: testuser/testpass, uploaduser/uploadpass"
+echo "Test credentials: testuser/testpass, uploaduser/uploadpass, readonlyuser/readonlypass"
