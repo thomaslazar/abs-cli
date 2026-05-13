@@ -1437,15 +1437,10 @@ else
     fail "embed-metadata --wait: receipt shape valid with defaults" "exit=$exit_code, output: ${output:0:200}"
 fi
 
-# --- Backup-on verification: cache dir should exist for the item ---
-backup_check=$(docker exec docker-audiobookshelf-1 sh -c "ls /metadata/cache/items/$EMBED_ITEM_ID 2>/dev/null | wc -l" 2>/dev/null || echo "0")
-if [ "$backup_check" -gt 0 ]; then
-    pass "embed-metadata --wait (default --backup on): cache dir populated for item"
-else
-    fail "embed-metadata --wait (default --backup on): cache dir populated for item" "ls returned $backup_check"
-fi
-
-# --- --no-backup behavior on the second item ---
+# --- --no-backup option-echo verification (the server-side filesystem
+# check is omitted: docker-compose vs GitHub Actions service container
+# expose the ABS metadata mount under different paths, so reaching into
+# the container is not portable. The receipt is the contract we ship.)
 output=$($CLI items embed-metadata --id "$EMBED_ITEM_ID_2" --no-backup --wait 2>/dev/null)
 if echo "$output" | python3 -c "
 import sys, json
@@ -1455,13 +1450,6 @@ assert d['options']['backup'] is False
     pass "embed-metadata --no-backup: receipt reflects backup=false"
 else
     fail "embed-metadata --no-backup: receipt reflects backup=false" "unexpected response"
-fi
-
-backup_check_2=$(docker exec docker-audiobookshelf-1 sh -c "ls /metadata/cache/items/$EMBED_ITEM_ID_2 2>/dev/null | wc -l" 2>/dev/null || echo "0")
-if [ "$backup_check_2" = "0" ]; then
-    pass "embed-metadata --no-backup: cache dir NOT populated for item"
-else
-    fail "embed-metadata --no-backup: cache dir NOT populated for item" "ls returned $backup_check_2"
 fi
 
 # --- Batch happy path with --wait ---
