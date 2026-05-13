@@ -15,6 +15,7 @@ public static class ApiEndpoints
     public static string Item(string id) => $"/api/items/{id}";
     public static string ItemMedia(string id) => $"/api/items/{id}/media";
     public static string ItemCover(string id) => $"/api/items/{id}/cover";
+    public static string ItemChapters(string id) => $"/api/items/{id}/chapters";
     public const string ItemsBatchUpdate = "/api/items/batch/update";
     public const string ItemsBatchGet = "/api/items/batch/get";
 
@@ -42,6 +43,7 @@ public static class ApiEndpoints
     public const string SearchProviders = "/api/search/providers";
     public const string SearchCovers = "/api/search/covers";
     public const string SearchAuthors = "/api/search/authors";
+    public const string SearchChapters = "/api/search/chapters";
 
     // Tools
     public static string ToolsItemEncodeM4b(string id) => $"/api/tools/item/{id}/encode-m4b";
