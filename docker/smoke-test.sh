@@ -1289,15 +1289,16 @@ fi
 if [ "${SMOKE_TEST_EXTERNAL:-}" = "1" ]; then
     echo "  (external lookup tests enabled)"
 
-    # Known-good ASIN: The Adventures of Sherlock Holmes (public-domain,
-    # long-tail Audible release; Audnexus has indexed it since at least
-    # 2024-09). If this ever 404s on Audnexus, rotate to another
-    # public-domain ASIN — do NOT change the test to expect failure.
-    output=$($CLI items chapters lookup --asin "B002V8KYJC" 2>/dev/null)
+    # Known-good ASIN: popular Audible release with 19 Audnexus-indexed
+    # chapters (verified 2026-05-13 against audnex.us). If this ever
+    # 404s, probe a few popular ASINs against `items chapters lookup`
+    # and rotate to one that returns chapters — do NOT change the test
+    # to expect failure.
+    output=$($CLI items chapters lookup --asin "B017V4IM1G" 2>/dev/null || true)
     if echo "$output" | python3 -c "
 import sys, json
 d = json.load(sys.stdin)
-assert d['asin'] == 'B002V8KYJC'
+assert d['asin'] == 'B017V4IM1G'
 assert len(d['chapters']) > 0
 assert 'isAccurate' in d
 " 2>/dev/null; then
