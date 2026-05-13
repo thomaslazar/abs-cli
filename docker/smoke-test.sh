@@ -1323,50 +1323,50 @@ fi
 # 403 (canUpdate denial) is exercised in the Permission Errors section
 # using readonlyuser, alongside items update / batch-update / authors update.
 
-# Audnexus lookup tests are gated behind SMOKE_TEST_EXTERNAL=1
-# (same gate as external metadata-provider tests). Hits live audnex.us — slow,
-# flaky in sandboxed CI.
-if [ "${SMOKE_TEST_EXTERNAL:-}" = "1" ]; then
-    echo "  (external lookup tests enabled)"
+# Chapter lookup tests hit Audnexus via ABS — same external assumption as
+# the already-ungated `authors lookup` / `authors match` tests above (which
+# use Brandon Sanderson). We pair with a Sanderson ASIN here so there's a
+# single class of external dependency, not two.
 
-    # Known-good ASIN: popular Audible release with 19 Audnexus-indexed
-    # chapters (verified 2026-05-13 against audnex.us). If this ever
-    # 404s, probe a few popular ASINs against `items chapters lookup`
-    # and rotate to one that returns chapters — do NOT change the test
-    # to expect failure.
-    output=$($CLI items chapters lookup --asin "B017V4IM1G" 2>/dev/null || true)
-    if echo "$output" | python3 -c "
+# Known-good ASIN: Mistborn: The Final Empire (Brandon Sanderson) —
+# 47 Audnexus-indexed chapters, isAccurate=true (verified 2026-05-13).
+# If this ever 404s, find another Sanderson Audible ASIN via
+# `abs-cli metadata search --provider audible --title <title>
+# --author "Brandon Sanderson"` and confirm it via
+# `items chapters lookup` before swapping. Do NOT change the test to
+# expect failure.
+output=$($CLI items chapters lookup --asin "B002V0QCYU" 2>/dev/null || true)
+if echo "$output" | python3 -c "
 import sys, json
 d = json.load(sys.stdin)
-assert d['asin'] == 'B017V4IM1G'
+assert d['asin'] == 'B002V0QCYU'
 assert len(d['chapters']) > 0
 assert 'isAccurate' in d
 " 2>/dev/null; then
-        pass "chapters lookup: known-good ASIN returns chapters"
-    else
-        fail "chapters lookup: known-good ASIN returns chapters" "unexpected response"
-        echo "    response: ${output:0:200}"
-    fi
-
-    # Well-formed but unknown ASIN → exit 2 with "Chapters not found".
-    output=$($CLI items chapters lookup --asin "B000000000" 2>&1 || true)
-    if echo "$output" | grep -q "Chapters not found"; then
-        pass "chapters lookup: unknown ASIN surfaces 'Chapters not found'"
-    else
-        fail "chapters lookup: unknown ASIN surfaces 'Chapters not found'" "missing error string"
-        echo "    response: ${output:0:200}"
-    fi
-
-    # Malformed ASIN → exit 2 with "Invalid ASIN".
-    output=$($CLI items chapters lookup --asin "not-an-asin" 2>&1 || true)
-    if echo "$output" | grep -q "Invalid ASIN"; then
-        pass "chapters lookup: invalid ASIN surfaces 'Invalid ASIN'"
-    else
-        fail "chapters lookup: invalid ASIN surfaces 'Invalid ASIN'" "missing error string"
-        echo "    response: ${output:0:200}"
-    fi
+    pass "chapters lookup: known-good ASIN returns chapters"
 else
-    echo "  (skipping external lookup tests — set SMOKE_TEST_EXTERNAL=1 to enable)"
+    fail "chapters lookup: known-good ASIN returns chapters" "unexpected response"
+    echo "    response: ${output:0:200}"
+fi
+
+# Well-formed but unknown ASIN → exit 2 with "Chapters not found".
+output=$($CLI items chapters lookup --asin "B000000000" 2>&1 || true)
+if echo "$output" | grep -q "Chapters not found"; then
+    pass "chapters lookup: unknown ASIN surfaces 'Chapters not found'"
+else
+    fail "chapters lookup: unknown ASIN surfaces 'Chapters not found'" "missing error string"
+    echo "    response: ${output:0:200}"
+fi
+
+# Malformed ASIN → exit 2 with "Invalid ASIN". Server-side ABS rejects
+# at `isValidASIN` before any Audnexus call, so this case has zero
+# external dependency.
+output=$($CLI items chapters lookup --asin "not-an-asin" 2>&1 || true)
+if echo "$output" | grep -q "Invalid ASIN"; then
+    pass "chapters lookup: invalid ASIN surfaces 'Invalid ASIN'"
+else
+    fail "chapters lookup: invalid ASIN surfaces 'Invalid ASIN'" "missing error string"
+    echo "    response: ${output:0:200}"
 fi
 
 chapters_cleanup
