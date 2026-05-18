@@ -192,6 +192,8 @@ ABS endpoints (no proxy work, no new server features).
 - **`items delete`** — Add support for more destructive commands.
 - **`login --username` / `--password`** — Add non-interactive credential parameters to the `login` command.
 - **`items update --stdin`** — Bring `items update` in line with the batch-* shape (`--input <file>` or `--stdin`), retiring the inline-JSON-or-file `--input` behavior.
+- **Extended help mode** — Hide response-shape blocks from `--help` by default; surface them via an explicit flag (e.g. `--help-shape`, `--help-full`) or a separate subcommand. Today every command renders one or two `Response shape:` blocks, and `items get --expanded` adds a second one — without a way to opt out, the help output drifts toward unreadable as more commands ship.
+- **`items get --include=<flags>`** — Opt-in for ABS's `?include=progress,rssfeed,downloads,share` query parameter. Adds user-progress, RSS feed, download, and share state to the response (each as a nullable field). Works on both minified and expanded paths. Orthogonal to `--expanded`.
 
 ---
 
