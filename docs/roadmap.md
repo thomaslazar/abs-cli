@@ -174,6 +174,16 @@ ABS endpoints (no proxy work, no new server features).
   way to discover a supplementary file's `ino`. Workflow once
   shipped: `items get --expanded` → pick supplementary `ino` →
   `items toggle-ebook-status --ino <ino>`.
+- **ABS 2.34 / 2.35 compatibility bump** — Update
+  `MinSupportedVersion` / `MaxTestedVersion` to cover ABS 2.34 and
+  2.35 (released 2026-04-27 and 2026-05-17), plus the
+  docker-compose dev stack image and the CLAUDE.md / README
+  references that currently pin 2.33.x. Two upstream changes worth
+  verifying during the bump: v2.34's "batch API routes enforce
+  library and per-item access" may close the `items batch-update`
+  `canUpdate` gap currently documented as an ABS-side bug in the
+  smoke; v2.35's "access token refresh grace period" touches the
+  auth path `EnsureValidTokenAsync` interacts with.
 
 ---
 
