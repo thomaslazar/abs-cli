@@ -173,6 +173,7 @@ ABS endpoints (no proxy work, no new server features).
 - **`items delete`** — Add support for more destructive commands.
 - **`login --username` / `--password`** — Add non-interactive credential parameters to the `login` command.
 - **`items update --stdin`** — Bring `items update` in line with the batch-* shape (`--input <file>` or `--stdin`), retiring the inline-JSON-or-file `--input` behavior.
+- **`--expanded` flag on minified-response commands** — Add an opt-in switch to `items get`, `items list`, and `items batch-get` so callers can request ABS's `?expanded=1` shape (includes `libraryFiles[]`, full media payload, etc.) instead of the default minified response. The current minified-only behavior makes `items toggle-ebook-status` hard to drive end-to-end from the CLI: there's no way to discover a supplementary file's `ino` without a raw `curl ?expanded=1` call. Once shipped, the `items toggle-ebook-status` workflow becomes `items get --expanded` → pick supplementary `ino` → `items toggle-ebook-status --ino <ino>`.
 
 ---
 
