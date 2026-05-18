@@ -1529,6 +1529,74 @@ EMBED_ITEM_ID_2=""
 
 # ============================================================
 echo ""
+echo "=== Items Get Expanded ==="
+
+# The seeded "Multi Ebook Test" item is the natural fixture — it has
+# two ebook files (.epub + .pdf), and the libraryFiles[] array is the
+# main reason --expanded exists.
+EXPANDED_ITEM_ID=$($CLI items list --library "$LIB_ID" --limit 100 2>/dev/null \
+    | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+for r in d['results']:
+    if r.get('media',{}).get('metadata',{}).get('title','') == 'Multi Ebook Test':
+        print(r['id']); break
+" 2>/dev/null)
+
+if [ -n "$EXPANDED_ITEM_ID" ]; then
+    pass "items get --expanded: located seeded multi-ebook item ($EXPANDED_ITEM_ID)"
+else
+    fail "items get --expanded: located seeded multi-ebook item" "Multi Ebook Test not found"
+fi
+
+# Default (minified) — must NOT contain libraryFiles.
+output=$($CLI items get --id "$EXPANDED_ITEM_ID" 2>/dev/null)
+if echo "$output" | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+assert 'libraryFiles' not in d
+assert d['id'] == '$EXPANDED_ITEM_ID'
+" 2>/dev/null; then
+    pass "items get (default): minified shape has no libraryFiles"
+else
+    fail "items get (default): minified shape has no libraryFiles" "unexpected shape"
+fi
+
+# --expanded — must contain libraryFiles with the two ebook entries.
+output=$($CLI items get --id "$EXPANDED_ITEM_ID" --expanded 2>/dev/null)
+if echo "$output" | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+assert 'libraryFiles' in d
+ebook_files = [lf for lf in d['libraryFiles'] if lf.get('fileType') == 'ebook']
+assert len(ebook_files) >= 2, f'expected 2+ ebook files, got {len(ebook_files)}'
+inos = sorted([lf['ino'] for lf in ebook_files])
+supplementary = [lf for lf in ebook_files if lf.get('isSupplementary') is True]
+primary = [lf for lf in ebook_files if lf.get('isSupplementary') is False]
+assert len(supplementary) == 1, f'expected 1 supplementary, got {len(supplementary)}'
+assert len(primary) == 1, f'expected 1 primary, got {len(primary)}'
+" 2>/dev/null; then
+    pass "items get --expanded: libraryFiles has 2 ebook entries with correct primary/supplementary split"
+else
+    fail "items get --expanded: libraryFiles has 2 ebook entries with correct primary/supplementary split" "unexpected response"
+    echo "    response: ${output:0:300}"
+fi
+
+# Sanity: --expanded also surfaces the bonus fields.
+output=$($CLI items get --id "$EXPANDED_ITEM_ID" --expanded 2>/dev/null)
+if echo "$output" | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+assert 'lastScan' in d
+assert 'scanVersion' in d
+" 2>/dev/null; then
+    pass "items get --expanded: exposes lastScan and scanVersion"
+else
+    fail "items get --expanded: exposes lastScan and scanVersion" "missing bonus fields"
+fi
+
+# ============================================================
+echo ""
 echo "=== Toggle Ebook Status ==="
 
 # Find the seeded multi-ebook item by title.
@@ -1547,12 +1615,10 @@ else
     fail "toggle-ebook-status: located seeded multi-ebook item" "Multi Ebook Test not found"
 fi
 
-# Read initial state. The CLI's items get exposes media.ebookFile.ino
-# (the primary) but NOT libraryFiles[] — so the supplementary ino must
-# come from a raw expanded GET. Both inos are needed once; subsequent
-# state checks use items get.
-EBOOK_STATE=$(curl -sf "$ABS_URL/api/items/$EBOOK_ITEM_ID?expanded=1" \
-    -H "Authorization: Bearer $ABS_TOKEN" \
+# Read initial state. `items get --expanded` returns the full shape
+# including libraryFiles[]. Both the primary's ino and the
+# supplementary's ino come from one CLI call.
+EBOOK_STATE=$($CLI items get --id "$EBOOK_ITEM_ID" --expanded 2>/dev/null \
     | python3 -c "
 import sys, json
 d = json.load(sys.stdin)

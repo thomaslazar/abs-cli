@@ -644,6 +644,71 @@ public static class SelfTestCommand
             });
 
             Console.Error.WriteLine();
+            Console.Error.WriteLine("=== Expanded Item Models ===");
+
+            Check("LibraryFileMetadata round-trip", () =>
+            {
+                var obj = new LibraryFileMetadata
+                {
+                    Filename = "multi.epub",
+                    Ext = ".epub",
+                    Path = "/audiobooks/Author/Title/multi.epub",
+                    RelPath = "multi.epub",
+                    Size = 1216,
+                    MtimeMs = 1779100661814,
+                    CtimeMs = 1779100661814,
+                    BirthtimeMs = 1779100661814
+                };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.LibraryFileMetadata);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.LibraryFileMetadata)!;
+                Assert(back.Filename == "multi.epub", $"filename: {back.Filename}");
+                Assert(back.Ext == ".epub", $"ext: {back.Ext}");
+                Assert(back.Size == 1216, $"size: {back.Size}");
+            });
+
+            Check("LibraryFile round-trip", () =>
+            {
+                var obj = new LibraryFile
+                {
+                    Ino = "16400001",
+                    Metadata = new LibraryFileMetadata { Filename = "multi.epub", Ext = ".epub" },
+                    AddedAt = 1779100661871,
+                    UpdatedAt = 1779100661871,
+                    IsSupplementary = false,
+                    FileType = "ebook"
+                };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.LibraryFile);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.LibraryFile)!;
+                Assert(back.Ino == "16400001", $"ino: {back.Ino}");
+                Assert(back.FileType == "ebook", $"fileType: {back.FileType}");
+                Assert(back.IsSupplementary == false, $"isSupplementary: {back.IsSupplementary}");
+                Assert(back.Metadata.Filename == "multi.epub", $"metadata.filename: {back.Metadata.Filename}");
+            });
+
+            Check("LibraryItemExpanded round-trip", () =>
+            {
+                var obj = new LibraryItemExpanded
+                {
+                    Id = "li_xyz",
+                    LibraryId = "lib_xyz",
+                    MediaType = "book",
+                    LastScan = 1779100662000,
+                    ScanVersion = "2.33.2",
+                    LibraryFiles = new List<LibraryFile>
+                    {
+                        new() { Ino = "16400001", FileType = "ebook", IsSupplementary = false },
+                        new() { Ino = "16400002", FileType = "ebook", IsSupplementary = true }
+                    }
+                };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.LibraryItemExpanded);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.LibraryItemExpanded)!;
+                Assert(back.Id == "li_xyz", $"id: {back.Id}");
+                Assert(back.LibraryFiles.Count == 2, $"libraryFiles count: {back.LibraryFiles.Count}");
+                Assert(back.LibraryFiles[1].IsSupplementary == true, $"second is supplementary");
+                Assert(back.ScanVersion == "2.33.2", $"scanVersion: {back.ScanVersion}");
+            });
+
+            Console.Error.WriteLine();
             Console.Error.WriteLine("=== Author Models ===");
 
             Check("AuthorMatchRequest round-trip", () =>

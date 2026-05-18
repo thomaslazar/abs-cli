@@ -34,6 +34,18 @@ public class ItemsService
         return await _client.GetAsync(ApiEndpoints.Item(id), AppJsonContext.Default.LibraryItemMinified);
     }
 
+    /// <summary>
+    /// Get a single library item in ABS's expanded shape. Adds `?expanded=1`
+    /// to the URL so the server returns libraryFiles[], lastScan,
+    /// scanVersion, oldLibraryItemId, and the deeper media shape.
+    /// </summary>
+    public async Task<LibraryItemExpanded> GetExpandedAsync(string id)
+    {
+        return await _client.GetAsync(
+            ApiEndpoints.Item(id) + "?expanded=1",
+            AppJsonContext.Default.LibraryItemExpanded);
+    }
+
     public async Task<UpdateMediaResponse> UpdateMediaAsync(string id, string jsonBody)
     {
         return await _client.PatchAsync(

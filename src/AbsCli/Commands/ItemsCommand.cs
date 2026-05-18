@@ -90,18 +90,31 @@ public static class ItemsCommand
     private static Command CreateGetCommand()
     {
         var idOption = new Option<string>("--id") { Description = "Item ID", Required = true };
-        var command = new Command("get", "Get a single library item by ID") { idOption };
+        var expandedOption = new Option<bool>("--expanded") { Description = "Return the expanded shape" };
+        var command = new Command("get", "Get a single library item by ID") { idOption, expandedOption };
         command.AddExamples(
-            "abs-cli items get --id \"li_abc123\"");
+            "abs-cli items get --id \"li_abc123\"",
+            "abs-cli items get --id \"li_abc123\" --expanded");
         command.AddResponseExample<LibraryItemMinified>();
         command.AddMediaUnionShapes();
+        command.AddHelpSection("Response shape (--expanded)", HelpSectionPosition.Bottom,
+            ResponseExamples.For(typeof(LibraryItemExpanded)).Split('\n'));
         command.SetAction(async (parseResult, cancellationToken) =>
         {
             var id = parseResult.GetValue(idOption)!;
+            var expanded = parseResult.GetValue(expandedOption);
             var (client, _) = CommandHelper.BuildClient();
             var service = new ItemsService(client);
-            var result = await service.GetAsync(id);
-            ConsoleOutput.WriteJson(result, AppJsonContext.Default.LibraryItemMinified);
+            if (expanded)
+            {
+                var result = await service.GetExpandedAsync(id);
+                ConsoleOutput.WriteJson(result, AppJsonContext.Default.LibraryItemExpanded);
+            }
+            else
+            {
+                var result = await service.GetAsync(id);
+                ConsoleOutput.WriteJson(result, AppJsonContext.Default.LibraryItemMinified);
+            }
             return 0;
         });
         return command;
