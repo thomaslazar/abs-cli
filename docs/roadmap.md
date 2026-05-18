@@ -165,6 +165,15 @@ ABS endpoints (no proxy work, no new server features).
   method + URL + status code (and optionally body on failure) to
   stderr, plus the token-refresh and version-check decisions. Off by
   default; never logs the bearer token itself.
+- **`--expanded` flag on minified-response commands** — Add an opt-in
+  switch to `items get`, `items list`, and `items batch-get` so
+  callers can request ABS's `?expanded=1` shape (includes
+  `libraryFiles[]`, full media payload, etc.) instead of the default
+  minified response. Required to make `items toggle-ebook-status`
+  drivable end-to-end from the CLI: without `--expanded` there's no
+  way to discover a supplementary file's `ino`. Workflow once
+  shipped: `items get --expanded` → pick supplementary `ino` →
+  `items toggle-ebook-status --ino <ino>`.
 
 ---
 
@@ -173,7 +182,6 @@ ABS endpoints (no proxy work, no new server features).
 - **`items delete`** — Add support for more destructive commands.
 - **`login --username` / `--password`** — Add non-interactive credential parameters to the `login` command.
 - **`items update --stdin`** — Bring `items update` in line with the batch-* shape (`--input <file>` or `--stdin`), retiring the inline-JSON-or-file `--input` behavior.
-- **`--expanded` flag on minified-response commands** — Add an opt-in switch to `items get`, `items list`, and `items batch-get` so callers can request ABS's `?expanded=1` shape (includes `libraryFiles[]`, full media payload, etc.) instead of the default minified response. The current minified-only behavior makes `items toggle-ebook-status` hard to drive end-to-end from the CLI: there's no way to discover a supplementary file's `ino` without a raw `curl ?expanded=1` call. Once shipped, the `items toggle-ebook-status` workflow becomes `items get --expanded` → pick supplementary `ino` → `items toggle-ebook-status --ino <ino>`.
 
 ---
 

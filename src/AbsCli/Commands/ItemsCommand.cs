@@ -699,7 +699,7 @@ public static class ItemsCommand
             "abs-cli items toggle-ebook-status --id \"li_abc123\" --ino \"12345678\"");
         command.AddHelpSection("Caveats",
             "Toggle: targeting a supplementary makes it primary; targeting the current primary unsets it (no auto-promote).",
-            "--ino comes from 'items get' → libraryFiles[].ino.");
+            "--ino comes from 'items get --expanded' → libraryFiles[].ino.");
         command.AddResponseExample<EbookFileStatusReceipt>();
         command.SetAction(async (parseResult, cancellationToken) =>
         {
