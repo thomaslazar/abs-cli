@@ -39,7 +39,7 @@ test: add metadata update assertion to smoke tests
 ## Command implementation conventions
 
 - **Permission tagging.** Every command whose underlying ABS endpoint requires a non-default permission MUST call `command.AddPermissionRequired("<token>")` immediately after construction, where `<token>` is one of `admin`, `update`, `upload`, `download`, `delete`. Commands callable by any authenticated user (reads, lookups) get no call. The token must agree with the controller's permission check in `temp/audiobookshelf/server/controllers/`.
-- **Permission hint mirroring.** When the underlying service method's HTTP call needs a `permissionHint`, the hint string MUST match the tag: tag `update` ↔ hint `"'update' permission"`; tag `delete` ↔ hint `"'delete' permission"`; tag `admin` ↔ hint `"admin permission"` (no quotes around `admin`). The help-section tag and the 403 error message should always agree.
+- **Permission hint mirroring.** When the underlying service method's HTTP call needs a `permissionHint`, the hint string MUST match the tag: tag `update` ↔ hint `"'update' permission"`; tag `delete` ↔ hint `"'delete' permission"`; tag `upload` ↔ hint `"'upload' permission"`; tag `admin` ↔ hint `"admin permission"` (NO quotes around `admin` — `admin` is a user *type* in ABS's model, not a flag in the `user.permissions` object; the quoted forms name literal flag keys like `permissions.update`). The help-section tag and the 403 error message should always agree.
 - **README Commands table.** Any PR that adds, renames, or removes a CLI verb MUST update the Commands table in `README.md` in the same change.
 
 ## ABS Source Reference
