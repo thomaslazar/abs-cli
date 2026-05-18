@@ -195,7 +195,7 @@ abs-cli config set defaultLibrary <library-id>
 | `libraries get --id <id>` | Get a single library |
 | `libraries scan [--force]` | Trigger a library scan (admin, async) |
 | `items list` | List items (`--filter`, `--sort`, `--limit`, `--page`, `--desc`) |
-| `items get --id <id>` | Get a single item |
+| `items get --id <id> [--expanded]` | Get a single item (`--expanded` returns `libraryFiles[]`, `lastScan`, `scanVersion`) |
 | `items update --id <id> --input <json>` | Update item metadata |
 | `items batch-update` | Batch update items (`--input <file>` or `--stdin`) |
 | `items batch-get` | Batch get items by ID (`--input <file>` or `--stdin`) |
