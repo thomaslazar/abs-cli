@@ -49,11 +49,13 @@ public class ItemsGetExpandedCommandTests
     }
 
     [Fact]
-    public void ItemsGet_Help_SurfacesExpandedCaveat()
+    public void ItemsGet_Help_NoCrossReferenceToOtherCommands()
     {
+        // items get's help should describe items get only — no Caveats
+        // block that points at other commands. The expanded-vs-minified
+        // distinction is fully covered by the two response-shape blocks.
         var output = RenderHelp("items", "get");
-        Assert.Contains("Caveats", output);
-        Assert.Contains("libraryFiles", output);
-        Assert.Contains("toggle-ebook-status", output);
+        Assert.DoesNotContain("toggle-ebook-status", output);
+        Assert.DoesNotContain("Caveats", output);
     }
 }

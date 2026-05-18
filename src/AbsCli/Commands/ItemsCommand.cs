@@ -90,13 +90,11 @@ public static class ItemsCommand
     private static Command CreateGetCommand()
     {
         var idOption = new Option<string>("--id") { Description = "Item ID", Required = true };
-        var expandedOption = new Option<bool>("--expanded") { Description = "Return the expanded shape (includes libraryFiles[], lastScan, scanVersion, oldLibraryItemId)" };
+        var expandedOption = new Option<bool>("--expanded") { Description = "Return the expanded shape" };
         var command = new Command("get", "Get a single library item by ID") { idOption, expandedOption };
         command.AddExamples(
             "abs-cli items get --id \"li_abc123\"",
             "abs-cli items get --id \"li_abc123\" --expanded");
-        command.AddHelpSection("Caveats",
-            "--expanded returns ABS's expanded shape including libraryFiles[] (use it to find ebook file inos for 'items toggle-ebook-status', etc.). Default response is minified.");
         command.AddResponseExample<LibraryItemMinified>();
         command.AddMediaUnionShapes();
         command.AddHelpSection("Response shape (--expanded)", HelpSectionPosition.Bottom,
