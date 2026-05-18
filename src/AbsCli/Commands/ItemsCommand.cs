@@ -22,6 +22,7 @@ public static class ItemsCommand
         command.Subcommands.Add(CreateChaptersCommand());
         command.Subcommands.Add(CreateEmbedMetadataCommand());
         command.Subcommands.Add(CreateBatchEmbedMetadataCommand());
+        command.Subcommands.Add(CreateToggleEbookStatusCommand());
         return command;
     }
 
@@ -680,6 +681,41 @@ public static class ItemsCommand
                 }
             }
             ConsoleOutput.WriteJson(receipt, AppJsonContext.Default.BatchEmbedMetadataReceipt);
+            return 0;
+        });
+        return command;
+    }
+
+    private static Command CreateToggleEbookStatusCommand()
+    {
+        var idOption = new Option<string>("--id") { Description = "Library item ID", Required = true };
+        var inoOption = new Option<string>("--ino") { Description = "Ebook file's inode (from items get → libraryFiles[].ino)", Required = true };
+        var command = new Command("toggle-ebook-status", "Toggle which ebook file is primary on a multi-format item")
+        {
+            idOption, inoOption
+        };
+        command.AddPermissionRequired("update");
+        command.AddExamples(
+            "abs-cli items toggle-ebook-status --id \"li_abc123\" --ino \"12345678\"");
+        command.AddHelpSection("Caveats",
+            "Toggle: targeting a supplementary makes it primary; targeting the current primary unsets it (no auto-promote).",
+            "--ino comes from 'items get' → libraryFiles[].ino.");
+        command.AddResponseExample<EbookFileStatusReceipt>();
+        command.SetAction(async (parseResult, cancellationToken) =>
+        {
+            var id = parseResult.GetValue(idOption)!;
+            var ino = parseResult.GetValue(inoOption)!;
+            var (client, _) = CommandHelper.BuildClient();
+            var service = new ItemsService(client);
+            await service.ToggleEbookFileStatusAsync(id, ino);
+            var receipt = new EbookFileStatusReceipt
+            {
+                LibraryItemId = id,
+                FileIno = ino,
+                Action = "toggle-ebook-status",
+                Toggled = true
+            };
+            ConsoleOutput.WriteJson(receipt, AppJsonContext.Default.EbookFileStatusReceipt);
             return 0;
         });
         return command;
