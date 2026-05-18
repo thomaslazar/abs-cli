@@ -59,6 +59,8 @@ internal static class ResponseExamples
           "{\n  \"cover\": \"<string>\"\n}" },
         { typeof(AbsCli.Models.CoverSearchResponse),
           "{\n  \"results\": [\n    \"<string>\"\n  ]\n}" },
+        { typeof(AbsCli.Models.EbookFileStatusReceipt),
+          "{\n  \"libraryItemId\": \"<string>\",\n  \"fileIno\": \"<string>\",\n  \"action\": \"<string>\",\n  \"toggled\": false\n}" },
         { typeof(AbsCli.Models.EmbedMetadataOptions),
           "{\n  \"backup\": false,\n  \"forceEmbedChapters\": false\n}" },
         { typeof(AbsCli.Models.EmbedMetadataReceipt),
