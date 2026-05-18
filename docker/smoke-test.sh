@@ -1375,6 +1375,160 @@ CHAPTERS_ITEM_ID=""
 
 # ============================================================
 echo ""
+echo "=== Embed Metadata Commands ==="
+
+EMBED_TMP=$(mktemp -d)
+EMBED_ITEM_ID=""
+EMBED_ITEM_ID_2=""
+embed_cleanup() {
+    if [ -n "$EMBED_ITEM_ID" ]; then
+        curl -sf -X DELETE "$ABS_URL/api/items/$EMBED_ITEM_ID?hard=1" \
+            -H "Authorization: Bearer $ABS_TOKEN" > /dev/null 2>&1 || true
+    fi
+    if [ -n "$EMBED_ITEM_ID_2" ]; then
+        curl -sf -X DELETE "$ABS_URL/api/items/$EMBED_ITEM_ID_2?hard=1" \
+            -H "Authorization: Bearer $ABS_TOKEN" > /dev/null 2>&1 || true
+    fi
+    rm -rf "$EMBED_TMP"
+}
+trap embed_cleanup EXIT
+
+# Two real-audio fixtures via ffmpeg (matches encode-m4b smoke pattern).
+ffmpeg -y -f lavfi -i "sine=frequency=440:duration=5" -ac 2 -c:a libmp3lame -b:a 128k \
+    "$EMBED_TMP/track1.mp3" > /dev/null 2>&1
+ffmpeg -y -f lavfi -i "sine=frequency=523:duration=5" -ac 2 -c:a libmp3lame -b:a 128k \
+    "$EMBED_TMP/track2.mp3" > /dev/null 2>&1
+
+SAVE_TOKEN="$ABS_TOKEN"
+export ABS_TOKEN="$UPLOAD_TOKEN"
+
+output=$($CLI upload --folder "$FOLDER_ID" \
+    --title "EMBED_METADATA_TEST_1" --author "Smoke Author" \
+    --wait --files "$EMBED_TMP/track1.mp3" 2>/dev/null)
+EMBED_ITEM_ID=$(echo "$output" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id', ''))" 2>/dev/null)
+
+output=$($CLI upload --folder "$FOLDER_ID" \
+    --title "EMBED_METADATA_TEST_2" --author "Smoke Author" \
+    --wait --files "$EMBED_TMP/track2.mp3" 2>/dev/null)
+EMBED_ITEM_ID_2=$(echo "$output" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id', ''))" 2>/dev/null)
+
+export ABS_TOKEN="$SAVE_TOKEN"
+
+if [ -n "$EMBED_ITEM_ID" ] && [ -n "$EMBED_ITEM_ID_2" ]; then
+    pass "embed-metadata: uploaded two test items ($EMBED_ITEM_ID, $EMBED_ITEM_ID_2)"
+else
+    fail "embed-metadata: uploaded two test items" "missing one or both upload IDs"
+fi
+
+# --- Single happy path with --wait ---
+output=$($CLI items embed-metadata --id "$EMBED_ITEM_ID" --wait 2>/dev/null)
+exit_code=$?
+if [ "$exit_code" = "0" ] && echo "$output" | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+assert d['libraryItemId'] == '$EMBED_ITEM_ID'
+assert d['action'] == 'embed-metadata'
+assert d['started'] is True
+assert d['options']['backup'] is True
+assert d['options']['forceEmbedChapters'] is False
+" 2>/dev/null; then
+    pass "embed-metadata --wait: receipt shape valid with defaults"
+else
+    fail "embed-metadata --wait: receipt shape valid with defaults" "exit=$exit_code, output: ${output:0:200}"
+fi
+
+# --- --no-backup option-echo verification (the server-side filesystem
+# check is omitted: docker-compose vs GitHub Actions service container
+# expose the ABS metadata mount under different paths, so reaching into
+# the container is not portable. The receipt is the contract we ship.)
+output=$($CLI items embed-metadata --id "$EMBED_ITEM_ID_2" --no-backup --wait 2>/dev/null)
+if echo "$output" | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+assert d['options']['backup'] is False
+" 2>/dev/null; then
+    pass "embed-metadata --no-backup: receipt reflects backup=false"
+else
+    fail "embed-metadata --no-backup: receipt reflects backup=false" "unexpected response"
+fi
+
+# --- Batch happy path with --wait ---
+output=$(echo "{\"libraryItemIds\":[\"$EMBED_ITEM_ID\",\"$EMBED_ITEM_ID_2\"]}" \
+    | $CLI items batch-embed-metadata --stdin --wait 2>/dev/null)
+if echo "$output" | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+assert d['action'] == 'embed-metadata'
+assert d['started'] is True
+assert sorted(d['libraryItemIds']) == sorted(['$EMBED_ITEM_ID', '$EMBED_ITEM_ID_2'])
+assert d['options']['backup'] is True
+" 2>/dev/null; then
+    pass "batch-embed-metadata --wait: receipt shape valid"
+else
+    fail "batch-embed-metadata --wait: receipt shape valid" "unexpected response: ${output:0:300}"
+fi
+
+# --- Negatives ---
+output=$($CLI items embed-metadata --id "li_does_not_exist_$$" 2>&1 || true)
+if echo "$output" | grep -qE "(Not found|Bad request)"; then
+    pass "embed-metadata: nonexistent item exits 2"
+else
+    fail "embed-metadata: nonexistent item exits 2" "unexpected: ${output:0:200}"
+fi
+
+output=$(echo '{"libraryItemIds":[]}' | $CLI items batch-embed-metadata --stdin 2>&1 || true)
+if echo "$output" | grep -q "non-empty array"; then
+    pass "batch-embed-metadata: empty list rejected client-side"
+else
+    fail "batch-embed-metadata: empty list rejected client-side" "unexpected: ${output:0:200}"
+fi
+
+output=$(echo "{\"libraryItemIds\":[\"$EMBED_ITEM_ID\",\"li_nonexistent_$$\"]}" \
+    | $CLI items batch-embed-metadata --stdin 2>&1 || true)
+if echo "$output" | grep -qE "(Not found|Bad request)"; then
+    pass "batch-embed-metadata: bad ID in list aborts the whole batch"
+else
+    fail "batch-embed-metadata: bad ID in list aborts the whole batch" "unexpected: ${output:0:200}"
+fi
+
+output=$($CLI items batch-embed-metadata --input /dev/null --stdin <<< '{}' 2>&1 || true)
+if echo "$output" | grep -q "exactly one"; then
+    pass "batch-embed-metadata: rejects both --input and --stdin"
+else
+    fail "batch-embed-metadata: rejects both --input and --stdin" "missing error string"
+fi
+
+output=$($CLI items batch-embed-metadata 2>&1 || true)
+if echo "$output" | grep -q "Provide --input"; then
+    pass "batch-embed-metadata: rejects when neither --input nor --stdin given"
+else
+    fail "batch-embed-metadata: rejects when neither --input nor --stdin given" "missing error string"
+fi
+
+output=$(echo '{"libraryItemIds":"not-an-array"}' | $CLI items batch-embed-metadata --stdin 2>&1 || true)
+if echo "$output" | grep -q "Invalid JSON"; then
+    pass "batch-embed-metadata: wrong-typed libraryItemIds rejected client-side"
+else
+    fail "batch-embed-metadata: wrong-typed libraryItemIds rejected client-side" "unexpected: ${output:0:200}"
+fi
+
+# Permission denial: uploaduser is non-admin.
+export ABS_TOKEN="$UPLOAD_TOKEN"
+output=$($CLI items embed-metadata --id "$EMBED_ITEM_ID" 2>&1 || true)
+export ABS_TOKEN="$SAVE_TOKEN"
+if echo "$output" | grep -q "admin permission"; then
+    pass "embed-metadata: uploaduser hits admin permission denial"
+else
+    fail "embed-metadata: uploaduser hits admin permission denial" "unexpected: ${output:0:200}"
+fi
+
+embed_cleanup
+trap - EXIT
+EMBED_ITEM_ID=""
+EMBED_ITEM_ID_2=""
+
+# ============================================================
+echo ""
 echo "========================================"
 echo "Results: $PASS passed, $FAIL failed"
 echo "========================================"

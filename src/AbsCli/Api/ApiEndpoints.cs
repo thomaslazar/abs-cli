@@ -47,6 +47,8 @@ public static class ApiEndpoints
 
     // Tools
     public static string ToolsItemEncodeM4b(string id) => $"/api/tools/item/{id}/encode-m4b";
+    public static string ToolsItemEmbedMetadata(string id) => $"/api/tools/item/{id}/embed-metadata";
+    public const string ToolsBatchEmbedMetadata = "/api/tools/batch/embed-metadata";
 
     // Tasks
     public const string Tasks = "/api/tasks";

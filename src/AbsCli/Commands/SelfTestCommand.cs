@@ -571,6 +571,60 @@ public static class SelfTestCommand
             });
 
             Console.Error.WriteLine();
+            Console.Error.WriteLine("=== Embed Metadata Models ===");
+
+            Check("EmbedMetadataOptions default round-trip", () =>
+            {
+                var obj = new EmbedMetadataOptions();
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.EmbedMetadataOptions);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.EmbedMetadataOptions)!;
+                Assert(back.Backup == true, $"backup default: {back.Backup}");
+                Assert(back.ForceEmbedChapters == false, $"forceEmbedChapters default: {back.ForceEmbedChapters}");
+            });
+
+            Check("EmbedMetadataReceipt round-trip", () =>
+            {
+                var obj = new EmbedMetadataReceipt
+                {
+                    LibraryItemId = "li_abc123",
+                    Started = true,
+                    Options = new EmbedMetadataOptions { Backup = false, ForceEmbedChapters = true }
+                };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.EmbedMetadataReceipt);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.EmbedMetadataReceipt)!;
+                Assert(back.LibraryItemId == "li_abc123", $"libraryItemId: {back.LibraryItemId}");
+                Assert(back.Action == "embed-metadata", $"action: {back.Action}");
+                Assert(back.Started == true, $"started: {back.Started}");
+                Assert(back.Options.Backup == false, $"options.backup: {back.Options.Backup}");
+                Assert(back.Options.ForceEmbedChapters == true, $"options.forceEmbedChapters: {back.Options.ForceEmbedChapters}");
+            });
+
+            Check("BatchEmbedMetadataRequest round-trip", () =>
+            {
+                var obj = new BatchEmbedMetadataRequest { LibraryItemIds = new List<string> { "li_a", "li_b" } };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.BatchEmbedMetadataRequest);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.BatchEmbedMetadataRequest)!;
+                Assert(back.LibraryItemIds.Count == 2, $"count: {back.LibraryItemIds.Count}");
+                Assert(back.LibraryItemIds[0] == "li_a", $"first: {back.LibraryItemIds[0]}");
+            });
+
+            Check("BatchEmbedMetadataReceipt round-trip", () =>
+            {
+                var obj = new BatchEmbedMetadataReceipt
+                {
+                    Started = true,
+                    LibraryItemIds = new List<string> { "li_a" },
+                    Options = new EmbedMetadataOptions { Backup = true, ForceEmbedChapters = true }
+                };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.BatchEmbedMetadataReceipt);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.BatchEmbedMetadataReceipt)!;
+                Assert(back.Action == "embed-metadata", $"action: {back.Action}");
+                Assert(back.Started == true, $"started: {back.Started}");
+                Assert(back.LibraryItemIds.Count == 1, $"count: {back.LibraryItemIds.Count}");
+                Assert(back.Options.ForceEmbedChapters == true, $"forceEmbedChapters: {back.Options.ForceEmbedChapters}");
+            });
+
+            Console.Error.WriteLine();
             Console.Error.WriteLine("=== Author Models ===");
 
             Check("AuthorMatchRequest round-trip", () =>
