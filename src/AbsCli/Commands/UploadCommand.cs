@@ -35,6 +35,7 @@ public static class UploadCommand
             seriesOption, sequenceOption, waitOption, filesOption,
             prefixSourceDirOption, manifestOption
         };
+        command.AddPermissionRequired("upload");
         command.AddHelpSection("Folder ID",
             "If the library has a single folder, it is auto-resolved.",
             "Otherwise pass --folder <id>.",

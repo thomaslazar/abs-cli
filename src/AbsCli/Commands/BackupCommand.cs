@@ -22,6 +22,7 @@ public static class BackupCommand
     private static Command CreateCreateCommand()
     {
         var command = new Command("create", "Create a new server backup");
+        command.AddPermissionRequired("admin");
         command.AddExamples(
             "abs-cli backup create");
         command.AddResponseExample<BackupListResponse>();
@@ -39,6 +40,7 @@ public static class BackupCommand
     private static Command CreateListCommand()
     {
         var command = new Command("list", "List all server backups");
+        command.AddPermissionRequired("admin");
         command.AddExamples(
             "abs-cli backup list");
         command.AddResponseExample<BackupListResponse>();
@@ -57,6 +59,7 @@ public static class BackupCommand
     {
         var idOption = new Option<string>("--id") { Description = "Backup ID", Required = true };
         var command = new Command("apply", "Apply (restore) a server backup") { idOption };
+        command.AddPermissionRequired("admin");
         command.AddExamples(
             "abs-cli backup apply --id \"2024-01-15T0000\"");
         command.SetAction(async (parseResult, cancellationToken) =>
@@ -76,6 +79,7 @@ public static class BackupCommand
         var idOption = new Option<string>("--id") { Description = "Backup ID", Required = true };
         var outputOption = new Option<string>("--output") { Description = "Output file path (use .audiobookshelf extension — required for re-upload)", Required = true };
         var command = new Command("download", "Download a server backup to a local file") { idOption, outputOption };
+        command.AddPermissionRequired("admin");
         command.AddExamples(
             "abs-cli backup download --id \"2024-01-15T0000\" --output backup.audiobookshelf",
             "abs-cli backup download --id \"2024-01-15T0000\" --output /tmp/abs-backup.audiobookshelf");
@@ -95,6 +99,7 @@ public static class BackupCommand
     {
         var idOption = new Option<string>("--id") { Description = "Backup ID", Required = true };
         var command = new Command("delete", "Delete a server backup") { idOption };
+        command.AddPermissionRequired("admin");
         command.AddExamples(
             "abs-cli backup delete --id \"2024-01-15T0000\"");
         command.AddResponseExample<BackupListResponse>();
@@ -114,6 +119,7 @@ public static class BackupCommand
     {
         var fileOption = new Option<string>("--file") { Description = "Path to backup file (must have .audiobookshelf extension)", Required = true };
         var command = new Command("upload", "Upload a backup file to the server") { fileOption };
+        command.AddPermissionRequired("admin");
         command.AddExamples(
             "abs-cli backup upload --file backup.audiobookshelf",
             "abs-cli backup upload --file /tmp/abs-backup.audiobookshelf");

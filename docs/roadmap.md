@@ -158,6 +158,22 @@ ABS endpoints (no proxy work, no new server features).
   introspection or restore. Hygiene primitive, not a primary
   audio-file operation; included here because v0.5.0's encode-m4b is
   what makes the cache grow.
+- **Diagnostic logging** — Add an opt-in verbose/debug mode so agents
+  and humans can troubleshoot connection issues, auth failures, and
+  unexpected API responses without resorting to packet capture. Likely
+  shape: `--debug` flag and/or `ABS_DEBUG=1` env var that emits HTTP
+  method + URL + status code (and optionally body on failure) to
+  stderr, plus the token-refresh and version-check decisions. Off by
+  default; never logs the bearer token itself.
+- **`--expanded` flag on minified-response commands** — Add an opt-in
+  switch to `items get`, `items list`, and `items batch-get` so
+  callers can request ABS's `?expanded=1` shape (includes
+  `libraryFiles[]`, full media payload, etc.) instead of the default
+  minified response. Required to make `items toggle-ebook-status`
+  drivable end-to-end from the CLI: without `--expanded` there's no
+  way to discover a supplementary file's `ino`. Workflow once
+  shipped: `items get --expanded` → pick supplementary `ino` →
+  `items toggle-ebook-status --ino <ino>`.
 
 ---
 

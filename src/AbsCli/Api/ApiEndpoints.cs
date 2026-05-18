@@ -16,6 +16,7 @@ public static class ApiEndpoints
     public static string ItemMedia(string id) => $"/api/items/{id}/media";
     public static string ItemCover(string id) => $"/api/items/{id}/cover";
     public static string ItemChapters(string id) => $"/api/items/{id}/chapters";
+    public static string ItemEbookFileStatus(string id, string fileIno) => $"/api/items/{id}/ebook/{fileIno}/status";
     public const string ItemsBatchUpdate = "/api/items/batch/update";
     public const string ItemsBatchGet = "/api/items/batch/get";
 

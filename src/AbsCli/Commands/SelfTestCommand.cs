@@ -625,6 +625,25 @@ public static class SelfTestCommand
             });
 
             Console.Error.WriteLine();
+            Console.Error.WriteLine("=== Ebook File Models ===");
+
+            Check("EbookFileStatusReceipt round-trip", () =>
+            {
+                var obj = new EbookFileStatusReceipt
+                {
+                    LibraryItemId = "li_abc123",
+                    FileIno = "12345678",
+                    Toggled = true
+                };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.EbookFileStatusReceipt);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.EbookFileStatusReceipt)!;
+                Assert(back.LibraryItemId == "li_abc123", $"libraryItemId: {back.LibraryItemId}");
+                Assert(back.FileIno == "12345678", $"fileIno: {back.FileIno}");
+                Assert(back.Action == "toggle-ebook-status", $"action: {back.Action}");
+                Assert(back.Toggled == true, $"toggled: {back.Toggled}");
+            });
+
+            Console.Error.WriteLine();
             Console.Error.WriteLine("=== Author Models ===");
 
             Check("AuthorMatchRequest round-trip", () =>

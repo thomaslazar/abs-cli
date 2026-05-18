@@ -66,6 +66,6 @@ public class CoversService
     /// </summary>
     public async Task RemoveAsync(string itemId)
     {
-        await _client.DeleteAsync(ApiEndpoints.ItemCover(itemId));
+        await _client.DeleteAsync(ApiEndpoints.ItemCover(itemId), permissionHint: "'delete' permission");
     }
 }

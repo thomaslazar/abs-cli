@@ -2,7 +2,7 @@
 # Smoke test: exercises every abs-cli command against a live ABS instance.
 # Tests the actual binary (AOT or JIT) — not `dotnet run`.
 #
-# Expects a seeded ABS instance (15 books, 6 authors, 3 series).
+# Expects a seeded ABS instance (15 audiobooks + 1 multi-ebook fixture, 7 authors, 3 series).
 #
 # Usage:
 #   ABS_URL=http://host.docker.internal:13378 CLI=./path/to/abs-cli bash docker/smoke-test.sh
@@ -187,12 +187,12 @@ echo "=== Items Commands ==="
 output=$($CLI items list 2>/dev/null)
 assert_json_key "items list has results" "results" "$output"
 assert_json_key "items list has total" "total" "$output"
-assert_json_expr "items list has 15 items" "d['total']==15" "$output"
+assert_json_expr "items list has 16 items" "d['total']==16" "$output"
 
 # Pagination
 output=$($CLI items list --limit 5 --page 0 2>/dev/null)
 assert_json_expr "items list pagination: 5 results" "len(d['results'])==5" "$output"
-assert_json_expr "items list pagination: total still 15" "d['total']==15" "$output"
+assert_json_expr "items list pagination: total still 16" "d['total']==16" "$output"
 
 # Get single item
 FIRST_ITEM_ID=$(echo "$output" | python3 -c "import sys,json; print(json.load(sys.stdin)['results'][0]['id'])")
@@ -303,7 +303,7 @@ echo "=== Authors Commands ==="
 output=$($CLI authors list 2>/dev/null)
 assert_json_key "authors list returns paginated shape (results)" "results" "$output"
 assert_json_key "authors list returns paginated shape (total)" "total" "$output"
-assert_json_expr "authors list has 6 authors" "d['total']==6 and len(d['results'])==6" "$output"
+assert_json_expr "authors list has 7 authors" "d['total']==7 and len(d['results'])==7" "$output"
 assert_json_expr "authors list contains Brandon Sanderson" \
     "any(a['name']=='Brandon Sanderson' for a in d['results'])" "$output"
 
@@ -317,12 +317,12 @@ print(bs['id'])
 # Pagination round-trip
 output=$($CLI authors list --limit 3 --page 0 2>/dev/null)
 assert_json_expr "authors list page 0 returns 3 results" "len(d['results'])==3" "$output"
-assert_json_expr "authors list page 0 reports total 6" "d['total']==6" "$output"
+assert_json_expr "authors list page 0 reports total 7" "d['total']==7" "$output"
 PAGE0_NAMES=$(echo "$output" | python3 -c "import sys,json; print(','.join(sorted(a['name'] for a in json.load(sys.stdin)['results'])))")
 
 output=$($CLI authors list --limit 3 --page 1 2>/dev/null)
 assert_json_expr "authors list page 1 returns 3 results" "len(d['results'])==3" "$output"
-assert_json_expr "authors list page 1 reports total 6" "d['total']==6" "$output"
+assert_json_expr "authors list page 1 reports total 7" "d['total']==7" "$output"
 PAGE1_NAMES=$(echo "$output" | python3 -c "import sys,json; print(','.join(sorted(a['name'] for a in json.load(sys.stdin)['results'])))")
 
 if [ "$PAGE0_NAMES" != "$PAGE1_NAMES" ]; then
@@ -399,7 +399,7 @@ assert_json_expr "authors delete returns success" "d.get('success')=='true'" "$o
 output=$($CLI authors list 2>/dev/null)
 assert_json_expr "authors delete removed throwaway" \
     "not any(a['name']=='Smoke Test Throwaway' for a in d['results'])" "$output"
-assert_json_expr "authors list back to 6 authors" "len(d['results'])==6" "$output"
+assert_json_expr "authors list back to 7 authors" "len(d['results'])==7" "$output"
 
 # Restore book to original authors
 RESTORE_PAYLOAD=$(python3 -c "
@@ -431,7 +431,7 @@ assert_json_expr "authors update merge response carries the existing author" \
 output=$($CLI authors list 2>/dev/null)
 assert_json_expr "authors update merge removed throwaway" \
     "not any(a['name']=='Smoke Test Mergee' for a in d['results'])" "$output"
-assert_json_expr "authors list still 6 after merge" "len(d['results'])==6" "$output"
+assert_json_expr "authors list still 7 after merge" "len(d['results'])==7" "$output"
 
 # Restore book to original authors (merge added Jim Butcher to FIRST_ITEM_ID)
 $CLI items update --id "$FIRST_ITEM_ID" --input "$RESTORE_PAYLOAD" 2>/dev/null > /dev/null
@@ -1526,6 +1526,111 @@ embed_cleanup
 trap - EXIT
 EMBED_ITEM_ID=""
 EMBED_ITEM_ID_2=""
+
+# ============================================================
+echo ""
+echo "=== Toggle Ebook Status ==="
+
+# Find the seeded multi-ebook item by title.
+EBOOK_ITEM_ID=$($CLI items list --library "$LIB_ID" --limit 100 2>/dev/null \
+    | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+for r in d['results']:
+    if r.get('media',{}).get('metadata',{}).get('title','') == 'Multi Ebook Test':
+        print(r['id']); break
+" 2>/dev/null)
+
+if [ -n "$EBOOK_ITEM_ID" ]; then
+    pass "toggle-ebook-status: located seeded multi-ebook item ($EBOOK_ITEM_ID)"
+else
+    fail "toggle-ebook-status: located seeded multi-ebook item" "Multi Ebook Test not found"
+fi
+
+# Read initial state. The CLI's items get exposes media.ebookFile.ino
+# (the primary) but NOT libraryFiles[] — so the supplementary ino must
+# come from a raw expanded GET. Both inos are needed once; subsequent
+# state checks use items get.
+EBOOK_STATE=$(curl -sf "$ABS_URL/api/items/$EBOOK_ITEM_ID?expanded=1" \
+    -H "Authorization: Bearer $ABS_TOKEN" \
+    | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+primary_ino = (d.get('media',{}).get('ebookFile') or {}).get('ino','')
+ebook_files = [lf for lf in d.get('libraryFiles',[]) if lf.get('fileType') == 'ebook']
+inos = [lf.get('ino','') for lf in ebook_files]
+supplementary = [i for i in inos if i != primary_ino]
+print(f'{primary_ino}|{supplementary[0] if supplementary else \"\"}')
+" 2>/dev/null)
+PRIMARY_INO=$(echo "$EBOOK_STATE" | cut -d'|' -f1)
+SUPP_INO=$(echo "$EBOOK_STATE" | cut -d'|' -f2)
+
+if [ -n "$PRIMARY_INO" ] && [ -n "$SUPP_INO" ]; then
+    pass "toggle-ebook-status: read initial state (primary=$PRIMARY_INO, supplementary=$SUPP_INO)"
+else
+    fail "toggle-ebook-status: read initial state" "primary=$PRIMARY_INO supplementary=$SUPP_INO"
+fi
+
+# Toggle the supplementary file → becomes primary.
+output=$($CLI items toggle-ebook-status --id "$EBOOK_ITEM_ID" --ino "$SUPP_INO" 2>/dev/null)
+if echo "$output" | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+assert d['libraryItemId'] == '$EBOOK_ITEM_ID'
+assert d['fileIno'] == '$SUPP_INO'
+assert d['action'] == 'toggle-ebook-status'
+assert d['toggled'] is True
+" 2>/dev/null; then
+    pass "toggle-ebook-status: receipt shape valid"
+else
+    fail "toggle-ebook-status: receipt shape valid" "unexpected: ${output:0:200}"
+fi
+
+# Verify state flipped: previously-supplementary is now primary.
+new_primary=$($CLI items get --id "$EBOOK_ITEM_ID" 2>/dev/null \
+    | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+print((d.get('media',{}).get('ebookFile') or {}).get('ino',''))
+" 2>/dev/null)
+if [ "$new_primary" = "$SUPP_INO" ]; then
+    pass "toggle-ebook-status: supplementary file is now primary"
+else
+    fail "toggle-ebook-status: supplementary file is now primary" "expected $SUPP_INO, got $new_primary"
+fi
+
+# Recovery toggle: re-target the original primary → restore.
+$CLI items toggle-ebook-status --id "$EBOOK_ITEM_ID" --ino "$PRIMARY_INO" > /dev/null 2>&1
+restored_primary=$($CLI items get --id "$EBOOK_ITEM_ID" 2>/dev/null \
+    | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+print((d.get('media',{}).get('ebookFile') or {}).get('ino',''))
+" 2>/dev/null)
+if [ "$restored_primary" = "$PRIMARY_INO" ]; then
+    pass "toggle-ebook-status: recovery toggle restored original primary"
+else
+    fail "toggle-ebook-status: recovery toggle restored original primary" "expected $PRIMARY_INO, got $restored_primary"
+fi
+
+# Negative: bogus --ino returns 404 with ABS message.
+output=$($CLI items toggle-ebook-status --id "$EBOOK_ITEM_ID" --ino "99999999" 2>&1 || true)
+if echo "$output" | grep -qE "(Not found|does not exist)"; then
+    pass "toggle-ebook-status: bogus --ino exits 2 with 404 passthrough"
+else
+    fail "toggle-ebook-status: bogus --ino exits 2 with 404 passthrough" "unexpected: ${output:0:200}"
+fi
+
+# Permission denial: readonlyuser (no canUpdate) → 403.
+SAVE_TOKEN="$ABS_TOKEN"
+export ABS_TOKEN="$READONLY_TOKEN"
+output=$($CLI items toggle-ebook-status --id "$EBOOK_ITEM_ID" --ino "$PRIMARY_INO" 2>&1 || true)
+export ABS_TOKEN="$SAVE_TOKEN"
+if echo "$output" | grep -q "'update' permission"; then
+    pass "toggle-ebook-status: readonlyuser hits 'update' permission denial"
+else
+    fail "toggle-ebook-status: readonlyuser hits 'update' permission denial" "unexpected: ${output:0:200}"
+fi
 
 # ============================================================
 echo ""

@@ -65,4 +65,20 @@ public class ItemsService
         return await _client.PostEmptyAsync(ApiEndpoints.ItemScan(id),
             AppJsonContext.Default.ScanResult, "'admin' access");
     }
+
+    /// <summary>
+    /// Toggle the ebook-primary status of a single file on an item.
+    /// PATCH /api/items/:id/ebook/:fileid/status — body is empty; the
+    /// targeted file is the entire payload. ABS flips the file's
+    /// isSupplementary value (supplementary → primary auto-demotes
+    /// previous primary; primary → unset, no auto-promotion).
+    /// Returns empty 200 on success.
+    /// </summary>
+    public async Task ToggleEbookFileStatusAsync(string itemId, string fileIno)
+    {
+        await _client.PatchAsync(
+            ApiEndpoints.ItemEbookFileStatus(itemId, fileIno),
+            jsonBody: "",
+            permissionHint: "'update' permission");
+    }
 }

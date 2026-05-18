@@ -203,6 +203,13 @@ abs-cli config set defaultLibrary <library-id>
 | `items cover set --id <id> [--url \| --file \| --server-path]` | Apply a cover image |
 | `items cover get --id <id> --output <path>` | Download the cover image |
 | `items cover remove --id <id>` | Remove the cover |
+| `items chapters lookup --asin <asin> [--region <r>]` | Look up chapter timings on Audnexus by ASIN |
+| `items chapters set --id <id> {--input <file> \| --stdin}` | Write chapters onto an item (DB + sidecar; does NOT touch audio file) |
+| `items toggle-ebook-status --id <id> --ino <ino>` | Toggle which ebook file is primary on a multi-format item |
+| `items encode-m4b start --id <id> [--codec \| --bitrate \| --channels]` | Merge multi-file audiobook into a single tagged `.m4b` (admin) |
+| `items encode-m4b cancel --id <id>` | Cancel a pending encode-m4b task (admin) |
+| `items embed-metadata --id <id> [--no-backup] [--force-embed-chapters] [--wait]` | Embed ABS metadata into the audio files via ffmpeg (admin) |
+| `items batch-embed-metadata {--input <file> \| --stdin} [...]` | Batch variant of `items embed-metadata` (admin) |
 | `series list` | List series (`--limit`, `--page`) |
 | `series get --id <id>` | Get a single series |
 | `authors list` | List authors (paginated: `--limit`, `--page`, `--sort`, `--desc`) |
@@ -229,7 +236,7 @@ abs-cli config set defaultLibrary <library-id>
 | `changelog [--all]` | Print release notes from the bundled `CHANGELOG.md` (offline) |
 | `self-test` | Verify binary integrity (AOT validation, no network required) |
 
-Every command supports `--help` with examples and reference sections.
+Every command supports `--help` with examples and reference sections. Commands that require a non-default ABS permission render a `Permission required:` block at the top of their `--help` (one of `admin`, `update`, `upload`, `download`, `delete`); the absence of that block means any authenticated user can run the command.
 
 ## Development
 
@@ -240,16 +247,16 @@ The repo includes a dev container with .NET 10, clang, and Docker support. Open 
 ### Running tests
 
 ```bash
-# Unit tests (132 tests)
+# Unit tests
 dotnet test tests/AbsCli.Tests/AbsCli.Tests.csproj
 
-# Self-test (45 AOT integrity checks, no network needed)
+# Self-test (AOT integrity checks, no network needed)
 dotnet run --project src/AbsCli/AbsCli.csproj -- self-test
 
-# Full smoke test against a live ABS instance (155 assertions)
+# Full smoke test against a live ABS instance
 docker compose -f docker/docker-compose.yml up -d
 bash docker/seed.sh
-bash docker/smoke-test.sh                          # builds AOT binary + runs 155 assertions
+bash docker/smoke-test.sh                          # builds AOT binary + runs the smoke suite
 docker compose -f docker/docker-compose.yml down -v
 ```
 
@@ -271,7 +278,7 @@ tools/
   GenerateResponseExamples/  # Generates ResponseExamples.g.cs (sample JSON per type for --help)
 docker/
   docker-compose.yml  # Local ABS instance for testing
-  seed.sh             # Seed test data (15 books, 6 authors, 3 series, 3 users)
+  seed.sh             # Seed test data (15 audiobooks + 1 multi-ebook fixture, 7 authors, 3 series, 4 users)
   smoke-test.sh       # End-to-end CLI smoke tests
 ```
 

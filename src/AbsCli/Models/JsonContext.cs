@@ -49,6 +49,7 @@ namespace AbsCli.Models;
 [JsonSerializable(typeof(EmbedMetadataReceipt))]
 [JsonSerializable(typeof(BatchEmbedMetadataRequest))]
 [JsonSerializable(typeof(BatchEmbedMetadataReceipt))]
+[JsonSerializable(typeof(EbookFileStatusReceipt))]
 [JsonSerializable(typeof(UploadManifestEntry))]
 [JsonSerializable(typeof(UploadReceipt))]
 [JsonSerializable(typeof(List<UploadManifestEntry>))]
