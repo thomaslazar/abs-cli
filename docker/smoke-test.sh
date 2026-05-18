@@ -1532,8 +1532,7 @@ echo ""
 echo "=== Toggle Ebook Status ==="
 
 # Find the seeded multi-ebook item by title.
-EBOOK_ITEM_ID=$(curl -sf "$ABS_URL/api/libraries/$LIB_ID/items?limit=100" \
-    -H "Authorization: Bearer $ABS_TOKEN" \
+EBOOK_ITEM_ID=$($CLI items list --library "$LIB_ID" --limit 100 2>/dev/null \
     | python3 -c "
 import sys, json
 d = json.load(sys.stdin)
@@ -1548,7 +1547,10 @@ else
     fail "toggle-ebook-status: located seeded multi-ebook item" "Multi Ebook Test not found"
 fi
 
-# Read initial state via expanded API (CLI's items get is minified).
+# Read initial state. The CLI's items get exposes media.ebookFile.ino
+# (the primary) but NOT libraryFiles[] — so the supplementary ino must
+# come from a raw expanded GET. Both inos are needed once; subsequent
+# state checks use items get.
 EBOOK_STATE=$(curl -sf "$ABS_URL/api/items/$EBOOK_ITEM_ID?expanded=1" \
     -H "Authorization: Bearer $ABS_TOKEN" \
     | python3 -c "
@@ -1585,8 +1587,7 @@ else
 fi
 
 # Verify state flipped: previously-supplementary is now primary.
-new_primary=$(curl -sf "$ABS_URL/api/items/$EBOOK_ITEM_ID?expanded=1" \
-    -H "Authorization: Bearer $ABS_TOKEN" \
+new_primary=$($CLI items get --id "$EBOOK_ITEM_ID" 2>/dev/null \
     | python3 -c "
 import sys, json
 d = json.load(sys.stdin)
@@ -1600,8 +1601,7 @@ fi
 
 # Recovery toggle: re-target the original primary → restore.
 $CLI items toggle-ebook-status --id "$EBOOK_ITEM_ID" --ino "$PRIMARY_INO" > /dev/null 2>&1
-restored_primary=$(curl -sf "$ABS_URL/api/items/$EBOOK_ITEM_ID?expanded=1" \
-    -H "Authorization: Bearer $ABS_TOKEN" \
+restored_primary=$($CLI items get --id "$EBOOK_ITEM_ID" 2>/dev/null \
     | python3 -c "
 import sys, json
 d = json.load(sys.stdin)
