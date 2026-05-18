@@ -87,6 +87,7 @@ public static class AuthorsCommand
         {
             idOption, nameOption, asinOption, regionOption
         };
+        command.AddPermissionRequired("update");
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
             "Destructive: writes ASIN, description, and image onto the author.",
             "",
@@ -162,6 +163,7 @@ public static class AuthorsCommand
         {
             idOption, nameOption, descriptionOption, asinOption
         };
+        command.AddPermissionRequired("update");
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
             "Merge-on-rename: renaming to an existing author's name in the same",
             "library merges the two — books move to the target, source is deleted.",
@@ -224,6 +226,7 @@ public static class AuthorsCommand
     {
         var idOption = new Option<string>("--id") { Description = "Author ID", Required = true };
         var command = new Command("delete", "Delete an author and unlink it from all books") { idOption };
+        command.AddPermissionRequired("delete");
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
             "Removes the author from all books and deletes the record. The scanner",
             "may re-derive it on the next run if a book's file metadata still names",
@@ -259,6 +262,7 @@ public static class AuthorsCommand
         var urlOption = new Option<string>("--url") { Description = "Image URL (http or https) — ABS server downloads it", Required = true };
         var command = new Command("set", "Set the author image from a URL")
         { idOption, urlOption };
+        command.AddPermissionRequired("upload");
         command.AddExamples(
             "abs-cli authors image set --id \"aut_xyz\" --url \"https://example.com/author.png\"");
         command.AddResponseExample<AuthorImageResponse>();
@@ -319,6 +323,7 @@ public static class AuthorsCommand
         var idOption = new Option<string>("--id") { Description = "Author ID", Required = true };
         var command = new Command("remove", "Remove the author image")
         { idOption };
+        command.AddPermissionRequired("delete");
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
             "No current image → exit 2, stderr \"Bad request. Author has no",
             "image path set\". Check imagePath via 'authors get' first if needed.");

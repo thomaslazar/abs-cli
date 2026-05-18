@@ -111,6 +111,7 @@ public static class ItemsCommand
         var idOption = new Option<string>("--id") { Description = "Item ID", Required = true };
         var inputOption = new Option<string>("--input") { Description = "JSON input (string or file path)", Required = true };
         var command = new Command("update", "Update a single item's metadata") { idOption, inputOption };
+        command.AddPermissionRequired("update");
         command.AddExamples(
             "abs-cli items update --id \"li_abc123\" --input '{\"metadata\":{\"title\":\"New Title\"}}'",
             "abs-cli items update --id \"li_abc123\" --input payload.json",
@@ -136,6 +137,7 @@ public static class ItemsCommand
         var inputOption = new Option<string?>("--input") { Description = "JSON file path" };
         var stdinOption = new Option<bool>("--stdin") { Description = "Read JSON from stdin" };
         var command = new Command("batch-update", "Batch update multiple items") { inputOption, stdinOption };
+        command.AddPermissionRequired("update");
         command.AddExamples(
             "abs-cli items batch-update --input updates.json",
             "cat updates.json | abs-cli items batch-update --stdin");
@@ -198,6 +200,7 @@ public static class ItemsCommand
     {
         var idOption = new Option<string>("--id") { Description = "Item ID", Required = true };
         var command = new Command("scan", "Scan a single library item (admin-only, sync)") { idOption };
+        command.AddPermissionRequired("admin");
         command.AddExamples(
             "abs-cli items scan --id \"li_abc123\"");
         command.AddResponseExample<ScanResult>();
@@ -229,6 +232,7 @@ public static class ItemsCommand
         var fileOption = new Option<string?>("--file") { Description = "Local cover image file to upload" };
         var serverPathOption = new Option<string?>("--server-path") { Description = "Path to a file already on the ABS server's filesystem" };
         var command = new Command("set", "Apply a cover to a library item by URL, local file, or existing server-side path") { idOption, urlOption, fileOption, serverPathOption };
+        command.AddPermissionRequired("upload");
         command.AddExamples(
             "abs-cli items cover set --id \"li_abc123\" --url \"https://example.com/cover.jpg\"",
             "abs-cli items cover set --id \"li_abc123\" --file ./cover.jpg",
@@ -312,6 +316,7 @@ public static class ItemsCommand
     {
         var idOption = new Option<string>("--id") { Description = "Library item ID", Required = true };
         var command = new Command("remove", "Remove the cover from a library item") { idOption };
+        command.AddPermissionRequired("delete");
         command.AddExamples(
             "abs-cli items cover remove --id \"li_abc123\"");
         command.AddHelpSection("Response shape", HelpSectionPosition.Bottom,
@@ -349,6 +354,7 @@ public static class ItemsCommand
         {
             idOption, codecOption, bitrateOption, channelsOption
         };
+        command.AddPermissionRequired("admin");
         command.AddExamples(
             "abs-cli items encode-m4b start --id \"li_abc123\"",
             "abs-cli items encode-m4b start --id \"li_abc123\" --codec copy",
@@ -398,6 +404,7 @@ public static class ItemsCommand
     {
         var idOption = new Option<string>("--id") { Description = "Library item ID", Required = true };
         var command = new Command("cancel", "Cancel a pending encode-m4b task on a library item") { idOption };
+        command.AddPermissionRequired("admin");
         command.AddExamples(
             "abs-cli items encode-m4b cancel --id \"li_abc123\"");
         command.AddHelpSection("Caveats",
@@ -467,6 +474,7 @@ public static class ItemsCommand
         {
             idOption, inputOption, stdinOption
         };
+        command.AddPermissionRequired("update");
         command.AddExamples(
             "abs-cli items chapters set --id \"li_abc123\" --input chapters.json",
             "cat chapters.json | abs-cli items chapters set --id \"li_abc123\" --stdin");
@@ -536,6 +544,7 @@ public static class ItemsCommand
         {
             idOption, noBackupOption, forceEmbedChaptersOption, waitOption
         };
+        command.AddPermissionRequired("admin");
         command.AddExamples(
             "abs-cli items embed-metadata --id \"li_abc123\"",
             "abs-cli items embed-metadata --id \"li_abc123\" --wait",
@@ -589,6 +598,7 @@ public static class ItemsCommand
         {
             inputOption, stdinOption, noBackupOption, forceEmbedChaptersOption, waitOption
         };
+        command.AddPermissionRequired("admin");
         command.AddExamples(
             "abs-cli items batch-embed-metadata --input ids.json --wait",
             "echo '{\"libraryItemIds\":[\"li_a\",\"li_b\"]}' | abs-cli items batch-embed-metadata --stdin");

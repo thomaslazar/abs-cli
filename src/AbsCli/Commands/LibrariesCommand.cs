@@ -65,6 +65,7 @@ public static class LibrariesCommand
         var idOption = new Option<string?>("--id") { Description = "Library ID (or default from config)" };
         var forceOption = new Option<bool>("--force") { Description = "Force full rescan" };
         var command = new Command("scan", "Trigger a library scan (admin-only, async)") { idOption, forceOption };
+        command.AddPermissionRequired("admin");
         command.AddExamples(
             "abs-cli libraries scan",
             "abs-cli libraries scan --force",
