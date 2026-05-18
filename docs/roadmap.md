@@ -165,8 +165,7 @@ ABS endpoints (no proxy work, no new server features).
   method + URL + status code (and optionally body on failure) to
   stderr, plus the token-refresh and version-check decisions. Off by
   default; never logs the bearer token itself.
-- **`--expanded` flag on minified-response commands** — Add an opt-in
-  switch to `items get`, `items list`, and `items batch-get` so
+- **`--expanded` flag on `items get`** — Add an opt-in switch so
   callers can request ABS's `?expanded=1` shape (includes
   `libraryFiles[]`, full media payload, etc.) instead of the default
   minified response. Required to make `items toggle-ebook-status`
