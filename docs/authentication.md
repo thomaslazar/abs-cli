@@ -52,3 +52,16 @@ The auth implementation is in `server/auth/TokenManager.js`:
 Login route is in `server/Auth.js`:
 - `POST /login` — accepts `X-Return-Tokens: true` header for API clients
 - `POST /auth/refresh` — accepts `X-Refresh-Token` header for non-cookie clients
+
+## Server-side notes
+
+- **v2.35 refresh-token grace period.** ABS 2.35 added 60 seconds of
+  server-side grace on the previous refresh token after a successful
+  rotation (new `lastRefreshToken` / `lastRefreshTokenExpiresAt` columns on
+  the session row; `rotateTokensForSession` keeps the old token usable for
+  one minute, and `POST /auth/refresh` accepts either the current or the
+  prior refresh token within the grace window). This guards against a race
+  between two concurrent refresh callers each issuing a fresh token. abs-cli
+  is single-process and never issues concurrent refreshes, so the grace
+  period is transparent — no CLI behaviour change. Request and response
+  shapes are unchanged.
