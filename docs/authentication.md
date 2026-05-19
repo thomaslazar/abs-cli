@@ -63,5 +63,5 @@ Login route is in `server/Auth.js`:
   prior refresh token within the grace window). This guards against a race
   between two concurrent refresh callers each issuing a fresh token. abs-cli
   is single-process and never issues concurrent refreshes, so the grace
-  period is transparent — no CLI behaviour change. Request and response
+  period is transparent — no CLI behavior change. Request and response
   shapes are unchanged.

@@ -50,6 +50,6 @@ test: add metadata update assertion to smoke tests
   # Supported version is set in src/AbsCli/Api/AbsApiClient.cs (MinSupportedVersion / MaxTestedVersion)
   git clone --depth 1 --branch v2.35.0 https://github.com/advplyr/audiobookshelf.git temp/audiobookshelf
   ```
-- Replace the version tag with whatever `MinSupportedVersion` is currently set to.
+- Replace the version tag with whatever `MaxTestedVersion` is currently set to.
 - Use this checkout to verify endpoints, controllers, request/response shapes, and permission checks before designing or changing CLI commands.
 
