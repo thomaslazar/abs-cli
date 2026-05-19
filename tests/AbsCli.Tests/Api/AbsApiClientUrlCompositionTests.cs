@@ -4,6 +4,7 @@ using Xunit;
 
 namespace AbsCli.Tests.Api;
 
+[Collection("NLog")]
 public class AbsApiClientUrlCompositionTests
 {
     private static AbsApiClient BuildClient(string server)
