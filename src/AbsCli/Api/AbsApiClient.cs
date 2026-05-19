@@ -34,7 +34,6 @@ public class AbsApiClient
         if (config.AccessToken != null)
             _http.DefaultRequestHeaders.Authorization =
                 new AuthenticationHeaderValue("Bearer", config.AccessToken);
-
         _logger.Debug($"client base address: {_http.BaseAddress}");
     }
 
@@ -230,7 +229,6 @@ public class AbsApiClient
 
         _http.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", _config.AccessToken);
-
         _logger.Debug("token refresh succeeded");
     }
 
