@@ -11,6 +11,7 @@ rootCommand.Subcommands.Add(SeriesCommand.Create());
 rootCommand.Subcommands.Add(AuthorsCommand.Create());
 rootCommand.Subcommands.Add(SearchCommand.Create());
 rootCommand.Subcommands.Add(BackupCommand.Create());
+rootCommand.Subcommands.Add(CacheCommand.Create());
 rootCommand.Subcommands.Add(UploadCommand.Create());
 rootCommand.Subcommands.Add(TasksCommand.Create());
 rootCommand.Subcommands.Add(MetadataCommand.Create());
