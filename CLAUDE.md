@@ -29,6 +29,12 @@ test: add metadata update assertion to smoke tests
 - Seed first if the stack is freshly created: `ABS_URL=http://<container-ip>:80 bash docker/seed.sh`.
 - Only mark "smoke test passed" in a PR description after actually running it. Do not copy the checkbox forward unverified.
 
+## Post-PR verification
+
+- After `gh pr create`, watch CI until every check is in a terminal state (pass / fail / skipping). A PR is not done at "PR open" — it is done at "all required checks green." Surface the result back to the user without prompting.
+- `gh pr checks <num>` for one-shot status; `gh run watch <run-id>` or a polling Monitor for long-running jobs.
+- If a check fails, diagnose before declaring the PR ready. Flaky races warrant a rerun and a follow-up fix in the same PR (e.g. the HelpExtensions concurrency fix that landed in PR #43 alongside the 2.35.0 bump).
+
 ## Code Formatting
 
 - `.editorconfig` (from dotnet/runtime) enforces style. CI checks with `dotnet format --verify-no-changes`.
