@@ -27,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       audiobookshelf:
-        image: advplyr/audiobookshelf:2.33.1
+        image: advplyr/audiobookshelf:2.35.0
         ports:
           - 13378:80
     steps:
