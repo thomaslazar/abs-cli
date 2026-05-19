@@ -32,6 +32,10 @@ public static class ApiEndpoints
     public static string BackupDownload(string id) => $"/api/backups/{id}/download";
     public const string BackupUpload = "/api/backups/upload";
 
+    // Cache
+    public const string CachePurgeItems = "/api/cache/items/purge";
+    public const string CachePurge = "/api/cache/purge";
+
     // Upload
     public const string Upload = "/api/upload";
 

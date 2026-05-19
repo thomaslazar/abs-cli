@@ -229,6 +229,8 @@ abs-cli config set defaultLibrary <library-id>
 | `backup download --id <id> --output <path>` | Download a backup file (admin) |
 | `backup delete --id <id>` | Delete a backup (admin) |
 | `backup upload --file <path>` | Upload a backup file (admin) |
+| `cache purge-items` | Purge per-item cache backups: encode-m4b + embed-metadata --backup copies (admin) |
+| `cache purge` | Purge all server cache: items + covers + images (admin) |
 | `metadata search` | Search a metadata provider (`--provider`, `--title`, `--author`) |
 | `metadata providers` | List available metadata providers |
 | `metadata covers` | Search for cover images (`--provider`, `--title`, `--author`) |
