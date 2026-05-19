@@ -8,6 +8,7 @@ namespace AbsCli.Commands;
 
 public static class UploadCommand
 {
+    private static readonly NLog.Logger _logger = NLog.LogManager.GetCurrentClassLogger();
     public static Command Create()
     {
         var libraryOption = new Option<string?>("--library") { Description = "Library ID" };
@@ -84,31 +85,31 @@ public static class UploadCommand
             var manifestPath = parseResult.GetValue(manifestOption);
             if (sequence != null && series == null)
             {
-                ConsoleOutput.WriteError("--sequence requires --series.");
+                _logger.Error("--sequence requires --series.");
                 Environment.Exit(1);
                 return 1;
             }
             if (sequence != null && string.IsNullOrWhiteSpace(sequence))
             {
-                ConsoleOutput.WriteError("--sequence must be a non-empty string.");
+                _logger.Error("--sequence must be a non-empty string.");
                 Environment.Exit(1);
                 return 1;
             }
             if (manifestPath != null && files.Length > 0)
             {
-                ConsoleOutput.WriteError("--files and --files-manifest are mutually exclusive.");
+                _logger.Error("--files and --files-manifest are mutually exclusive.");
                 Environment.Exit(1);
                 return 1;
             }
             if (manifestPath != null && prefixSourceDir)
             {
-                ConsoleOutput.WriteError("--prefix-source-dir and --files-manifest are mutually exclusive.");
+                _logger.Error("--prefix-source-dir and --files-manifest are mutually exclusive.");
                 Environment.Exit(1);
                 return 1;
             }
             if (manifestPath == null && files.Length == 0)
             {
-                ConsoleOutput.WriteError("Pass --files <path>... or --files-manifest <path|->.");
+                _logger.Error("Pass --files <path>... or --files-manifest <path|->.");
                 Environment.Exit(1);
                 return 1;
             }
@@ -119,7 +120,7 @@ public static class UploadCommand
             {
                 if (!File.Exists(entry.LocalPath))
                 {
-                    ConsoleOutput.WriteError($"File not found: {entry.LocalPath}");
+                    _logger.Error($"File not found: {entry.LocalPath}");
                     Environment.Exit(1);
                     return 1;
                 }
@@ -141,7 +142,7 @@ public static class UploadCommand
                 var item = await service.WaitForItemByPathAsync(libraryId, receipt.RelPath);
                 if (item == null)
                 {
-                    ConsoleOutput.WriteError(
+                    _logger.Error(
                         $"Upload completed but the library item did not appear within the wait window. " +
                         $"Expected relPath: '{receipt.RelPath}'. " +
                         $"ABS may still be scanning — re-run: abs-cli items list --sort addedAt --desc --limit 5");
@@ -192,7 +193,7 @@ public static class UploadCommand
         {
             if (!File.Exists(manifestPath))
             {
-                ConsoleOutput.WriteError($"Manifest file not found: {manifestPath}");
+                _logger.Error($"Manifest file not found: {manifestPath}");
                 Environment.Exit(1);
             }
             json = await File.ReadAllTextAsync(manifestPath);
@@ -204,12 +205,12 @@ public static class UploadCommand
         }
         catch (JsonException ex)
         {
-            ConsoleOutput.WriteError($"Manifest is not valid JSON: {ex.Message}");
+            _logger.Error($"Manifest is not valid JSON: {ex.Message}");
             Environment.Exit(1);
         }
         if (entries == null || entries.Count == 0)
         {
-            ConsoleOutput.WriteError("Manifest is empty or null. Provide a non-empty array of {src, as} entries.");
+            _logger.Error("Manifest is empty or null. Provide a non-empty array of {src, as} entries.");
             Environment.Exit(1);
         }
         var result = new List<(string LocalPath, string UploadName)>(entries!.Count);
@@ -217,7 +218,7 @@ public static class UploadCommand
         {
             if (string.IsNullOrWhiteSpace(entry.Src) || string.IsNullOrWhiteSpace(entry.TargetName))
             {
-                ConsoleOutput.WriteError("Manifest entry missing 'src' or 'as'. Each entry must have both.");
+                _logger.Error("Manifest entry missing 'src' or 'as'. Each entry must have both.");
                 Environment.Exit(1);
             }
             result.Add((entry.Src, entry.TargetName));
@@ -244,7 +245,7 @@ public static class UploadCommand
         lines.Add("");
         lines.Add("Pass --prefix-source-dir to prefix each upload filename with its parent");
         lines.Add("directory name, or --files-manifest <path> for explicit per-file naming.");
-        ConsoleOutput.WriteError(string.Join("\n", lines));
+        _logger.Error(string.Join("\n", lines));
         Environment.Exit(1);
     }
 }

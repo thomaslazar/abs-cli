@@ -22,14 +22,4 @@ public static class ConsoleOutput
     {
         Console.Out.WriteLine(json);
     }
-
-    public static void WriteError(string message)
-    {
-        Console.Error.WriteLine($"Error: {message}");
-    }
-
-    public static void WriteWarning(string message)
-    {
-        Console.Error.WriteLine($"Warning: {message}");
-    }
 }

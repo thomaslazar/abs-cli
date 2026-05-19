@@ -7,6 +7,7 @@ namespace AbsCli.Commands;
 
 public static class AuthorsCommand
 {
+    private static readonly NLog.Logger _logger = NLog.LogManager.GetCurrentClassLogger();
     public static Command Create()
     {
         var command = new Command("authors", "Manage authors");
@@ -110,7 +111,7 @@ public static class AuthorsCommand
             var sources = new[] { name, asin }.Count(s => !string.IsNullOrEmpty(s));
             if (sources != 1)
             {
-                ConsoleOutput.WriteError("Specify exactly one of --name or --asin");
+                _logger.Error("Specify exactly one of --name or --asin");
                 Environment.Exit(1);
             }
             var (client, _) = CommandHelper.BuildClient();
@@ -187,13 +188,13 @@ public static class AuthorsCommand
             var asin = parseResult.GetValue(asinOption);
             if (name is not null && string.IsNullOrEmpty(name))
             {
-                ConsoleOutput.WriteError("--name cannot be empty");
+                _logger.Error("--name cannot be empty");
                 Environment.Exit(1);
             }
             var body = BuildUpdateBodyForTesting(name, description, asin);
             if (body.Count == 0)
             {
-                ConsoleOutput.WriteError("Specify at least one of --name, --description, --asin");
+                _logger.Error("Specify at least one of --name, --description, --asin");
                 Environment.Exit(1);
             }
             var (client, _) = CommandHelper.BuildClient();

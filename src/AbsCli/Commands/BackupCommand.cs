@@ -7,6 +7,7 @@ namespace AbsCli.Commands;
 
 public static class BackupCommand
 {
+    private static readonly NLog.Logger _logger = NLog.LogManager.GetCurrentClassLogger();
     public static Command Create()
     {
         var command = new Command("backup", "Manage server backups");
@@ -129,7 +130,7 @@ public static class BackupCommand
             var file = parseResult.GetValue(fileOption)!;
             if (!File.Exists(file))
             {
-                ConsoleOutput.WriteError($"File not found: {file}");
+                _logger.Error($"File not found: {file}");
                 Environment.Exit(1);
                 return 1;
             }

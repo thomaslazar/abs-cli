@@ -1,12 +1,12 @@
 using System.Web;
 using AbsCli.Api;
 using AbsCli.Models;
-using AbsCli.Output;
 
 namespace AbsCli.Services;
 
 public class UploadService
 {
+    private static readonly NLog.Logger _logger = NLog.LogManager.GetCurrentClassLogger();
     private readonly AbsApiClient _client;
 
     public UploadService(AbsApiClient client)
@@ -59,12 +59,12 @@ public class UploadService
             AppJsonContext.Default.Library);
         if (library.Folders.Count == 0)
         {
-            ConsoleOutput.WriteError("Library has no folders configured.");
+            _logger.Error("Library has no folders configured.");
             Environment.Exit(1);
         }
         if (library.Folders.Count > 1)
         {
-            ConsoleOutput.WriteError(
+            _logger.Error(
                 $"Library has {library.Folders.Count} folders. Specify --folder <id>.\n" +
                 "Use 'abs-cli libraries get --id <id>' to see folder IDs.");
             Environment.Exit(1);

@@ -1,12 +1,12 @@
 using System.CommandLine;
 using AbsCli.Api;
 using AbsCli.Configuration;
-using AbsCli.Output;
 
 namespace AbsCli.Commands;
 
 public static class LoginCommand
 {
+    private static readonly NLog.Logger _logger = NLog.LogManager.GetCurrentClassLogger();
     public static Command Create()
     {
         var serverOption = new Option<string?>("--server")
@@ -31,7 +31,7 @@ public static class LoginCommand
             }
             if (string.IsNullOrEmpty(server))
             {
-                ConsoleOutput.WriteError("Server URL is required.");
+                _logger.Error("Server URL is required.");
                 Environment.Exit(1);
             }
             Console.Error.Write("Username: ");
@@ -40,7 +40,7 @@ public static class LoginCommand
             var password = ReadPassword();
             if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
             {
-                ConsoleOutput.WriteError("Username and password are required.");
+                _logger.Error("Username and password are required.");
                 Environment.Exit(1);
             }
             var tempConfig = new AppConfig { Server = server };
@@ -70,7 +70,7 @@ public static class LoginCommand
             }
             catch (HttpRequestException ex)
             {
-                ConsoleOutput.WriteError($"Login failed: {ex.Message}");
+                _logger.Error($"Login failed: {ex.Message}");
                 Environment.Exit(2);
             }
             return 0;
