@@ -6,6 +6,7 @@ using Xunit;
 
 namespace AbsCli.Tests.Output;
 
+[Collection("NLog")]
 public class LogSetupTests
 {
     [Fact]
