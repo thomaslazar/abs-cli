@@ -526,6 +526,17 @@ assert_json_key "backup delete returns backups" "backups" "$output"
 
 # ============================================================
 echo ""
+echo "=== Cache Commands ==="
+# ============================================================
+
+$CLI cache purge-items 2>/dev/null
+pass "cache purge-items completes (exit 0)"
+
+$CLI cache purge 2>/dev/null
+pass "cache purge completes (exit 0)"
+
+# ============================================================
+echo ""
 echo "=== Upload Command ==="
 # ============================================================
 
@@ -777,6 +788,20 @@ if echo "$error_output" | grep -q "'update' permission"; then
     pass "items chapters set as readonlyuser hits 'update' permission denial"
 else
     fail "items chapters set as readonlyuser hits 'update' permission denial" "got: ${error_output:0:200}"
+fi
+
+error_output=$($CLI cache purge-items 2>&1 || true)
+if echo "$error_output" | grep -q "admin permission"; then
+    pass "cache purge-items as readonlyuser hits 'admin permission' denial"
+else
+    fail "cache purge-items as readonlyuser hits 'admin permission' denial" "got: ${error_output:0:200}"
+fi
+
+error_output=$($CLI cache purge 2>&1 || true)
+if echo "$error_output" | grep -q "admin permission"; then
+    pass "cache purge as readonlyuser hits 'admin permission' denial"
+else
+    fail "cache purge as readonlyuser hits 'admin permission' denial" "got: ${error_output:0:200}"
 fi
 
 export ABS_TOKEN="$SAVE_TOKEN"
