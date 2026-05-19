@@ -2,6 +2,8 @@ using System.CommandLine;
 using AbsCli.Commands;
 using AbsCli.Output;
 
+var _logger = NLog.LogManager.GetLogger("AbsCli.Program");
+
 var rootCommand = new RootCommand("abs-cli — Audiobookshelf CLI");
 
 var debugOption = new Option<bool>("--debug")
@@ -41,4 +43,13 @@ var debugEnabled = parseResult.GetValue(debugOption)
 var logJson = parseResult.GetValue(logJsonOption);
 LogSetup.Configure(debugEnabled, logJson);
 
-return await parseResult.InvokeAsync();
+try
+{
+    return await parseResult.InvokeAsync();
+}
+catch (Exception ex)
+{
+    _logger.Error(ex.Message);
+    _logger.Debug(ex.ToString());
+    return 2;
+}
