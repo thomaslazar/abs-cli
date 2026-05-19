@@ -22,7 +22,7 @@ public class AbsApiClient
         _configManager = configManager;
         _http = new HttpClient
         {
-            BaseAddress = new Uri(config.Server!.TrimEnd('/')),
+            BaseAddress = new Uri(config.Server!.TrimEnd('/') + "/"),
             // We manage timeouts per-request via CancellationTokenSource so that
             // long operations (backup create/apply/download/upload) can opt into
             // longer timeouts. Setting this to Infinite disables the global cap.
