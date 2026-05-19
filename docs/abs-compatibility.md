@@ -8,7 +8,8 @@ the project README and checked at runtime.
 | abs-cli Version | ABS Versions  | Notes |
 |----------------|--------------|-------|
 | 0.1.x — 0.2.4   | 2.33.1        | Initial release, baseline API |
-| 0.2.5+          | 2.33.1 — 2.33.2 | No API surface changes in 2.33.2 (maintenance release; internal refactors, image-endpoint clamping, cross-library bulk-download guard) |
+| 0.2.5 — 0.4.0   | 2.33.1 — 2.33.2 | No API surface changes in 2.33.2 (maintenance release; internal refactors, image-endpoint clamping, cross-library bulk-download guard) |
+| 0.5.0+          | 2.33.1 — 2.35.0 | v2.34 closes the upstream batch-update `canUpdate` gap (now returns 403 for users without update permission); v2.35 adds a 60s server-side refresh-token grace period (CLI behavior unchanged). DTO sweep confirmed no response-shape changes for endpoints abs-cli consumes. |
 
 This table grows as new ABS versions are tested. A single CLI version may support
 multiple ABS versions if the API surface hasn't changed.

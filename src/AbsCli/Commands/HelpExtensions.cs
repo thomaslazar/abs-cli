@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.CommandLine;
 using System.CommandLine.Help;
 using System.CommandLine.Invocation;
@@ -15,7 +16,11 @@ public static class HelpExtensions
 {
     private record Section(string Title, string[] Lines, HelpSectionPosition Position);
 
-    private static readonly Dictionary<Command, List<Section>> CommandSections = new();
+    // ConcurrentDictionary so parallel xUnit test classes building independent
+    // command trees can mutate the outer map without corrupting it. Each Command
+    // instance is touched by exactly one thread, so the per-command List does
+    // not need its own synchronization.
+    private static readonly ConcurrentDictionary<Command, List<Section>> CommandSections = new();
 
     public static void AddHelpSection(this Command command, string title, params string[] lines)
         => command.AddHelpSection(title, HelpSectionPosition.Bottom, lines);
@@ -25,11 +30,7 @@ public static class HelpExtensions
 
     public static void AddHelpSection(this Command command, string title, HelpSectionPosition position, params string[] lines)
     {
-        if (!CommandSections.TryGetValue(command, out var sections))
-        {
-            sections = new List<Section>();
-            CommandSections[command] = sections;
-        }
+        var sections = CommandSections.GetOrAdd(command, _ => new List<Section>());
         sections.Add(new Section(title, lines, position));
     }
 

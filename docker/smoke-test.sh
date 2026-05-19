@@ -752,12 +752,17 @@ else
     fail "items update as readonlyuser hits 'update' permission denial" "got: ${error_output:0:200}"
 fi
 
-# items batch-update is intentionally NOT covered here. ABS's batch-update
-# route (server/routers/ApiRouter.js:103, controller at
-# server/controllers/LibraryItemController.js:595) has no canUpdate check —
-# readonlyuser successfully writes through it. The CLI's permissionHint on
-# BatchUpdateAsync is wired correctly on principle but won't ever fire
-# until ABS adds the missing middleware.
+# items batch-update 403: the upstream canUpdate gate landed in ABS v2.34
+# (LibraryItemController batch routes). Pre-2.34 servers do not 403 here
+# and this assertion will fail against them — the CLI claims support down
+# to 2.33.1, but the smoke runs against the dev stack image only.
+error_output=$(echo "[{\"id\":\"$FIRST_ITEM_ID\",\"mediaPayload\":{\"metadata\":{\"title\":\"Should Fail\"}}}]" \
+    | $CLI items batch-update --stdin 2>&1 || true)
+if echo "$error_output" | grep -q "'update' permission"; then
+    pass "items batch-update as readonlyuser hits 'update' permission denial"
+else
+    fail "items batch-update as readonlyuser hits 'update' permission denial" "got: ${error_output:0:200}"
+fi
 
 error_output=$($CLI authors update --id "$AUTHOR_ID" --description "Should Fail" 2>&1 || true)
 if echo "$error_output" | grep -q "'update' permission"; then
