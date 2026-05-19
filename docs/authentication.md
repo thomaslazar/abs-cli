@@ -65,3 +65,7 @@ Login route is in `server/Auth.js`:
   is single-process and never issues concurrent refreshes, so the grace
   period is transparent — no CLI behavior change. Request and response
   shapes are unchanged.
+
+- **Diagnostic logging.** Run any command with `--debug` (or set
+  `ABS_DEBUG=1`) to emit token-refresh decisions to stderr. See
+  README "Logging" for full details.
