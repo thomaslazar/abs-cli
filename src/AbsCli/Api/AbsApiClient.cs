@@ -246,13 +246,11 @@ public class AbsApiClient
         {
             _logger.Warn(
                 $"ABS server version {version} is older than the minimum supported version ({MinSupportedVersion}). Some features may not work.");
-            _logger.Debug($"server version {version} older than min {MinSupportedVersion}");
         }
         else if (CompareVersions(version, MaxTestedVersion) > 0)
         {
             _logger.Warn(
                 $"ABS server version {version} has not been tested with this version of abs-cli. Proceed with caution.");
-            _logger.Debug($"server version {version} newer than tested {MaxTestedVersion}");
         }
         else
         {
