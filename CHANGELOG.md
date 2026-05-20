@@ -3,6 +3,175 @@
 All notable changes to abs-cli are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## 0.5.0 — 2026-05-20
+
+### Highlights
+
+- **File management commands.** New verbs for the audiobook-cleanup loop:
+  `items encode-m4b start|cancel` to merge multi-file audiobooks into a
+  single tagged `.m4b`; `items chapters lookup|set` for Audnexus-backed
+  chapter metadata; `items embed-metadata` + `items batch-embed-metadata`
+  to bake ABS's current tags / cover / chapters into the audio files via
+  in-place ffmpeg rewrite; `items toggle-ebook-status` to flip which
+  ebook file is primary on multi-format items; `cache purge-items` /
+  `cache purge` to reclaim disk used by per-item backups.
+- **Diagnostic logging.** New `--debug` flag and `ABS_DEBUG=1` env var
+  emit one stderr line per HTTP call (method + full URL + status, plus
+  the response body on non-2xx) plus token-refresh and version-check
+  decisions. New `--log-json` flag switches stderr output to single-line
+  JSON (`{"timestamp":"…","level":"…","message":"…"}`). Off by default;
+  bearer token, refresh token, and request bodies are never logged.
+- **`items get --expanded`.** Opt-in flag returns ABS's expanded shape
+  (`libraryFiles[]`, `lastScan`, `scanVersion`, etc.) instead of the
+  default minified shape. Required for discovering supplementary ebook
+  file inodes that `items toggle-ebook-status` consumes.
+- **ABS 2.34 / 2.35 support.** Tested range widened to `2.33.1 — 2.35.0`.
+  v2.34 closes the upstream `items batch-update` `canUpdate` gap (now
+  returns 403 for users without update permission); v2.35 adds a 60s
+  server-side refresh-token grace period (CLI behavior unchanged).
+- **Reverse-proxy sub-path fix.** Fixed a latent RFC 3986 § 5.2 bug at
+  `AbsApiClient.cs:25` that silently dropped the path component of any
+  configured server URL on every request. Users with installs behind a
+  reverse proxy at a sub-path (e.g. `https://my.domain.net/audiobookshelf`)
+  no longer get `405 Method Not Allowed` on every call.
+
+### ⚠ Breaking change
+
+The stderr format for error and warning messages changes. Before:
+
+```
+Error: Permission denied. This operation requires 'update' permission.
+Warning: ABS server version 2.36.0 has not been tested with this version of abs-cli.
+```
+
+After (default text layout):
+
+```
+2026-05-20T14:23:45.123Z ERROR Permission denied. This operation requires 'update' permission.
+2026-05-20T14:23:45.123Z WARN  ABS server version 2.36.0 has not been tested with this version of abs-cli.
+```
+
+Or with `--log-json`:
+
+```
+{"timestamp":"2026-05-20T14:23:45.123Z","level":"Error","message":"Permission denied. …"}
+```
+
+stdout (command JSON data output) is unchanged. Message bodies are
+unchanged — scripts that substring-match on message content keep
+working. Scripts that match the `Error:` / `Warning:` prefix verbatim
+need to update.
+
+### Features
+
+- feat: add AddPermissionRequired help section helper
+- feat: add cache purge-items and cache purge commands
+- feat: add cache service for items + full purge
+- feat: add chapter endpoint constants to ApiEndpoints
+- feat: add chapter model types
+- feat: add ChaptersService with lookup and set
+- feat: add ebook-file-status endpoint constant
+- feat: add EbookFileStatusReceipt model
+- feat: add embed-metadata endpoint constants
+- feat: add embed-metadata model types
+- feat: add EmbedMetadataService with start, batch, and wait
+- feat: add encode-m4b request/receipt models
+- feat: add EncodeM4bService
+- feat: add GetExpandedAsync to ItemsService
+- feat: add items encode-m4b command tree (start, cancel)
+- feat: add LibraryItemExpanded model types
+- feat: add NLog logging with --debug, ABS_DEBUG, --log-json
+- feat: add ToggleEbookFileStatusAsync to ItemsService
+- feat: add ToolsItemEncodeM4b endpoint and notFoundHint to AbsApiClient
+- feat: apply Permission required tags across all commands
+- feat: register chapter models in AppJsonContext
+- feat: register EbookFileStatusReceipt in AppJsonContext
+- feat: register embed-metadata models in AppJsonContext
+- feat: register expanded item models in AppJsonContext
+- feat!: route errors and warnings through NLog
+- feat: support abs 2.34 and 2.35
+- feat: top-level exception handler routes through NLog
+- feat: trace HTTP requests, token refresh, version check
+- feat: wire items chapters lookup/set commands
+- feat: wire items embed-metadata and batch-embed-metadata commands
+- feat: wire items get --expanded flag
+- feat: wire items toggle-ebook-status command
+
+### Fixes
+
+- fix: add missing 'delete' permissionHint to items cover remove
+- fix: compose request URLs against BaseAddress trailing slash
+- fix: make HelpExtensions section dictionary thread-safe
+- fix: serialize url composition tests with nlog collection
+
+### Refactors
+
+- refactor: drop redundant debug lines in CheckServerVersion
+
+### Tests
+
+- test: add chapter model round-trip and shape-validation tests
+- test: add chapter models to self-test round-trip
+- test: add EbookFileStatusReceipt round-trip
+- test: add EbookFileStatusReceipt to self-test round-trip
+- test: add embed-metadata model round-trip tests
+- test: add embed-metadata models to self-test round-trip
+- test: add expanded item models to self-test round-trip
+- test: add help-text tests for items chapters lookup/set
+- test: add help-text tests for items embed-metadata commands
+- test: add help-text tests for items get --expanded
+- test: add help-text tests for items toggle-ebook-status
+- test: add LibraryItemExpanded model round-trip tests
+- test: add spot checks for Permission required section
+- test: assert batch-update 403 for users without update permission
+- test: drop docker-exec filesystem checks from embed-metadata smoke
+- test: encode-m4b models round-trip and items encode-m4b command help
+- test: fix codec:copy assertion to match WriteIndented JSON output
+- test: force stereo on encode-m4b smoke fixtures
+- test: help-text and smoke coverage for cache purge
+- test: seed multi-ebook fixture for toggle-ebook-status smoke
+- test: seed readonlyuser and smoke canUpdate denials
+- test: self-test round-trip for encode-m4b models
+- test: smoke chapters set + gated lookup
+- test: smoke coverage + docs for diagnostic logging
+- test: smoke coverage for items encode-m4b lifecycle
+- test: smoke items embed-metadata + batch-embed-metadata
+- test: smoke items get --expanded and replace raw expanded curl in toggle smoke
+- test: smoke items toggle-ebook-status + update counts for 16-item seed
+- test: smoke the encode-m4b cancel happy path
+- test: swap raw curls for CLI calls in toggle-ebook-status smoke
+- test: tighten encode-m4b options omission assertion
+- test: ungate chapters lookup smoke
+- test: use Audnexus-indexed ASIN in chapters lookup smoke
+
+### Chores
+
+- chore: add ffmpeg to devcontainer
+- chore: bump abs reference checkout hint to v2.35.0
+- chore: bump dev compose and ci abs image to 2.35.0
+- chore: regenerate ResponseExamples.g.cs with chapter models
+- chore: regenerate ResponseExamples.g.cs with EbookFileStatusReceipt
+- chore: regenerate ResponseExamples.g.cs with embed-metadata models
+- chore: regenerate ResponseExamples.g.cs with expanded item models
+- ci: install ffmpeg in smoke-test runner
+- style: drop unnecessary blank lines in AbsApiClient
+
+### Docs
+
+- docs: add cache commands to README table
+- docs: align CLAUDE.md prose with bumped tag and unify behavior spelling
+- docs: backfill README Commands table and add command implementation conventions
+- docs: explain why admin permissionHint is unquoted
+- docs: move v0.4.0 to completed milestones
+- docs: note refresh-token grace period in abs 2.35
+- docs: require post-PR CI verification before declaring work done
+- docs: trim redundant content from items get help
+- docs: update items get row for --expanded and broaden README-update convention
+
+Plus the specs, plans, and roadmap edits that accumulated during the
+milestone — see git history for the full set.
+
+
 ## 0.4.0 — 2026-05-11
 
 ### Highlights
