@@ -240,6 +240,27 @@ abs-cli config set defaultLibrary <library-id>
 
 Every command supports `--help` with examples and reference sections. Commands that require a non-default ABS permission render a `Permission required:` block at the top of their `--help` (one of `admin`, `update`, `upload`, `download`, `delete`); the absence of that block means any authenticated user can run the command.
 
+## Logging
+
+Errors and warnings go to stderr by default with a timestamp + level prefix:
+
+```
+2026-05-19T14:23:45.123Z ERROR Permission denied. This operation requires 'update' permission.
+2026-05-19T14:23:45.123Z WARN  ABS server version 2.36.0 has not been tested with this version of abs-cli.
+```
+
+Add `--debug` to any command (or set `ABS_DEBUG=1` in the environment) to also emit one stderr line per HTTP call (method + full URL + status code, plus the response body on non-2xx), token-refresh decisions, and version-check decisions.
+
+Add `--log-json` to switch stderr output to single-line JSON:
+
+```
+{"timestamp":"2026-05-19T14:23:45.123Z","level":"Error","message":"Permission denied. …"}
+```
+
+The bearer token, refresh token, request bodies, and Authorization header are never logged.
+
+> **Breaking change (v0.5.0):** Error and warning prefixes changed from `Error: …` / `Warning: …` to `2026-05-19T14:23:45.123Z ERROR …` / `WARN …`. Message bodies are unchanged. Scripts that substring-match content keep working; scripts that match the old prefix verbatim need to update.
+
 ## Development
 
 ### Dev container (recommended)

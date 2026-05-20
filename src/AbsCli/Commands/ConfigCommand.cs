@@ -6,6 +6,7 @@ namespace AbsCli.Commands;
 
 public static class ConfigCommand
 {
+    private static readonly NLog.Logger _logger = NLog.LogManager.GetCurrentClassLogger();
     public static Command Create()
     {
         var command = new Command("config", "Manage abs-cli configuration");
@@ -64,7 +65,7 @@ public static class ConfigCommand
                     config.DefaultLibrary = value;
                     break;
                 default:
-                    ConsoleOutput.WriteError($"Unknown config key: '{key}'. Valid keys: server, defaultLibrary");
+                    _logger.Error($"Unknown config key: '{key}'. Valid keys: server, defaultLibrary");
                     Environment.Exit(1);
                     return 1;
             }

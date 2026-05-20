@@ -1730,6 +1730,35 @@ fi
 
 # ============================================================
 echo ""
+echo "=== Diagnostic Logging ==="
+# ============================================================
+
+# Debug on via ABS_DEBUG=1 emits at least one DEBUG line to stderr.
+debug_output=$(ABS_DEBUG=1 $CLI libraries list 2>&1 >/dev/null)
+if echo "$debug_output" | grep -qE '^[0-9TZ:.\-]+ DEBUG '; then
+    pass "ABS_DEBUG=1 libraries list emits DEBUG lines"
+else
+    fail "ABS_DEBUG=1 libraries list emits DEBUG lines" "got: ${debug_output:0:200}"
+fi
+
+# Default level (no --debug, no ABS_DEBUG) emits no DEBUG lines.
+default_output=$($CLI libraries list 2>&1 >/dev/null)
+if echo "$default_output" | grep -qE ' DEBUG '; then
+    fail "default libraries list does not emit DEBUG lines" "got: ${default_output:0:200}"
+else
+    pass "default libraries list does not emit DEBUG lines"
+fi
+
+# --log-json combined with ABS_DEBUG=1 emits parseable JSON with the three expected fields.
+json_first_line=$(ABS_DEBUG=1 $CLI --log-json libraries list 2>&1 >/dev/null | head -1)
+if echo "$json_first_line" | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); assert 'timestamp' in d and 'level' in d and 'message' in d" 2>/dev/null; then
+    pass "ABS_DEBUG=1 --log-json libraries list emits JSON with timestamp/level/message"
+else
+    fail "ABS_DEBUG=1 --log-json libraries list emits JSON with timestamp/level/message" "got: $json_first_line"
+fi
+
+# ============================================================
+echo ""
 echo "========================================"
 echo "Results: $PASS passed, $FAIL failed"
 echo "========================================"

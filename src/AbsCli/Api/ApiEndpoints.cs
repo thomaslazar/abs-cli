@@ -2,59 +2,59 @@ namespace AbsCli.Api;
 
 public static class ApiEndpoints
 {
-    public const string Login = "/login";
-    public const string AuthRefresh = "/auth/refresh";
+    public const string Login = "login";
+    public const string AuthRefresh = "auth/refresh";
 
-    public const string Libraries = "/api/libraries";
-    public static string Library(string id) => $"/api/libraries/{id}";
-    public static string LibraryItems(string libraryId) => $"/api/libraries/{libraryId}/items";
-    public static string LibrarySeries(string libraryId) => $"/api/libraries/{libraryId}/series";
-    public static string LibraryAuthors(string libraryId) => $"/api/libraries/{libraryId}/authors";
-    public static string LibrarySearch(string libraryId) => $"/api/libraries/{libraryId}/search";
+    public const string Libraries = "api/libraries";
+    public static string Library(string id) => $"api/libraries/{id}";
+    public static string LibraryItems(string libraryId) => $"api/libraries/{libraryId}/items";
+    public static string LibrarySeries(string libraryId) => $"api/libraries/{libraryId}/series";
+    public static string LibraryAuthors(string libraryId) => $"api/libraries/{libraryId}/authors";
+    public static string LibrarySearch(string libraryId) => $"api/libraries/{libraryId}/search";
 
-    public static string Item(string id) => $"/api/items/{id}";
-    public static string ItemMedia(string id) => $"/api/items/{id}/media";
-    public static string ItemCover(string id) => $"/api/items/{id}/cover";
-    public static string ItemChapters(string id) => $"/api/items/{id}/chapters";
-    public static string ItemEbookFileStatus(string id, string fileIno) => $"/api/items/{id}/ebook/{fileIno}/status";
-    public const string ItemsBatchUpdate = "/api/items/batch/update";
-    public const string ItemsBatchGet = "/api/items/batch/get";
+    public static string Item(string id) => $"api/items/{id}";
+    public static string ItemMedia(string id) => $"api/items/{id}/media";
+    public static string ItemCover(string id) => $"api/items/{id}/cover";
+    public static string ItemChapters(string id) => $"api/items/{id}/chapters";
+    public static string ItemEbookFileStatus(string id, string fileIno) => $"api/items/{id}/ebook/{fileIno}/status";
+    public const string ItemsBatchUpdate = "api/items/batch/update";
+    public const string ItemsBatchGet = "api/items/batch/get";
 
-    public static string SeriesById(string id) => $"/api/series/{id}";
-    public static string AuthorById(string id) => $"/api/authors/{id}";
-    public static string AuthorMatch(string id) => $"/api/authors/{id}/match";
-    public static string AuthorImage(string id) => $"/api/authors/{id}/image";
+    public static string SeriesById(string id) => $"api/series/{id}";
+    public static string AuthorById(string id) => $"api/authors/{id}";
+    public static string AuthorMatch(string id) => $"api/authors/{id}/match";
+    public static string AuthorImage(string id) => $"api/authors/{id}/image";
 
     // Backup
-    public const string Backups = "/api/backups";
-    public static string Backup(string id) => $"/api/backups/{id}";
-    public static string BackupApply(string id) => $"/api/backups/{id}/apply";
-    public static string BackupDownload(string id) => $"/api/backups/{id}/download";
-    public const string BackupUpload = "/api/backups/upload";
+    public const string Backups = "api/backups";
+    public static string Backup(string id) => $"api/backups/{id}";
+    public static string BackupApply(string id) => $"api/backups/{id}/apply";
+    public static string BackupDownload(string id) => $"api/backups/{id}/download";
+    public const string BackupUpload = "api/backups/upload";
 
     // Cache
-    public const string CachePurgeItems = "/api/cache/items/purge";
-    public const string CachePurge = "/api/cache/purge";
+    public const string CachePurgeItems = "api/cache/items/purge";
+    public const string CachePurge = "api/cache/purge";
 
     // Upload
-    public const string Upload = "/api/upload";
+    public const string Upload = "api/upload";
 
     // Scan
-    public static string LibraryScan(string libraryId) => $"/api/libraries/{libraryId}/scan";
-    public static string ItemScan(string id) => $"/api/items/{id}/scan";
+    public static string LibraryScan(string libraryId) => $"api/libraries/{libraryId}/scan";
+    public static string ItemScan(string id) => $"api/items/{id}/scan";
 
     // Metadata search
-    public const string SearchBooks = "/api/search/books";
-    public const string SearchProviders = "/api/search/providers";
-    public const string SearchCovers = "/api/search/covers";
-    public const string SearchAuthors = "/api/search/authors";
-    public const string SearchChapters = "/api/search/chapters";
+    public const string SearchBooks = "api/search/books";
+    public const string SearchProviders = "api/search/providers";
+    public const string SearchCovers = "api/search/covers";
+    public const string SearchAuthors = "api/search/authors";
+    public const string SearchChapters = "api/search/chapters";
 
     // Tools
-    public static string ToolsItemEncodeM4b(string id) => $"/api/tools/item/{id}/encode-m4b";
-    public static string ToolsItemEmbedMetadata(string id) => $"/api/tools/item/{id}/embed-metadata";
-    public const string ToolsBatchEmbedMetadata = "/api/tools/batch/embed-metadata";
+    public static string ToolsItemEncodeM4b(string id) => $"api/tools/item/{id}/encode-m4b";
+    public static string ToolsItemEmbedMetadata(string id) => $"api/tools/item/{id}/embed-metadata";
+    public const string ToolsBatchEmbedMetadata = "api/tools/batch/embed-metadata";
 
     // Tasks
-    public const string Tasks = "/api/tasks";
+    public const string Tasks = "api/tasks";
 }

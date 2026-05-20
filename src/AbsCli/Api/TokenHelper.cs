@@ -43,4 +43,11 @@ public static class TokenHelper
 
         return exp.Value <= DateTimeOffset.UtcNow.AddSeconds(thresholdSeconds);
     }
+
+    public static long? SecondsUntilExpiry(string token)
+    {
+        var exp = GetExpiration(token);
+        if (exp == null) return null;
+        return (long)(exp.Value - DateTimeOffset.UtcNow).TotalSeconds;
+    }
 }

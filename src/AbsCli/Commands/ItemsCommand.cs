@@ -8,6 +8,7 @@ namespace AbsCli.Commands;
 
 public static class ItemsCommand
 {
+    private static readonly NLog.Logger _logger = NLog.LogManager.GetCurrentClassLogger();
     public static Command Create()
     {
         var command = new Command("items", "Manage library items");
@@ -165,7 +166,7 @@ public static class ItemsCommand
             else if (input != null) jsonBody = CommandHelper.ReadJsonInput(input);
             else
             {
-                ConsoleOutput.WriteError("Provide --input <file> or --stdin");
+                _logger.Error("Provide --input <file> or --stdin");
                 Environment.Exit(1);
                 return 1;
             }
@@ -197,7 +198,7 @@ public static class ItemsCommand
             else if (input != null) jsonBody = CommandHelper.ReadJsonInput(input);
             else
             {
-                ConsoleOutput.WriteError("Provide --input <file> or --stdin");
+                _logger.Error("Provide --input <file> or --stdin");
                 Environment.Exit(1);
                 return 1;
             }
@@ -261,7 +262,7 @@ public static class ItemsCommand
             var sources = new[] { url, file, serverPath }.Count(s => !string.IsNullOrEmpty(s));
             if (sources != 1)
             {
-                ConsoleOutput.WriteError("Specify exactly one of --url, --file, --server-path");
+                _logger.Error("Specify exactly one of --url, --file, --server-path");
                 Environment.Exit(1);
             }
             var (client, _) = CommandHelper.BuildClient();
@@ -275,7 +276,7 @@ public static class ItemsCommand
             {
                 if (!File.Exists(file))
                 {
-                    ConsoleOutput.WriteError($"File not found: {file}");
+                    _logger.Error($"File not found: {file}");
                     Environment.Exit(1);
                 }
                 result = await service.UploadFromFileAsync(id, file);
@@ -387,17 +388,17 @@ public static class ItemsCommand
             var channels = parseResult.GetValue(channelsOption);
             if (codec != null && !ValidEncodeM4bCodecs.Contains(codec))
             {
-                ConsoleOutput.WriteError($"--codec must be one of: copy, aac, opus (got '{codec}')");
+                _logger.Error($"--codec must be one of: copy, aac, opus (got '{codec}')");
                 Environment.Exit(1);
             }
             if (bitrate != null && !ValidEncodeM4bBitrates.Contains(bitrate))
             {
-                ConsoleOutput.WriteError($"--bitrate must be one of: 32k, 64k, 128k, 192k (got '{bitrate}')");
+                _logger.Error($"--bitrate must be one of: 32k, 64k, 128k, 192k (got '{bitrate}')");
                 Environment.Exit(1);
             }
             if (channels.HasValue && channels.Value != 1 && channels.Value != 2)
             {
-                ConsoleOutput.WriteError($"--channels must be 1 or 2 (got {channels.Value})");
+                _logger.Error($"--channels must be 1 or 2 (got {channels.Value})");
                 Environment.Exit(1);
             }
             var (client, _) = CommandHelper.BuildClient();
@@ -470,7 +471,7 @@ public static class ItemsCommand
                 var msg = result.Error.StringKey == "MessageChaptersNotFound"
                     ? $"Not found. {result.Error.Error}"
                     : result.Error.Error ?? "Unknown lookup error";
-                ConsoleOutput.WriteError(msg);
+                _logger.Error(msg);
                 return 2;
             }
             ConsoleOutput.WriteJson(result.Success!, AppJsonContext.Default.ChaptersLookupResponse);
@@ -507,7 +508,7 @@ public static class ItemsCommand
             string jsonBody;
             if (stdin && input != null)
             {
-                ConsoleOutput.WriteError("Provide exactly one of --input or --stdin (got both)");
+                _logger.Error("Provide exactly one of --input or --stdin (got both)");
                 Environment.Exit(1);
                 return 1;
             }
@@ -521,7 +522,7 @@ public static class ItemsCommand
             }
             else
             {
-                ConsoleOutput.WriteError("Provide --input <file> or --stdin");
+                _logger.Error("Provide --input <file> or --stdin");
                 Environment.Exit(1);
                 return 1;
             }
@@ -533,7 +534,7 @@ public static class ItemsCommand
             }
             catch (JsonException ex)
             {
-                ConsoleOutput.WriteError($"Invalid chapters JSON: {ex.Message}");
+                _logger.Error($"Invalid chapters JSON: {ex.Message}");
                 Environment.Exit(1);
                 return 1;
             }
@@ -590,7 +591,7 @@ public static class ItemsCommand
                     new[] { id }, TimeSpan.FromSeconds(600), cancellationToken);
                 if (!ok)
                 {
-                    ConsoleOutput.WriteError("Timed out waiting for embed-metadata task to complete");
+                    _logger.Error("Timed out waiting for embed-metadata task to complete");
                     Environment.Exit(2);
                     return 2;
                 }
@@ -637,7 +638,7 @@ public static class ItemsCommand
             string jsonBody;
             if (stdin && input != null)
             {
-                ConsoleOutput.WriteError("Provide exactly one of --input or --stdin (got both)");
+                _logger.Error("Provide exactly one of --input or --stdin (got both)");
                 Environment.Exit(1);
                 return 1;
             }
@@ -651,7 +652,7 @@ public static class ItemsCommand
             }
             else
             {
-                ConsoleOutput.WriteError("Provide --input <file> or --stdin");
+                _logger.Error("Provide --input <file> or --stdin");
                 Environment.Exit(1);
                 return 1;
             }
@@ -663,13 +664,13 @@ public static class ItemsCommand
             }
             catch (JsonException ex)
             {
-                ConsoleOutput.WriteError($"Invalid JSON: {ex.Message}");
+                _logger.Error($"Invalid JSON: {ex.Message}");
                 Environment.Exit(1);
                 return 1;
             }
             if (request.LibraryItemIds.Count == 0)
             {
-                ConsoleOutput.WriteError("libraryItemIds must be a non-empty array");
+                _logger.Error("libraryItemIds must be a non-empty array");
                 Environment.Exit(1);
                 return 1;
             }
@@ -688,7 +689,7 @@ public static class ItemsCommand
                     request.LibraryItemIds, TimeSpan.FromSeconds(600), cancellationToken);
                 if (!ok)
                 {
-                    ConsoleOutput.WriteError("Timed out waiting for embed-metadata task(s) to complete");
+                    _logger.Error("Timed out waiting for embed-metadata task(s) to complete");
                     Environment.Exit(2);
                     return 2;
                 }

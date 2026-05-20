@@ -4,12 +4,12 @@ using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 using AbsCli.Configuration;
 using AbsCli.Models;
-using AbsCli.Output;
 
 namespace AbsCli.Api;
 
 public class AbsApiClient
 {
+    private static readonly NLog.Logger _logger = NLog.LogManager.GetCurrentClassLogger();
     private readonly HttpClient _http;
     private readonly ConfigManager _configManager;
     private AppConfig _config;
@@ -20,9 +20,10 @@ public class AbsApiClient
     {
         _config = config;
         _configManager = configManager;
-        _http = new HttpClient
+        var debugHandler = new DebugHttpHandler(new HttpClientHandler());
+        _http = new HttpClient(debugHandler)
         {
-            BaseAddress = new Uri(config.Server!.TrimEnd('/')),
+            BaseAddress = new Uri(config.Server!.TrimEnd('/') + "/"),
             // We manage timeouts per-request via CancellationTokenSource so that
             // long operations (backup create/apply/download/upload) can opt into
             // longer timeouts. Setting this to Infinite disables the global cap.
@@ -33,6 +34,7 @@ public class AbsApiClient
         if (config.AccessToken != null)
             _http.DefaultRequestHeaders.Authorization =
                 new AuthenticationHeaderValue("Bearer", config.AccessToken);
+        _logger.Debug($"client base address: {_http.BaseAddress}");
     }
 
     public async Task<LoginResponse> LoginAsync(string username, string password)
@@ -187,9 +189,15 @@ public class AbsApiClient
     {
         if (_config.AccessToken == null) return;
 
+        var secondsLeft = TokenHelper.SecondsUntilExpiry(_config.AccessToken);
         if (TokenHelper.IsExpiringSoon(_config.AccessToken, thresholdSeconds: 60))
         {
+            _logger.Debug($"access token expiring in {secondsLeft}s, refreshing");
             await RefreshTokenAsync();
+        }
+        else
+        {
+            _logger.Debug($"access token valid ({secondsLeft}s remaining)");
         }
     }
 
@@ -197,7 +205,7 @@ public class AbsApiClient
     {
         if (_config.RefreshToken == null)
         {
-            ConsoleOutput.WriteError("Session expired. Run: abs-cli login");
+            _logger.Error("Session expired. Run: abs-cli login");
             Environment.Exit(2);
         }
 
@@ -207,7 +215,8 @@ public class AbsApiClient
         var response = await _http.SendAsync(request);
         if (!response.IsSuccessStatusCode)
         {
-            ConsoleOutput.WriteError("Session expired. Run: abs-cli login");
+            _logger.Debug($"token refresh failed: {(int)response.StatusCode}");
+            _logger.Error("Session expired. Run: abs-cli login");
             Environment.Exit(2);
         }
 
@@ -220,6 +229,7 @@ public class AbsApiClient
 
         _http.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", _config.AccessToken);
+        _logger.Debug("token refresh succeeded");
     }
 
     private static readonly string MinSupportedVersion = "2.33.1";
@@ -234,13 +244,17 @@ public class AbsApiClient
 
         if (CompareVersions(version, MinSupportedVersion) < 0)
         {
-            ConsoleOutput.WriteWarning(
+            _logger.Warn(
                 $"ABS server version {version} is older than the minimum supported version ({MinSupportedVersion}). Some features may not work.");
         }
         else if (CompareVersions(version, MaxTestedVersion) > 0)
         {
-            ConsoleOutput.WriteWarning(
+            _logger.Warn(
                 $"ABS server version {version} has not been tested with this version of abs-cli. Proceed with caution.");
+        }
+        else
+        {
+            _logger.Debug($"server version {version} (in tested range {MinSupportedVersion}-{MaxTestedVersion})");
         }
     }
 
@@ -270,7 +284,7 @@ public class AbsApiClient
             var retryResponse = await _http.SendAsync(retryRequest);
             if (!retryResponse.IsSuccessStatusCode)
             {
-                ConsoleOutput.WriteError($"API request failed after token refresh: {(int)retryResponse.StatusCode} {retryResponse.ReasonPhrase}");
+                _logger.Error($"API request failed after token refresh: {(int)retryResponse.StatusCode} {retryResponse.ReasonPhrase}");
                 Environment.Exit(2);
             }
         }
@@ -288,7 +302,7 @@ public class AbsApiClient
                 404 => $"Not found.{(string.IsNullOrWhiteSpace(body) ? "" : $" {body.Trim()}")}",
                 _ => $"API request failed: {status} {response.ReasonPhrase}{(string.IsNullOrWhiteSpace(body) ? "" : $"\n{body.Trim()}")}"
             };
-            ConsoleOutput.WriteError(message);
+            _logger.Error(message);
             Environment.Exit(2);
         }
     }

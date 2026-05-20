@@ -1,11 +1,11 @@
 using AbsCli.Api;
 using AbsCli.Configuration;
-using AbsCli.Output;
 
 namespace AbsCli.Commands;
 
 public static class CommandHelper
 {
+    private static readonly NLog.Logger _logger = NLog.LogManager.GetCurrentClassLogger();
     public static (AbsApiClient client, AppConfig config) BuildClient(
         string? serverOverride = null, string? tokenOverride = null,
         string? libraryOverride = null)
@@ -18,13 +18,13 @@ public static class CommandHelper
 
         if (string.IsNullOrEmpty(config.Server))
         {
-            ConsoleOutput.WriteError("No server configured. Run: abs-cli login");
+            _logger.Error("No server configured. Run: abs-cli login");
             Environment.Exit(1);
         }
 
         if (string.IsNullOrEmpty(config.AccessToken))
         {
-            ConsoleOutput.WriteError("Not authenticated. Run: abs-cli login");
+            _logger.Error("Not authenticated. Run: abs-cli login");
             Environment.Exit(1);
         }
 
@@ -35,7 +35,7 @@ public static class CommandHelper
     {
         if (string.IsNullOrEmpty(config.DefaultLibrary))
         {
-            ConsoleOutput.WriteError(
+            _logger.Error(
                 "No library specified. Use --library <id> or set a default with: abs-cli config set defaultLibrary <id>");
             Environment.Exit(1);
         }
