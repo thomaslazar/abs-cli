@@ -19,6 +19,7 @@ public static class CollectionsCommand
             "--help` for sharp edges; `update` edits metadata, `reorder` shuffles",
             "order, `add` / `remove` / `batch-*` change membership.");
         command.Subcommands.Add(CreateListCommand());
+        command.Subcommands.Add(CreateGetCommand());
         return command;
     }
 
@@ -50,6 +51,29 @@ public static class CollectionsCommand
             var service = new CollectionsService(client);
             var result = await service.ListAsync(libraryId, limit, page, include);
             ConsoleOutput.WriteJson(result, AppJsonContext.Default.PaginatedResponse);
+            return 0;
+        });
+        return command;
+    }
+
+    private static Command CreateGetCommand()
+    {
+        var idOption = new Option<string>("--id") { Description = "Collection ID", Required = true };
+        var includeOption = new Option<string?>("--include") { Description = "Comma-separated include flags (only 'rssfeed' is honoured today)" };
+        var command = new Command("get", "Get a single collection (expanded)")
+        { idOption, includeOption };
+        command.AddExamples(
+            "abs-cli collections get --id \"col_abc\"",
+            "abs-cli collections get --id \"col_abc\" --include rssfeed");
+        command.AddResponseExample<Collection>();
+        command.SetAction(async (parseResult, cancellationToken) =>
+        {
+            var id = parseResult.GetValue(idOption)!;
+            var include = parseResult.GetValue(includeOption);
+            var (client, _) = CommandHelper.BuildClient();
+            var service = new CollectionsService(client);
+            var result = await service.GetAsync(id, include);
+            ConsoleOutput.WriteJson(result, AppJsonContext.Default.Collection);
             return 0;
         });
         return command;
