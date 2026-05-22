@@ -87,11 +87,24 @@ public class CollectionsService
         await _client.DeleteAsync(ApiEndpoints.Collection(id), "'delete' permission");
     }
 
-    public Task<Collection> AddBookAsync(string id, string libraryItemId)
-        => throw new NotImplementedException();
+    public async Task<Collection> AddBookAsync(string id, string libraryItemId)
+    {
+        var body = new CollectionBookRequest { Id = libraryItemId };
+        var json = JsonSerializer.Serialize(body, AppJsonContext.Default.CollectionBookRequest);
+        return await _client.PostAsync(
+            ApiEndpoints.CollectionBook(id),
+            json,
+            AppJsonContext.Default.Collection,
+            "'update' permission");
+    }
 
-    public Task<Collection> RemoveBookAsync(string id, string libraryItemId)
-        => throw new NotImplementedException();
+    public async Task<Collection> RemoveBookAsync(string id, string libraryItemId)
+    {
+        return await _client.DeleteAsync(
+            ApiEndpoints.CollectionBookById(id, libraryItemId),
+            AppJsonContext.Default.Collection,
+            "'update' permission");
+    }
 
     public Task<Collection> BatchAddAsync(string id, string booksJson)
         => throw new NotImplementedException();
