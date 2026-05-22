@@ -217,8 +217,13 @@ public static class SelfTestCommand
             {
                 var obj = new Collection
                 {
-                    Id = "col_x", LibraryId = "lib_1", Name = "set",
-                    Description = null, Books = new(), LastUpdate = 1, CreatedAt = 0
+                    Id = "col_x",
+                    LibraryId = "lib_1",
+                    Name = "set",
+                    Description = null,
+                    Books = new(),
+                    LastUpdate = 1,
+                    CreatedAt = 0
                 };
                 var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.Collection);
                 var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.Collection)!;
