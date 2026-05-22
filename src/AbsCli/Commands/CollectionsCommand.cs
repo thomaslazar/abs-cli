@@ -27,6 +27,8 @@ public static class CollectionsCommand
         command.Subcommands.Add(CreateDeleteCommand());
         command.Subcommands.Add(CreateAddCommand());
         command.Subcommands.Add(CreateRemoveCommand());
+        command.Subcommands.Add(CreateBatchAddCommand());
+        command.Subcommands.Add(CreateBatchRemoveCommand());
         return command;
     }
 
@@ -302,6 +304,75 @@ public static class CollectionsCommand
             var (client, _) = CommandHelper.BuildClient();
             var service = new CollectionsService(client);
             var result = await service.RemoveBookAsync(id, book);
+            ConsoleOutput.WriteJson(result, AppJsonContext.Default.Collection);
+            return 0;
+        });
+        return command;
+    }
+
+    private static Command CreateBatchAddCommand()
+    {
+        var idOption = new Option<string>("--id") { Description = "Collection ID", Required = true };
+        var inputOption = new Option<string?>("--input") { Description = "JSON file with books array (`{\"books\":[\"lid\",...]}`)" };
+        var stdinOption = new Option<bool>("--stdin") { Description = "Read books JSON from stdin" };
+        var command = new Command("batch-add", "Add multiple books to a collection")
+        { idOption, inputOption, stdinOption };
+        command.AddPermissionRequired("update");
+        command.AddHelpSection("Notes", HelpSectionPosition.Top,
+            "Silently skips books already in the collection, unlike `add`",
+            "which 400s on duplicates. Books from a different library are",
+            "rejected.");
+        command.AddExamples(
+            "abs-cli collections batch-add --id \"col_abc\" --input books.json",
+            "echo '{\"books\":[\"li_a\",\"li_b\"]}' | abs-cli collections batch-add --id \"col_abc\" --stdin");
+        command.AddResponseExample<Collection>();
+        command.SetAction(async (parseResult, cancellationToken) =>
+        {
+            var id = parseResult.GetValue(idOption)!;
+            var input = parseResult.GetValue(inputOption);
+            var stdin = parseResult.GetValue(stdinOption);
+            string booksJson;
+            if (stdin && input != null) { _logger.Error("Provide --input or --stdin, not both."); Environment.Exit(1); return 1; }
+            if (stdin) booksJson = await Console.In.ReadToEndAsync(cancellationToken);
+            else if (input != null) booksJson = CommandHelper.ReadJsonInput(input);
+            else { _logger.Error("Provide --input <file> or --stdin."); Environment.Exit(1); return 1; }
+            var (client, _) = CommandHelper.BuildClient();
+            var service = new CollectionsService(client);
+            var result = await service.BatchAddAsync(id, booksJson);
+            ConsoleOutput.WriteJson(result, AppJsonContext.Default.Collection);
+            return 0;
+        });
+        return command;
+    }
+
+    private static Command CreateBatchRemoveCommand()
+    {
+        var idOption = new Option<string>("--id") { Description = "Collection ID", Required = true };
+        var inputOption = new Option<string?>("--input") { Description = "JSON file with books array (`{\"books\":[\"lid\",...]}`)" };
+        var stdinOption = new Option<bool>("--stdin") { Description = "Read books JSON from stdin" };
+        var command = new Command("batch-remove", "Remove multiple books from a collection")
+        { idOption, inputOption, stdinOption };
+        command.AddPermissionRequired("update");
+        command.AddHelpSection("Notes", HelpSectionPosition.Top,
+            "Tolerates books not in the collection (no-op for those). Unlike",
+            "single `remove` which 404s on missing entries.");
+        command.AddExamples(
+            "abs-cli collections batch-remove --id \"col_abc\" --input books.json",
+            "echo '{\"books\":[\"li_a\",\"li_b\"]}' | abs-cli collections batch-remove --id \"col_abc\" --stdin");
+        command.AddResponseExample<Collection>();
+        command.SetAction(async (parseResult, cancellationToken) =>
+        {
+            var id = parseResult.GetValue(idOption)!;
+            var input = parseResult.GetValue(inputOption);
+            var stdin = parseResult.GetValue(stdinOption);
+            string booksJson;
+            if (stdin && input != null) { _logger.Error("Provide --input or --stdin, not both."); Environment.Exit(1); return 1; }
+            if (stdin) booksJson = await Console.In.ReadToEndAsync(cancellationToken);
+            else if (input != null) booksJson = CommandHelper.ReadJsonInput(input);
+            else { _logger.Error("Provide --input <file> or --stdin."); Environment.Exit(1); return 1; }
+            var (client, _) = CommandHelper.BuildClient();
+            var service = new CollectionsService(client);
+            var result = await service.BatchRemoveAsync(id, booksJson);
             ConsoleOutput.WriteJson(result, AppJsonContext.Default.Collection);
             return 0;
         });
