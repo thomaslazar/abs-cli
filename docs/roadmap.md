@@ -193,6 +193,7 @@ ABS endpoints (no proxy work, no new server features).
 - **`items update --stdin`** — Bring `items update` in line with the batch-* shape (`--input <file>` or `--stdin`), retiring the inline-JSON-or-file `--input` behavior.
 - **Extended help mode** — Hide response-shape blocks from `--help` by default; surface them via an explicit flag (e.g. `--help-shape`, `--help-full`) or a separate subcommand. Today every command renders one or two `Response shape:` blocks, and `items get --expanded` adds a second one — without a way to opt out, the help output drifts toward unreadable as more commands ship.
 - **`items get --include=<flags>`** — Opt-in for ABS's `?include=progress,rssfeed,downloads,share` query parameter. Adds user-progress, RSS feed, download, and share state to the response (each as a nullable field). Works on both minified and expanded paths. Orthogonal to `--expanded`.
+- **Collections** — `abs-cli collections list|get|create|update|reorder|delete|add|remove|batch-add|batch-remove` covering the full ABS collections endpoint set (`CollectionController.js` plus `GET /api/libraries/:id/collections`). Library-scoped (`list` mirrors `series list` / `authors list` — paginated, `--sort` / `--desc` / `--filter` / `--include rssfeed` / `--minified`; global `GET /api/collections` is dropped). Two-verb split on ABS's overloaded `PATCH /api/collections/:id`: `update` for name/description, `reorder` for the books-array reshuffle (which does not add or remove — that's `add` / `remove` / `batch-add` / `batch-remove`). Permissions: `update` for create / update / reorder / membership changes; `delete` for collection delete. Sharp edges flagged in research (no empty collections, single-add 400s on duplicate vs batch-add silent skip, books referenced by libraryItemId everywhere despite the server's `:bookId` URL naming, RSS feed auto-close on delete). Research: [docs/specs/research/2026-05-22-collections.md](specs/research/2026-05-22-collections.md).
 
 ---
 
@@ -210,5 +211,5 @@ All are additive — nothing in the v1 architecture blocks them.
 |---------|-------------------|
 | Table output (`--table` via Spectre.Console) | JSON-only sufficient for v1; agents don't need tables |
 | Episodes resource | No podcast libraries in current use |
-| Collections / Playlists resources | Not needed for metadata workflow |
+| Playlists resource | Per-user playlists, distinct from library-scoped collections; not needed for metadata workflow |
 | `items files` / `items progress` | Playback and file management not in scope |
