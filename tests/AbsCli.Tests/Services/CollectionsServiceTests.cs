@@ -1,0 +1,53 @@
+using System.Text.Json;
+using AbsCli.Models;
+using Xunit;
+
+namespace AbsCli.Tests.Services;
+
+public class CollectionsServiceTests
+{
+    [Fact]
+    public void Collection_RoundTrip_Minimal()
+    {
+        var obj = new Collection
+        {
+            Id = "col_abc",
+            LibraryId = "lib_1",
+            Name = "Light Novels",
+            Description = "Curated set",
+            Books = new List<LibraryItemExpanded>(),
+            LastUpdate = 1716000000000,
+            CreatedAt = 1715000000000,
+            RssFeed = null
+        };
+        var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.Collection);
+        var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.Collection)!;
+        Assert.Equal("col_abc", back.Id);
+        Assert.Equal("lib_1", back.LibraryId);
+        Assert.Equal("Light Novels", back.Name);
+        Assert.Equal("Curated set", back.Description);
+        Assert.Empty(back.Books);
+        Assert.Equal(1716000000000, back.LastUpdate);
+        Assert.Equal(1715000000000, back.CreatedAt);
+        Assert.Null(back.RssFeed);
+    }
+
+    [Fact]
+    public void Collection_Deserializes_NullDescription()
+    {
+        var json = """{"id":"col_x","libraryId":"lib_1","name":"n","description":null,"books":[],"lastUpdate":0,"createdAt":0}""";
+        var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.Collection)!;
+        Assert.Null(back.Description);
+    }
+
+    [Fact]
+    public void RssFeed_RoundTrip_Tolerant()
+    {
+        var obj = new RssFeed { Id = "feed_1", Slug = "lightnovels", FeedUrl = "http://abs/feed/lightnovels" };
+        var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.RssFeed);
+        var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.RssFeed)!;
+        Assert.Equal("feed_1", back.Id);
+        Assert.Equal("lightnovels", back.Slug);
+        Assert.Equal("http://abs/feed/lightnovels", back.FeedUrl);
+    }
+}
