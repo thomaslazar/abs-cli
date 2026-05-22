@@ -24,6 +24,7 @@ public static class CollectionsCommand
         command.Subcommands.Add(CreateCreateCommand());
         command.Subcommands.Add(CreateUpdateCommand());
         command.Subcommands.Add(CreateReorderCommand());
+        command.Subcommands.Add(CreateDeleteCommand());
         return command;
     }
 
@@ -226,6 +227,30 @@ public static class CollectionsCommand
             var service = new CollectionsService(client);
             var result = await service.ReorderAsync(id, booksJson);
             ConsoleOutput.WriteJson(result, AppJsonContext.Default.Collection);
+            return 0;
+        });
+        return command;
+    }
+
+    private static Command CreateDeleteCommand()
+    {
+        var idOption = new Option<string>("--id") { Description = "Collection ID", Required = true };
+        var command = new Command("delete", "Delete a collection") { idOption };
+        command.AddPermissionRequired("delete");
+        command.AddHelpSection("Notes", HelpSectionPosition.Top,
+            "Hard delete. The collection record and its membership rows go",
+            "away immediately.");
+        command.AddExamples(
+            "abs-cli collections delete --id \"col_abc\"");
+        command.AddHelpSection("Response shape", HelpSectionPosition.Bottom,
+            "{ \"success\": \"true\" }");
+        command.SetAction(async (parseResult, cancellationToken) =>
+        {
+            var id = parseResult.GetValue(idOption)!;
+            var (client, _) = CommandHelper.BuildClient();
+            var service = new CollectionsService(client);
+            await service.DeleteAsync(id);
+            ConsoleOutput.WriteJson(new Dictionary<string, string> { ["success"] = "true" });
             return 0;
         });
         return command;
