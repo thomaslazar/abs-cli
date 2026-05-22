@@ -77,114 +77,77 @@ Full notes: see [CHANGELOG.md](../CHANGELOG.md) or `abs-cli changelog`.
 
 ---
 
-## Next
+### v0.5.0 — File management (shipped 2026-05-20)
 
-### v0.5.0 — File management
+Four primitives for the audiobook-cleanup loop, all on top of existing
+ABS endpoints: merge multi-file audiobooks into a single tagged `.m4b`,
+pull and write external chapter metadata, embed ABS's current tags into
+the audio files themselves, and toggle which ebook file is primary on
+multi-format items. Plus diagnostic logging for troubleshooting, an
+`items get --expanded` flag for discovering ebook file inodes, and ABS
+2.34 / 2.35 support.
 
-Four primitives for working with the files behind a library item: merge
-multi-file audiobooks into a single tagged `.m4b`, pull external chapter
-metadata, embed ABS's current metadata into the audio files themselves
-(which today's `items update` and friends do not do — they only persist
-to ABS's DB and sidecar), and toggle which ebook file is the item's
-primary when multiple formats are present. All four target the
-admin/agent metadata-cleanup loop and all four sit on top of existing
-ABS endpoints (no proxy work, no new server features).
+- **`items encode-m4b start|cancel`** — Wraps ABS's
+  `POST/DELETE /api/tools/item/:id/encode-m4b` (admin). Concatenates
+  `media.includedAudioFiles` through ffmpeg, embeds chapters + cover,
+  writes a single tagged `.m4b` to the library dir, and moves the
+  originals into the server's `cache/items/` directory as a backup.
+  `start --wait` polls via the standard tasks endpoint.
+- **`items chapters lookup|set`** — Audnexus-backed
+  `GET /api/search/chapters?asin&region` for read-only lookup, and
+  `POST /api/items/:id/chapters` for writing. Diffing across the two
+  is the agent's job; the CLI ships the primitives, including the
+  units note (Audnexus ms vs. write-endpoint seconds).
+- **`items embed-metadata` / `items batch-embed-metadata`** — Wraps the
+  admin-only `POST /api/tools/item/:id/embed-metadata` and
+  `/api/tools/batch/embed-metadata`. In-place ffmpeg rewrite that bakes
+  ABS's current tags / cover / chapters into the audio files
+  themselves; ABS's `items update` and friends only persist to the DB
+  and sidecar. `--force-embed-chapters` for multi-file books; `--backup`
+  keeps a server-side copy before the rewrite.
+- **`items toggle-ebook-status`** — Wraps
+  `PATCH /api/items/:id/ebook/:fileid/status` for multi-ebook items
+  (e.g. `.epub` + `.pdf`). True toggle: flips the targeted file's
+  `isSupplementary` and auto-demotes the previous primary; calling it
+  on the current primary unsets without promoting another. `:fileid`
+  is the file inode from `libraryFiles[].ino`.
+- **`cache purge-items` / `cache purge`** — Wraps the admin-only
+  `POST /api/cache/items/purge` and `/api/cache/purge`. Reclaims the
+  per-item track backups left by `items encode-m4b` and `embed-metadata
+  --backup`; the broader form also drops `cache/covers/` and
+  `cache/images/`, which ABS rebuilds lazily.
+- **Diagnostic logging** — `--debug` flag and `ABS_DEBUG=1` env var
+  emit one stderr line per HTTP call (method + full URL + status, body
+  on non-2xx) plus token-refresh and version-check decisions.
+  `--log-json` switches stderr to single-line JSON
+  (`{"timestamp","level","message"}`). Off by default; bearer token,
+  refresh token, and request bodies are never logged.
+- **`items get --expanded`** — Opt-in for ABS's `?expanded=1` shape
+  (`libraryFiles[]`, `lastScan`, `scanVersion`, full media payload).
+  Required to discover the `ino` that `items toggle-ebook-status`
+  consumes end-to-end.
+- **ABS 2.34 / 2.35 support** — `MinSupportedVersion` /
+  `MaxTestedVersion` widened to `2.33.1 — 2.35.0`. v2.34 closes the
+  upstream `items batch-update` `canUpdate` gap (now returns 403 for
+  users without update permission); v2.35 adds a 60s server-side
+  refresh-token grace period, no CLI-side change required.
+- **Reverse-proxy sub-path fix** — Fixed a latent RFC 3986 § 5.2 bug
+  at `AbsApiClient.cs:25` that silently dropped the URL path component
+  on every request. Installs behind a reverse proxy at a sub-path
+  (e.g. `https://my.domain.net/audiobookshelf`) no longer get `405 Method
+  Not Allowed`.
 
-- **Encode to single `.m4b`** — Wrap ABS's
-  `POST /api/tools/item/:id/encode-m4b` (admin-only) so agents can
-  consolidate multi-file audiobooks into a single tagged `.m4b`. ABS
-  concatenates `media.includedAudioFiles` through ffmpeg, embeds
-  chapters + cover, writes the result to the item's library directory,
-  **and automatically moves the original tracks out of the library dir**
-  (into the server's metadata cache as a backup) — so the post-task
-  library state is a single-file m4b without any extra CLI cleanup.
-  Pairs with existing `tasks list` for progress polling; add `--wait`
-  for in-CLI blocking. `DELETE /api/tools/item/:id/encode-m4b` cancels
-  a running task. Note: cached originals accumulate indefinitely —
-  see the cache purge bullet below for the only way to reclaim that
-  space. Research:
-  [docs/specs/research/2026-05-11-m4b-encode-merge.md](specs/research/2026-05-11-m4b-encode-merge.md).
-  Spec: [docs/specs/2026-05-12-v0.5.0-encode-m4b.md](specs/2026-05-12-v0.5.0-encode-m4b.md).
-  Plan: [docs/plans/2026-05-12-v0.5.0-encode-m4b.md](plans/2026-05-12-v0.5.0-encode-m4b.md).
-- **External chapter metadata lookup** — Expose
-  `GET /api/search/chapters?asin=<asin>&region=<r>` (Audnexus-backed,
-  same backing service as `authors match`/`lookup`). Returns Audnexus's
-  chapter shape (`{ asin, chapters: [{ title, lengthMs, startOffsetMs,
-  startOffsetSec }, ...], runtimeLengthSec, isAccurate, ... }`) which
-  the agent can diff against an item's existing `media.chapters` and
-  write back via the existing `POST /api/items/:id/chapters` (likely
-  needs a new `items chapters set` command too, plus a units note
-  since Audnexus is ms-based and the write endpoint takes seconds).
-  Research:
-  [docs/specs/research/2026-05-11-external-chapter-metadata.md](specs/research/2026-05-11-external-chapter-metadata.md).
-- **Embed ABS metadata into the audio files** — Expose ABS's
-  `POST /api/tools/item/:id/embed-metadata` (admin-only). The existing
-  ABS metadata write endpoints (and the CLI commands that wrap them —
-  `items update`, planned `items chapters set`, `authors update`, etc.)
-  only update ABS's database and sidecar file; the audio files
-  themselves stay untouched. `embed-metadata` is the in-place ffmpeg
-  pass that reads ABS's current state and bakes the tags, cover, and
-  chapters into the files. Optional `forceEmbedChapters=1` to include
-  chapters on multi-file books; `backup=1` keeps a server-side copy
-  before the rewrite. Batch variant at
-  `POST /api/tools/batch/embed-metadata`. Research:
-  [docs/specs/research/2026-05-11-embed-metadata.md](specs/research/2026-05-11-embed-metadata.md).
-- **Toggle ebook primary status** — Wrap ABS's
-  `PATCH /api/items/:id/ebook/:fileid/status` for library items that hold
-  more than one ebook file (e.g. `.epub` + `.pdf` of the same book). The
-  endpoint is a *toggle*, not a setter: calling it on a supplementary
-  file promotes it to primary and ABS auto-demotes the previously-primary
-  file in the same call; calling it on the current primary unsets it,
-  leaving the item with no primary ebook (both files end up
-  supplementary). The toggle and the "no primary after unsetting" sharp
-  edge must be documented in `--help`, not just here. `:fileid` is the
-  file's `ino`, already exposed under `libraryFiles[].ino` in `items
-  get`. Likely command shape: `items toggle-ebook-status <itemId>
-  <fileIno>` — matches the server's literal semantics over a
-  friendlier-but-misleading `set-primary`. Audio files have no equivalent
-  endpoint; ABS treats audio tracks as an ordered sequence, not a
-  primary/alternates set. Research:
-  [docs/specs/research/2026-05-12-ebook-primary-toggle.md](specs/research/2026-05-12-ebook-primary-toggle.md).
-- **Cache purge** — Wrap ABS's `POST /api/cache/items/purge` and
-  `POST /api/cache/purge` (both admin-only) so agents can reclaim disk
-  space consumed by the per-item track backups that `items encode-m4b`
-  leaves behind (and that `items embed-metadata` with `backup=1` also
-  produces). The items-only endpoint nukes
-  `<MetadataPath>/cache/items/` — encode-m4b backups plus any pre-embed
-  copies; the broader endpoint additionally wipes the cover/image
-  render caches under `cache/covers/` and `cache/images/`, which ABS
-  rebuilds lazily on next request. Neither endpoint takes parameters
-  or exposes a listing — purges are all-or-nothing, with no per-item
-  introspection or restore. Hygiene primitive, not a primary
-  audio-file operation; included here because v0.5.0's encode-m4b is
-  what makes the cache grow.
-- **Diagnostic logging** — Add an opt-in verbose/debug mode so agents
-  and humans can troubleshoot connection issues, auth failures, and
-  unexpected API responses without resorting to packet capture. Likely
-  shape: `--debug` flag and/or `ABS_DEBUG=1` env var that emits HTTP
-  method + URL + status code (and optionally body on failure) to
-  stderr, plus the token-refresh and version-check decisions. Off by
-  default; never logs the bearer token itself.
-- **`--expanded` flag on `items get`** — Add an opt-in switch so
-  callers can request ABS's `?expanded=1` shape (includes
-  `libraryFiles[]`, full media payload, etc.) instead of the default
-  minified response. Required to make `items toggle-ebook-status`
-  drivable end-to-end from the CLI: without `--expanded` there's no
-  way to discover a supplementary file's `ino`. Workflow once
-  shipped: `items get --expanded` → pick supplementary `ino` →
-  `items toggle-ebook-status --ino <ino>`.
-- **ABS 2.34 / 2.35 compatibility bump** — Update
-  `MinSupportedVersion` / `MaxTestedVersion` to cover ABS 2.34 and
-  2.35 (released 2026-04-27 and 2026-05-17), plus the
-  docker-compose dev stack image and the CLAUDE.md / README
-  references that currently pin 2.33.x. Two upstream changes worth
-  verifying during the bump: v2.34's "batch API routes enforce
-  library and per-item access" may close the `items batch-update`
-  `canUpdate` gap currently documented as an ABS-side bug in the
-  smoke; v2.35's "access token refresh grace period" touches the
-  auth path `EnsureValidTokenAsync` interacts with.
+Breaking change: stderr error / warning prefix moved from
+`Error: <message>` / `Warning: <message>` to
+`<iso8601> ERROR <message>` / `<iso8601> WARN <message>` (or
+single-line JSON under `--log-json`). stdout (command JSON data) is
+unchanged; substring matches on message bodies keep working.
+
+Full notes: see [CHANGELOG.md](../CHANGELOG.md) or `abs-cli changelog`.
 
 ---
+
+## Next
 
 ### v0.6.0 — TBD
 
