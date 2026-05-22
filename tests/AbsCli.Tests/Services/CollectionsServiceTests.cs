@@ -52,6 +52,29 @@ public class CollectionsServiceTests
     }
 
     [Fact]
+    public void RssFeed_RoundTrip_PreservesUnknownFields()
+    {
+        // Simulates ABS's actual feed shape with nested `meta` and other
+        // fields not explicitly modeled. They must survive a deserialize +
+        // serialize cycle via JsonExtensionData.
+        var json = """
+        {"id":"feed_1","slug":"s","entityUpdatedAt":1234567890,
+         "meta":{"title":"My Feed","author":"X"},"episodes":[],
+         "createdAt":111,"updatedAt":222}
+        """;
+        var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.RssFeed)!;
+        Assert.Equal("feed_1", back.Id);
+        Assert.Equal("s", back.Slug);
+        Assert.NotNull(back.Extra);
+        Assert.True(back.Extra!.ContainsKey("meta"));
+        Assert.True(back.Extra.ContainsKey("entityUpdatedAt"));
+        var roundtripped = JsonSerializer.Serialize(back, AppJsonContext.Default.RssFeed);
+        Assert.Contains("\"meta\"", roundtripped);
+        Assert.Contains("\"entityUpdatedAt\"", roundtripped);
+        Assert.Contains("\"episodes\"", roundtripped);
+    }
+
+    [Fact]
     public void CollectionCreateRequest_RoundTrip()
     {
         var obj = new CollectionCreateRequest

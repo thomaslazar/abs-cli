@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace AbsCli.Models;
@@ -34,4 +35,13 @@ public class RssFeed
 
     [JsonPropertyName("feedUrl")]
     public string? FeedUrl { get; set; }
+
+    /// <summary>
+    /// Catch-all for fields ABS returns that we haven't explicitly modeled —
+    /// `entityUpdatedAt`, `meta` (nested object), `episodes`, `createdAt`,
+    /// `updatedAt`, etc. Lets the DTO round-trip the full shape ABS produces
+    /// without enumerating every nested field that the CLI doesn't act on.
+    /// </summary>
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Extra { get; set; }
 }
