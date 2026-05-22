@@ -57,4 +57,13 @@ public static class ApiEndpoints
 
     // Tasks
     public const string Tasks = "api/tasks";
+
+    // Collections
+    public const string Collections = "api/collections";
+    public static string Collection(string id) => $"api/collections/{id}";
+    public static string CollectionBook(string id) => $"api/collections/{id}/book";
+    public static string CollectionBookById(string cid, string libraryItemId) => $"api/collections/{cid}/book/{libraryItemId}";
+    public static string CollectionBatchAdd(string id) => $"api/collections/{id}/batch/add";
+    public static string CollectionBatchRemove(string id) => $"api/collections/{id}/batch/remove";
+    public static string LibraryCollections(string libraryId) => $"api/libraries/{libraryId}/collections";
 }
