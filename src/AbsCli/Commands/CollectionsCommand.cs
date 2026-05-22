@@ -22,6 +22,7 @@ public static class CollectionsCommand
         command.Subcommands.Add(CreateListCommand());
         command.Subcommands.Add(CreateGetCommand());
         command.Subcommands.Add(CreateCreateCommand());
+        command.Subcommands.Add(CreateUpdateCommand());
         return command;
     }
 
@@ -139,6 +140,52 @@ public static class CollectionsCommand
             var libraryId = CommandHelper.RequireLibrary(config);
             var service = new CollectionsService(client);
             var result = await service.CreateAsync(libraryId, name, description, books);
+            ConsoleOutput.WriteJson(result, AppJsonContext.Default.Collection);
+            return 0;
+        });
+        return command;
+    }
+
+    private static Command CreateUpdateCommand()
+    {
+        var idOption = new Option<string>("--id") { Description = "Collection ID", Required = true };
+        var nameOption = new Option<string?>("--name") { Description = "New name (empty string is rejected)" };
+        var descriptionOption = new Option<string?>("--description") { Description = "New description; empty string clears the field" };
+        var command = new Command("update", "Edit a collection's name and/or description")
+        { idOption, nameOption, descriptionOption };
+        command.AddPermissionRequired("update");
+        command.AddHelpSection("Notes", HelpSectionPosition.Top,
+            "Edits metadata only. Use `reorder` to change book order; use `add`",
+            "/ `remove` / `batch-add` / `batch-remove` to change membership.",
+            "",
+            "Empty string for --description clears the field; omit to leave",
+            "unchanged. Empty --name is rejected. Same convention as `authors",
+            "update`.");
+        command.AddExamples(
+            "abs-cli collections update --id \"col_abc\" --name \"Renamed\"",
+            "abs-cli collections update --id \"col_abc\" --description \"\"");
+        command.AddResponseExample<Collection>();
+        command.SetAction(async (parseResult, cancellationToken) =>
+        {
+            var id = parseResult.GetValue(idOption)!;
+            var name = parseResult.GetValue(nameOption);
+            var description = parseResult.GetValue(descriptionOption);
+            if (name is not null && string.IsNullOrEmpty(name))
+            {
+                _logger.Error("--name cannot be empty");
+                Environment.Exit(1);
+                return 1;
+            }
+            var body = BuildUpdateBodyForTesting(name, description);
+            if (body.Count == 0)
+            {
+                _logger.Error("Specify at least one of --name, --description");
+                Environment.Exit(1);
+                return 1;
+            }
+            var (client, _) = CommandHelper.BuildClient();
+            var service = new CollectionsService(client);
+            var result = await service.UpdateAsync(id, body);
             ConsoleOutput.WriteJson(result, AppJsonContext.Default.Collection);
             return 0;
         });
