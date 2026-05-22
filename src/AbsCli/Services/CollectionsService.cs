@@ -14,11 +14,25 @@ public class CollectionsService
         _client = client;
     }
 
-    public Task<PaginatedResponse> ListAsync(string libraryId, int limit, int? page, string? include)
-        => throw new NotImplementedException();
+    public async Task<PaginatedResponse> ListAsync(string libraryId, int limit, int? page, string? include)
+    {
+        var query = HttpUtility.ParseQueryString("");
+        // Always send numeric limit and page so ABS emits the paginated
+        // shape unconditionally — same pattern as AuthorsService.ListAsync.
+        query["limit"] = limit.ToString();
+        query["page"] = (page ?? 0).ToString();
+        if (!string.IsNullOrEmpty(include)) query["include"] = include;
 
-    public Task<Collection> GetAsync(string id, string? include)
-        => throw new NotImplementedException();
+        var url = ApiEndpoints.LibraryCollections(libraryId) + "?" + query;
+        return await _client.GetAsync(url, AppJsonContext.Default.PaginatedResponse);
+    }
+
+    public async Task<Collection> GetAsync(string id, string? include)
+    {
+        var url = ApiEndpoints.Collection(id);
+        if (!string.IsNullOrEmpty(include)) url += "?include=" + Uri.EscapeDataString(include);
+        return await _client.GetAsync(url, AppJsonContext.Default.Collection);
+    }
 
     public Task<Collection> CreateAsync(string libraryId, string name, string? description, List<string> books)
         => throw new NotImplementedException();
