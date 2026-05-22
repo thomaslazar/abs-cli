@@ -102,7 +102,7 @@ internal static class ResponseExamples
         { typeof(AbsCli.Models.ProviderEntry),
           "{\n  \"value\": \"<string>\",\n  \"text\": \"<string>\"\n}" },
         { typeof(AbsCli.Models.RssFeed),
-          "{\n  \"id\": null,\n  \"slug\": null,\n  \"userId\": null,\n  \"entityType\": null,\n  \"entityId\": null,\n  \"coverPath\": null,\n  \"serverAddress\": null,\n  \"feedUrl\": null\n}" },
+          "{\n  \"id\": null,\n  \"slug\": null,\n  \"userId\": null,\n  \"entityType\": null,\n  \"entityId\": null,\n  \"coverPath\": null,\n  \"serverAddress\": null,\n  \"feedUrl\": null,\n  \"Extra\": {\n    \"<key>\": {}\n  }\n}" },
         { typeof(AbsCli.Models.ScanResult),
           "{\n  \"result\": \"<string>\"\n}" },
         { typeof(AbsCli.Models.SearchResult),
