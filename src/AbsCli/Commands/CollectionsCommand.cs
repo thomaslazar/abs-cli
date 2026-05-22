@@ -1,4 +1,5 @@
 using System.CommandLine;
+using System.Text.Json;
 using AbsCli.Models;
 using AbsCli.Output;
 using AbsCli.Services;
@@ -20,6 +21,7 @@ public static class CollectionsCommand
             "order, `add` / `remove` / `batch-*` change membership.");
         command.Subcommands.Add(CreateListCommand());
         command.Subcommands.Add(CreateGetCommand());
+        command.Subcommands.Add(CreateCreateCommand());
         return command;
     }
 
@@ -73,6 +75,70 @@ public static class CollectionsCommand
             var (client, _) = CommandHelper.BuildClient();
             var service = new CollectionsService(client);
             var result = await service.GetAsync(id, include);
+            ConsoleOutput.WriteJson(result, AppJsonContext.Default.Collection);
+            return 0;
+        });
+        return command;
+    }
+
+    private static Command CreateCreateCommand()
+    {
+        var libraryOption = new Option<string?>("--library") { Description = "Library ID" };
+        var nameOption = new Option<string>("--name") { Description = "Collection name", Required = true };
+        var descriptionOption = new Option<string?>("--description") { Description = "Optional description" };
+        var inputOption = new Option<string?>("--input") { Description = "JSON file with books array (`{\"books\":[\"lid\",...]}`)" };
+        var stdinOption = new Option<bool>("--stdin") { Description = "Read books JSON from stdin" };
+        var command = new Command("create", "Create a collection (requires at least one book)")
+        { libraryOption, nameOption, descriptionOption, inputOption, stdinOption };
+        command.AddPermissionRequired("update");
+        command.AddHelpSection("Notes", HelpSectionPosition.Top,
+            "ABS requires at least one book; cannot create empty.",
+            "HTML in --name is stripped silently server-side.");
+        command.AddExamples(
+            "abs-cli collections create --library \"lib_1\" --name \"Light Novels\" --input books.json",
+            "echo '{\"books\":[\"li_a\",\"li_b\"]}' | abs-cli collections create --name \"My set\" --stdin");
+        command.AddResponseExample<Collection>();
+        command.SetAction(async (parseResult, cancellationToken) =>
+        {
+            var library = parseResult.GetValue(libraryOption);
+            var name = parseResult.GetValue(nameOption)!;
+            var description = parseResult.GetValue(descriptionOption);
+            var input = parseResult.GetValue(inputOption);
+            var stdin = parseResult.GetValue(stdinOption);
+
+            string booksJson;
+            if (stdin && input != null)
+            {
+                _logger.Error("Provide --input or --stdin, not both.");
+                Environment.Exit(1);
+                return 1;
+            }
+            if (stdin) booksJson = await Console.In.ReadToEndAsync(cancellationToken);
+            else if (input != null) booksJson = CommandHelper.ReadJsonInput(input);
+            else
+            {
+                _logger.Error("Provide --input <file> or --stdin.");
+                Environment.Exit(1);
+                return 1;
+            }
+
+            List<string> books;
+            try
+            {
+                var parsed = JsonSerializer.Deserialize(booksJson, AppJsonContext.Default.CollectionBooksRequest);
+                books = parsed?.Books ?? new List<string>();
+            }
+            catch (JsonException ex)
+            {
+                _logger.Error($"Invalid JSON input: {ex.Message}");
+                Environment.Exit(1);
+                return 1;
+            }
+
+            var (client, config) = CommandHelper.BuildClient(libraryOverride: library);
+            var libraryId = CommandHelper.RequireLibrary(config);
+            var service = new CollectionsService(client);
+            var result = await service.CreateAsync(libraryId, name, description, books);
             ConsoleOutput.WriteJson(result, AppJsonContext.Default.Collection);
             return 0;
         });
