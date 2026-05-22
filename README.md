@@ -210,6 +210,16 @@ abs-cli config set defaultLibrary <library-id>
 | `items encode-m4b cancel --id <id>` | Cancel a pending encode-m4b task (admin) |
 | `items embed-metadata --id <id> [--no-backup] [--force-embed-chapters] [--wait]` | Embed ABS metadata into the audio files via ffmpeg (admin) |
 | `items batch-embed-metadata {--input <file> \| --stdin} [...]` | Batch variant of `items embed-metadata` (admin) |
+| `collections list [--library <id>] [--limit] [--page] [--include rssfeed]` | List collections in a library (paginated) |
+| `collections get --id <id> [--include rssfeed]` | Get a single collection (expanded) |
+| `collections create [--library <id>] --name <n> [--description <d>] {--input <file> \| --stdin}` | Create a collection (requires at least one book) |
+| `collections update --id <id> [--name <n>] [--description <d>\|""]` | Edit name and/or description |
+| `collections reorder --id <id> {--input <file> \| --stdin}` | Reorder existing books (does NOT add/remove) |
+| `collections delete --id <id>` | Delete a collection |
+| `collections add --id <id> --book <lid>` | Add a single book to a collection |
+| `collections remove --id <id> --book <lid>` | Remove a single book from a collection |
+| `collections batch-add --id <id> {--input <file> \| --stdin}` | Add multiple books (silently skips duplicates) |
+| `collections batch-remove --id <id> {--input <file> \| --stdin}` | Remove multiple books (tolerates missing) |
 | `series list` | List series (`--limit`, `--page`) |
 | `series get --id <id>` | Get a single series |
 | `authors list` | List authors (paginated: `--limit`, `--page`, `--sort`, `--desc`) |
