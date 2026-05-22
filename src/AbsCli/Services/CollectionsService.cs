@@ -34,8 +34,22 @@ public class CollectionsService
         return await _client.GetAsync(url, AppJsonContext.Default.Collection);
     }
 
-    public Task<Collection> CreateAsync(string libraryId, string name, string? description, List<string> books)
-        => throw new NotImplementedException();
+    public async Task<Collection> CreateAsync(string libraryId, string name, string? description, List<string> books)
+    {
+        var body = new CollectionCreateRequest
+        {
+            LibraryId = libraryId,
+            Name = name,
+            Description = description,
+            Books = books
+        };
+        var json = JsonSerializer.Serialize(body, AppJsonContext.Default.CollectionCreateRequest);
+        return await _client.PostAsync(
+            ApiEndpoints.Collections,
+            json,
+            AppJsonContext.Default.Collection,
+            "'update' permission");
+    }
 
     public Task<Collection> UpdateAsync(string id, Dictionary<string, string> body)
         => throw new NotImplementedException();
