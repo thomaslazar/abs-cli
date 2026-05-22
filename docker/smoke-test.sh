@@ -811,11 +811,19 @@ echo ""
 echo "=== Collections ==="
 # ============================================================
 
+collections_cleanup() {
+    if [ -n "${COLLECTION_ID:-}" ]; then
+        $CLI collections delete --id "$COLLECTION_ID" >/dev/null 2>&1 || true
+        COLLECTION_ID=""
+    fi
+}
+trap collections_cleanup EXIT
+
 # Grab three seeded book library item IDs for the smoke flow.
 items_json=$($CLI items list --limit 3 2>/dev/null)
-LID1=$(echo "$items_json" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d['results'][0]['id'])")
-LID2=$(echo "$items_json" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d['results'][1]['id'])")
-LID3=$(echo "$items_json" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d['results'][2]['id'])")
+LID1=$(echo "$items_json" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('results',[{}])[0].get('id',''))" 2>/dev/null)
+LID2=$(echo "$items_json" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('results',[{},{}])[1].get('id',''))" 2>/dev/null)
+LID3=$(echo "$items_json" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('results',[{},{},{}])[2].get('id',''))" 2>/dev/null)
 if [ -z "$LID1" ] || [ -z "$LID2" ] || [ -z "$LID3" ]; then
     fail "collections: 3 library items available" "missing seeded items"
 else
@@ -830,7 +838,7 @@ assert_json_key "collections list has total" "total" "$output"
 # 2. create with two books (via --stdin)
 output=$(echo "{\"books\":[\"$LID1\",\"$LID2\"]}" \
     | $CLI collections create --name "smoke test" --stdin 2>/dev/null)
-COLLECTION_ID=$(echo "$output" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d['id'])")
+COLLECTION_ID=$(echo "$output" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('id',''))" 2>/dev/null)
 if [ -n "$COLLECTION_ID" ]; then
     pass "collections create returns an id"
 else
@@ -864,7 +872,7 @@ fi
 # 7. reorder (put LID3 first)
 output=$(echo "{\"books\":[\"$LID3\",\"$LID2\",\"$LID1\"]}" \
     | $CLI collections reorder --id "$COLLECTION_ID" --stdin 2>/dev/null)
-FIRST_ID=$(echo "$output" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d['books'][0]['id'])")
+FIRST_ID=$(echo "$output" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('books',[{}])[0].get('id',''))" 2>/dev/null)
 if [ "$FIRST_ID" = "$LID3" ]; then
     pass "reorder put LID3 first"
 else
@@ -888,19 +896,22 @@ else
     fail "get on deleted collection surfaces 404" "got: ${output:0:200}"
 fi
 
-# 11. permission denied as uploaduser (no `update` perm — seeded by docker/seed.sh)
-if [ -n "${UPLOAD_TOKEN:-}" ]; then
+# 11. permission denied as readonlyuser (no `update` perm — seeded by docker/seed.sh)
+if [ -n "${READONLY_TOKEN:-}" ]; then
     SAVE_TOKEN_COLLECTIONS="$ABS_TOKEN"
-    export ABS_TOKEN="$UPLOAD_TOKEN"
+    export ABS_TOKEN="$READONLY_TOKEN"
     output=$(echo "{\"books\":[\"$LID1\"]}" \
         | $CLI collections create --name "denied" --stdin 2>&1 || true)
     export ABS_TOKEN="$SAVE_TOKEN_COLLECTIONS"
     if echo "$output" | grep -qi "permission denied.*update"; then
-        pass "collections create: uploaduser hits 'update' permission denial"
+        pass "collections create: readonlyuser hits 'update' permission denial"
     else
-        fail "collections create: uploaduser hits 'update' permission denial" "got: ${output:0:200}"
+        fail "collections create: readonlyuser hits 'update' permission denial" "got: ${output:0:200}"
     fi
 fi
+
+trap - EXIT
+COLLECTION_ID=""
 
 # ============================================================
 echo ""
