@@ -50,4 +50,55 @@ public class CollectionsServiceTests
         Assert.Equal("lightnovels", back.Slug);
         Assert.Equal("http://abs/feed/lightnovels", back.FeedUrl);
     }
+
+    [Fact]
+    public void CollectionCreateRequest_RoundTrip()
+    {
+        var obj = new CollectionCreateRequest
+        {
+            LibraryId = "lib_1",
+            Name = "Light Novels",
+            Description = "Curated set",
+            Books = new List<string> { "li_a", "li_b" }
+        };
+        var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.CollectionCreateRequest);
+        var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.CollectionCreateRequest)!;
+        Assert.Equal("lib_1", back.LibraryId);
+        Assert.Equal("Light Novels", back.Name);
+        Assert.Equal("Curated set", back.Description);
+        Assert.Equal(new[] { "li_a", "li_b" }, back.Books);
+    }
+
+    [Fact]
+    public void CollectionCreateRequest_OmitsNullDescription()
+    {
+        var obj = new CollectionCreateRequest
+        {
+            LibraryId = "lib_1",
+            Name = "n",
+            Description = null,
+            Books = new List<string> { "li_a" }
+        };
+        var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.CollectionCreateRequest);
+        Assert.DoesNotContain("description", json);
+    }
+
+    [Fact]
+    public void CollectionBooksRequest_RoundTrip()
+    {
+        var obj = new CollectionBooksRequest { Books = new List<string> { "li_a", "li_b", "li_c" } };
+        var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.CollectionBooksRequest);
+        var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.CollectionBooksRequest)!;
+        Assert.Equal(3, back.Books.Count);
+        Assert.Equal("li_a", back.Books[0]);
+    }
+
+    [Fact]
+    public void CollectionBookRequest_RoundTrip()
+    {
+        var obj = new CollectionBookRequest { Id = "li_z" };
+        var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.CollectionBookRequest);
+        var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.CollectionBookRequest)!;
+        Assert.Equal("li_z", back.Id);
+    }
 }
