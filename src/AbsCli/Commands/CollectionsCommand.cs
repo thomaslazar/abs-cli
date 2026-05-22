@@ -25,6 +25,8 @@ public static class CollectionsCommand
         command.Subcommands.Add(CreateUpdateCommand());
         command.Subcommands.Add(CreateReorderCommand());
         command.Subcommands.Add(CreateDeleteCommand());
+        command.Subcommands.Add(CreateAddCommand());
+        command.Subcommands.Add(CreateRemoveCommand());
         return command;
     }
 
@@ -251,6 +253,56 @@ public static class CollectionsCommand
             var service = new CollectionsService(client);
             await service.DeleteAsync(id);
             ConsoleOutput.WriteJson(new Dictionary<string, string> { ["success"] = "true" });
+            return 0;
+        });
+        return command;
+    }
+
+    private static Command CreateAddCommand()
+    {
+        var idOption = new Option<string>("--id") { Description = "Collection ID", Required = true };
+        var bookOption = new Option<string>("--book") { Description = "Library item ID to add", Required = true };
+        var command = new Command("add", "Add a single book to a collection")
+        { idOption, bookOption };
+        command.AddPermissionRequired("update");
+        command.AddHelpSection("Notes", HelpSectionPosition.Top,
+            "Errors with 400 if the book is already in the collection. Use",
+            "`batch-add` (or check first) for idempotent inserts. Books from a",
+            "different library are rejected.");
+        command.AddExamples(
+            "abs-cli collections add --id \"col_abc\" --book \"li_xyz\"");
+        command.AddResponseExample<Collection>();
+        command.SetAction(async (parseResult, cancellationToken) =>
+        {
+            var id = parseResult.GetValue(idOption)!;
+            var book = parseResult.GetValue(bookOption)!;
+            var (client, _) = CommandHelper.BuildClient();
+            var service = new CollectionsService(client);
+            var result = await service.AddBookAsync(id, book);
+            ConsoleOutput.WriteJson(result, AppJsonContext.Default.Collection);
+            return 0;
+        });
+        return command;
+    }
+
+    private static Command CreateRemoveCommand()
+    {
+        var idOption = new Option<string>("--id") { Description = "Collection ID", Required = true };
+        var bookOption = new Option<string>("--book") { Description = "Library item ID to remove", Required = true };
+        var command = new Command("remove", "Remove a single book from a collection")
+        { idOption, bookOption };
+        command.AddPermissionRequired("update");
+        command.AddExamples(
+            "abs-cli collections remove --id \"col_abc\" --book \"li_xyz\"");
+        command.AddResponseExample<Collection>();
+        command.SetAction(async (parseResult, cancellationToken) =>
+        {
+            var id = parseResult.GetValue(idOption)!;
+            var book = parseResult.GetValue(bookOption)!;
+            var (client, _) = CommandHelper.BuildClient();
+            var service = new CollectionsService(client);
+            var result = await service.RemoveBookAsync(id, book);
+            ConsoleOutput.WriteJson(result, AppJsonContext.Default.Collection);
             return 0;
         });
         return command;
