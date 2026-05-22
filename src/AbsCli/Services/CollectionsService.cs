@@ -82,8 +82,10 @@ public class CollectionsService
             "'update' permission");
     }
 
-    public Task DeleteAsync(string id)
-        => throw new NotImplementedException();
+    public async Task DeleteAsync(string id)
+    {
+        await _client.DeleteAsync(ApiEndpoints.Collection(id), "'delete' permission");
+    }
 
     public Task<Collection> AddBookAsync(string id, string libraryItemId)
         => throw new NotImplementedException();
