@@ -23,6 +23,7 @@ public static class CollectionsCommand
         command.Subcommands.Add(CreateGetCommand());
         command.Subcommands.Add(CreateCreateCommand());
         command.Subcommands.Add(CreateUpdateCommand());
+        command.Subcommands.Add(CreateReorderCommand());
         return command;
     }
 
@@ -186,6 +187,44 @@ public static class CollectionsCommand
             var (client, _) = CommandHelper.BuildClient();
             var service = new CollectionsService(client);
             var result = await service.UpdateAsync(id, body);
+            ConsoleOutput.WriteJson(result, AppJsonContext.Default.Collection);
+            return 0;
+        });
+        return command;
+    }
+
+    private static Command CreateReorderCommand()
+    {
+        var idOption = new Option<string>("--id") { Description = "Collection ID", Required = true };
+        var inputOption = new Option<string?>("--input") { Description = "JSON file with books array (`{\"books\":[\"lid\",...]}`)" };
+        var stdinOption = new Option<bool>("--stdin") { Description = "Read books JSON from stdin" };
+        var command = new Command("reorder", "Reorder existing books in a collection")
+        { idOption, inputOption, stdinOption };
+        command.AddPermissionRequired("update");
+        command.AddHelpSection("Notes", HelpSectionPosition.Top,
+            "Reorders existing members only — does not add or remove. Pass",
+            "the FULL current membership in the desired order; partial lists",
+            "shuffle missing members to undefined positions.",
+            "",
+            "Example for a 3-book collection: input `{\"books\":[\"li_c\",\"li_a\",\"li_b\"]}`",
+            "moves li_c to position 1.");
+        command.AddExamples(
+            "abs-cli collections reorder --id \"col_abc\" --input order.json",
+            "echo '{\"books\":[\"li_c\",\"li_a\",\"li_b\"]}' | abs-cli collections reorder --id \"col_abc\" --stdin");
+        command.AddResponseExample<Collection>();
+        command.SetAction(async (parseResult, cancellationToken) =>
+        {
+            var id = parseResult.GetValue(idOption)!;
+            var input = parseResult.GetValue(inputOption);
+            var stdin = parseResult.GetValue(stdinOption);
+            string booksJson;
+            if (stdin && input != null) { _logger.Error("Provide --input or --stdin, not both."); Environment.Exit(1); return 1; }
+            if (stdin) booksJson = await Console.In.ReadToEndAsync(cancellationToken);
+            else if (input != null) booksJson = CommandHelper.ReadJsonInput(input);
+            else { _logger.Error("Provide --input <file> or --stdin."); Environment.Exit(1); return 1; }
+            var (client, _) = CommandHelper.BuildClient();
+            var service = new CollectionsService(client);
+            var result = await service.ReorderAsync(id, booksJson);
             ConsoleOutput.WriteJson(result, AppJsonContext.Default.Collection);
             return 0;
         });
