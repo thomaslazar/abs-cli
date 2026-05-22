@@ -18,7 +18,40 @@ public static class CollectionsCommand
             "concept — membership is yours to maintain. See `collections create",
             "--help` for sharp edges; `update` edits metadata, `reorder` shuffles",
             "order, `add` / `remove` / `batch-*` change membership.");
-        // Subcommands added in subsequent tasks.
+        command.Subcommands.Add(CreateListCommand());
+        return command;
+    }
+
+    private static Command CreateListCommand()
+    {
+        var libraryOption = new Option<string?>("--library") { Description = "Library ID" };
+        var limitOption = new Option<int>("--limit") { Description = "Results per page (default 50)", DefaultValueFactory = _ => 50 };
+        var pageOption = new Option<int?>("--page") { Description = "Page number (0-indexed)" };
+        var includeOption = new Option<string?>("--include") { Description = "Comma-separated include flags (only 'rssfeed' is honoured today)" };
+        var command = new Command("list", "List collections in a library (paginated)")
+        { libraryOption, limitOption, pageOption, includeOption };
+        command.AddHelpSection("Notes", HelpSectionPosition.Top,
+            "ABS echoes `sortBy` / `sortDesc` / `filterBy` / `minified` back in",
+            "the response payload, but these reflect no applied behavior today",
+            "(server-side TODO). Treat them as inert.");
+        command.AddExamples(
+            "abs-cli collections list",
+            "abs-cli collections list --limit 100 --page 0",
+            "abs-cli collections list --include rssfeed");
+        command.AddResponseExample(typeof(PaginatedResponse), typeof(Collection));
+        command.SetAction(async (parseResult, cancellationToken) =>
+        {
+            var library = parseResult.GetValue(libraryOption);
+            var limit = parseResult.GetValue(limitOption);
+            var page = parseResult.GetValue(pageOption);
+            var include = parseResult.GetValue(includeOption);
+            var (client, config) = CommandHelper.BuildClient(libraryOverride: library);
+            var libraryId = CommandHelper.RequireLibrary(config);
+            var service = new CollectionsService(client);
+            var result = await service.ListAsync(libraryId, limit, page, include);
+            ConsoleOutput.WriteJson(result, AppJsonContext.Default.PaginatedResponse);
+            return 0;
+        });
         return command;
     }
 
