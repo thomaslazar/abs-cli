@@ -808,6 +808,102 @@ export ABS_TOKEN="$SAVE_TOKEN"
 
 # ============================================================
 echo ""
+echo "=== Collections ==="
+# ============================================================
+
+# Grab three seeded book library item IDs for the smoke flow.
+items_json=$($CLI items list --limit 3 2>/dev/null)
+LID1=$(echo "$items_json" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d['results'][0]['id'])")
+LID2=$(echo "$items_json" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d['results'][1]['id'])")
+LID3=$(echo "$items_json" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d['results'][2]['id'])")
+if [ -z "$LID1" ] || [ -z "$LID2" ] || [ -z "$LID3" ]; then
+    fail "collections: 3 library items available" "missing seeded items"
+else
+    pass "collections: 3 library items available"
+fi
+
+# 1. list — works whether empty or populated; just check the shape.
+output=$($CLI collections list 2>/dev/null)
+assert_json_key "collections list has results" "results" "$output"
+assert_json_key "collections list has total" "total" "$output"
+
+# 2. create with two books (via --stdin)
+output=$(echo "{\"books\":[\"$LID1\",\"$LID2\"]}" \
+    | $CLI collections create --name "smoke test" --stdin 2>/dev/null)
+COLLECTION_ID=$(echo "$output" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d['id'])")
+if [ -n "$COLLECTION_ID" ]; then
+    pass "collections create returns an id"
+else
+    fail "collections create returns an id" "no id in response"
+fi
+assert_json_expr "create has 2 books" "len(d['books'])==2" "$output"
+assert_json_expr "create persisted name" "d['name']=='smoke test'" "$output"
+
+# 3. get
+output=$($CLI collections get --id "$COLLECTION_ID" 2>/dev/null)
+assert_json_expr "get returns 2 books" "len(d['books'])==2" "$output"
+assert_json_expr "get returns correct name" "d['name']=='smoke test'" "$output"
+
+# 4. update name + description
+output=$($CLI collections update --id "$COLLECTION_ID" --name "renamed" --description "desc" 2>/dev/null)
+assert_json_expr "update applies name" "d['name']=='renamed'" "$output"
+assert_json_expr "update applies description" "d['description']=='desc'" "$output"
+
+# 5. add a third book
+output=$($CLI collections add --id "$COLLECTION_ID" --book "$LID3" 2>/dev/null)
+assert_json_expr "add yields 3 books" "len(d['books'])==3" "$output"
+
+# 6. duplicate add → 400 → exit 2
+output=$($CLI collections add --id "$COLLECTION_ID" --book "$LID3" 2>&1 || true)
+if echo "$output" | grep -qi "already in collection\|bad request"; then
+    pass "duplicate add surfaces a 400 message"
+else
+    fail "duplicate add surfaces a 400 message" "got: ${output:0:200}"
+fi
+
+# 7. reorder (put LID3 first)
+output=$(echo "{\"books\":[\"$LID3\",\"$LID2\",\"$LID1\"]}" \
+    | $CLI collections reorder --id "$COLLECTION_ID" --stdin 2>/dev/null)
+FIRST_ID=$(echo "$output" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d['books'][0]['id'])")
+if [ "$FIRST_ID" = "$LID3" ]; then
+    pass "reorder put LID3 first"
+else
+    fail "reorder put LID3 first" "got first id: $FIRST_ID"
+fi
+
+# 8. batch-remove all three
+output=$(echo "{\"books\":[\"$LID1\",\"$LID2\",\"$LID3\"]}" \
+    | $CLI collections batch-remove --id "$COLLECTION_ID" --stdin 2>/dev/null)
+assert_json_expr "batch-remove empties collection" "len(d['books'])==0" "$output"
+
+# 9. delete
+output=$($CLI collections delete --id "$COLLECTION_ID" 2>/dev/null)
+assert_json_expr "delete returns success:true" "d['success']=='true'" "$output"
+
+# 10. get on deleted → 404 → CLI exits non-zero
+output=$($CLI collections get --id "$COLLECTION_ID" 2>&1 || true)
+if echo "$output" | grep -qi "not found"; then
+    pass "get on deleted collection surfaces 404"
+else
+    fail "get on deleted collection surfaces 404" "got: ${output:0:200}"
+fi
+
+# 11. permission denied as uploaduser (no `update` perm — seeded by docker/seed.sh)
+if [ -n "${UPLOAD_TOKEN:-}" ]; then
+    SAVE_TOKEN_COLLECTIONS="$ABS_TOKEN"
+    export ABS_TOKEN="$UPLOAD_TOKEN"
+    output=$(echo "{\"books\":[\"$LID1\"]}" \
+        | $CLI collections create --name "denied" --stdin 2>&1 || true)
+    export ABS_TOKEN="$SAVE_TOKEN_COLLECTIONS"
+    if echo "$output" | grep -qi "permission denied.*update"; then
+        pass "collections create: uploaduser hits 'update' permission denial"
+    else
+        fail "collections create: uploaduser hits 'update' permission denial" "got: ${output:0:200}"
+    fi
+fi
+
+# ============================================================
+echo ""
 echo "=== Scan Commands ==="
 # ============================================================
 
