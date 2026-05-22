@@ -51,11 +51,36 @@ public class CollectionsService
             "'update' permission");
     }
 
-    public Task<Collection> UpdateAsync(string id, Dictionary<string, string> body)
-        => throw new NotImplementedException();
+    /// <summary>
+    /// PATCH the collection. <paramref name="body"/> values are
+    /// null-significant: pass <c>null</c> to clear that field server-side,
+    /// or omit a key to leave it unchanged. Same tri-state pattern as
+    /// <c>AuthorsService.UpdateAsync</c>.
+    /// </summary>
+    public async Task<Collection> UpdateAsync(string id, Dictionary<string, string> body)
+    {
+        var json = JsonSerializer.Serialize(body, AppJsonContext.Default.DictionaryStringString);
+        return await _client.PatchAsync(
+            ApiEndpoints.Collection(id),
+            json,
+            AppJsonContext.Default.Collection,
+            "'update' permission");
+    }
 
-    public Task<Collection> ReorderAsync(string id, string booksJson)
-        => throw new NotImplementedException();
+    /// <summary>
+    /// PATCH the collection with a books array to reshuffle order. The
+    /// raw JSON body is forwarded verbatim — caller supplies
+    /// <c>{"books":[...]}</c>. ABS reorders existing membership only;
+    /// see spec "Sharp edges" for the partial-list trap.
+    /// </summary>
+    public async Task<Collection> ReorderAsync(string id, string booksJson)
+    {
+        return await _client.PatchAsync(
+            ApiEndpoints.Collection(id),
+            booksJson,
+            AppJsonContext.Default.Collection,
+            "'update' permission");
+    }
 
     public Task DeleteAsync(string id)
         => throw new NotImplementedException();
