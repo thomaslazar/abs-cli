@@ -106,9 +106,21 @@ public class CollectionsService
             "'update' permission");
     }
 
-    public Task<Collection> BatchAddAsync(string id, string booksJson)
-        => throw new NotImplementedException();
+    public async Task<Collection> BatchAddAsync(string id, string booksJson)
+    {
+        return await _client.PostAsync(
+            ApiEndpoints.CollectionBatchAdd(id),
+            booksJson,
+            AppJsonContext.Default.Collection,
+            "'update' permission");
+    }
 
-    public Task<Collection> BatchRemoveAsync(string id, string booksJson)
-        => throw new NotImplementedException();
+    public async Task<Collection> BatchRemoveAsync(string id, string booksJson)
+    {
+        return await _client.PostAsync(
+            ApiEndpoints.CollectionBatchRemove(id),
+            booksJson,
+            AppJsonContext.Default.Collection,
+            "'update' permission");
+    }
 }
