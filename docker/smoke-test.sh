@@ -884,6 +884,21 @@ output=$(echo "{\"books\":[\"$LID1\",\"$LID2\",\"$LID3\"]}" \
     | $CLI collections batch-remove --id "$COLLECTION_ID" --stdin 2>/dev/null)
 assert_json_expr "batch-remove empties collection" "len(d['books'])==0" "$output"
 
+# 8b. batch-add two books back into the empty collection
+output=$(echo "{\"books\":[\"$LID1\",\"$LID2\"]}" \
+    | $CLI collections batch-add --id "$COLLECTION_ID" --stdin 2>/dev/null)
+assert_json_expr "batch-add restored 2 books" "len(d['books'])==2" "$output"
+
+# 8c. batch-add is idempotent for duplicates: re-adding LID1 alongside a new LID3
+# should yield 3 (skips LID1, adds LID3), unlike single `add` which 400s on dupes
+output=$(echo "{\"books\":[\"$LID1\",\"$LID3\"]}" \
+    | $CLI collections batch-add --id "$COLLECTION_ID" --stdin 2>/dev/null)
+assert_json_expr "batch-add silently skips existing books" "len(d['books'])==3" "$output"
+
+# 8d. single remove drops one book
+output=$($CLI collections remove --id "$COLLECTION_ID" --book "$LID2" 2>/dev/null)
+assert_json_expr "remove drops the book" "len(d['books'])==2" "$output"
+
 # 9. delete
 output=$($CLI collections delete --id "$COLLECTION_ID" 2>/dev/null)
 assert_json_expr "delete returns success:true" "d['success']=='true'" "$output"
