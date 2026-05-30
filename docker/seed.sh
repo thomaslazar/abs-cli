@@ -116,8 +116,11 @@ curl -sf -X POST "$ABS_URL/api/users" \
     }' > /dev/null 2>&1 || true
 
 # --- Upload test audiobooks ---
-# Create a tiny silent MP3 (1 second) for uploads
-TMPDIR=$(mktemp -d)
+# Create a tiny silent MP3 (1 second) for uploads.
+# Note: do NOT name this TMPDIR — that shadows the env var mktemp reads as
+# its base dir, and the later `rm -rf` would leave a dangling TMPDIR that
+# breaks the multi-ebook fixture's own mktemp when TMPDIR is exported.
+SEED_TMP=$(mktemp -d)
 python3 -c "
 # Minimal valid MP3 frame (MPEG1 Layer3 128kbps 44100Hz stereo, silence)
 import struct, sys
@@ -126,7 +129,7 @@ header = bytes([0xFF, 0xFB, 0x90, 0x00])
 # Pad to one full frame (417 bytes for 128kbps/44100Hz)
 frame = header + b'\x00' * 413
 # Write ~1 second worth of frames (about 38 frames)
-with open('$TMPDIR/silence.mp3', 'wb') as f:
+with open('$SEED_TMP/silence.mp3', 'wb') as f:
     for _ in range(38):
         f.write(frame)
 "
@@ -141,7 +144,7 @@ upload_book() {
         ${series:+-F "series=$series"} \
         -F "library=$LIBRARY_ID" \
         -F "folder=$FOLDER_ID" \
-        -F "0=@$TMPDIR/silence.mp3;filename=audiobook.mp3" \
+        -F "0=@$SEED_TMP/silence.mp3;filename=audiobook.mp3" \
         > /dev/null
 }
 
@@ -175,7 +178,7 @@ upload_book "Redshirts"                 "John Scalzi"
 upload_book "Little Brother"            "Cory Doctorow"
 upload_book "Walkaway"                  "Cory Doctorow"
 
-rm -rf "$TMPDIR"
+rm -rf "$SEED_TMP"
 
 # Trigger library scan to create items from uploaded files
 echo ""

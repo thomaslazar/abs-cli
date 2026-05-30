@@ -1,4 +1,5 @@
 using System.CommandLine;
+using System.Globalization;
 using System.Text.Json;
 using AbsCli.Models;
 using AbsCli.Output;
@@ -16,11 +17,13 @@ public static class ItemsCommand
         command.Subcommands.Add(CreateGetCommand());
         command.Subcommands.Add(CreateUpdateCommand());
         command.Subcommands.Add(CreateBatchUpdateCommand());
+        command.Subcommands.Add(CreateBatchUpdateProgressCommand());
         command.Subcommands.Add(CreateBatchGetCommand());
         command.Subcommands.Add(CreateScanCommand());
         command.Subcommands.Add(CreateCoverCommand());
         command.Subcommands.Add(CreateEncodeM4bCommand());
         command.Subcommands.Add(CreateChaptersCommand());
+        command.Subcommands.Add(CreateProgressCommand());
         command.Subcommands.Add(CreateEmbedMetadataCommand());
         command.Subcommands.Add(CreateBatchEmbedMetadataCommand());
         command.Subcommands.Add(CreateToggleEbookStatusCommand());
@@ -92,10 +95,19 @@ public static class ItemsCommand
     {
         var idOption = new Option<string>("--id") { Description = "Item ID", Required = true };
         var expandedOption = new Option<bool>("--expanded") { Description = "Return the expanded shape" };
-        var command = new Command("get", "Get a single library item by ID") { idOption, expandedOption };
+        var includeOption = new Option<string?>("--include") { Description = "Comma-separated include flags (progress, rssfeed, share, downloads). Auto-implies --expanded." };
+        var command = new Command("get", "Get a single library item by ID") { idOption, expandedOption, includeOption };
+        command.AddHelpSection("Notes", HelpSectionPosition.Top,
+            "--include automatically implies --expanded (server's include",
+            "parser only fires under expanded=1). Values: progress (your",
+            "media progress for this item), rssfeed (open RSS feed if any),",
+            "share (admin and book-only; silently skipped otherwise),",
+            "downloads (podcast-only; silently skipped for books).");
         command.AddExamples(
             "abs-cli items get --id \"li_abc123\"",
-            "abs-cli items get --id \"li_abc123\" --expanded");
+            "abs-cli items get --id \"li_abc123\" --expanded",
+            "abs-cli items get --id \"li_abc123\" --include progress",
+            "abs-cli items get --id \"li_abc123\" --include progress,rssfeed");
         command.AddResponseExample<LibraryItemMinified>();
         command.AddMediaUnionShapes();
         command.AddHelpSection("Response shape (--expanded)", HelpSectionPosition.Bottom,
@@ -103,12 +115,14 @@ public static class ItemsCommand
         command.SetAction(async (parseResult, cancellationToken) =>
         {
             var id = parseResult.GetValue(idOption)!;
-            var expanded = parseResult.GetValue(expandedOption);
+            var explicitExpanded = parseResult.GetValue(expandedOption);
+            var include = parseResult.GetValue(includeOption);
+            var expanded = explicitExpanded || !string.IsNullOrEmpty(include);
             var (client, _) = CommandHelper.BuildClient();
             var service = new ItemsService(client);
             if (expanded)
             {
-                var result = await service.GetExpandedAsync(id);
+                var result = await service.GetExpandedAsync(id, include);
                 ConsoleOutput.WriteJson(result, AppJsonContext.Default.LibraryItemExpanded);
             }
             else
@@ -206,6 +220,50 @@ public static class ItemsCommand
             var service = new ItemsService(client);
             var result = await service.BatchGetAsync(jsonBody);
             ConsoleOutput.WriteJson(result, AppJsonContext.Default.BatchGetResponse);
+            return 0;
+        });
+        return command;
+    }
+
+    private static Command CreateBatchUpdateProgressCommand()
+    {
+        var inputOption = new Option<string?>("--input") { Description = "JSON file with array body" };
+        var stdinOption = new Option<bool>("--stdin") { Description = "Read JSON array from stdin" };
+        var command = new Command("batch-update-progress", "Bulk update media progress from a JSON array")
+            { inputOption, stdinOption };
+        command.AddHelpSection("Notes", HelpSectionPosition.Top,
+            "Server returns 200 even when individual entries fail (errors",
+            "only logged server-side). No per-entry feedback. Recommend",
+            "pre-validating client-side or following up with `items",
+            "progress get` for entries that matter.");
+        command.AddExamples(
+            "abs-cli items batch-update-progress --input updates.json",
+            "echo '[{\"libraryItemId\":\"li_a\",\"isFinished\":true}]' | abs-cli items batch-update-progress --stdin");
+        command.AddHelpSection("Response shape", HelpSectionPosition.Bottom,
+            "{ \"success\": \"true\" }");
+        command.SetAction(async (parseResult, cancellationToken) =>
+        {
+            var input = parseResult.GetValue(inputOption);
+            var stdin = parseResult.GetValue(stdinOption);
+            string jsonBody;
+            if (stdin && input != null)
+            {
+                _logger.Error("Provide --input or --stdin, not both.");
+                Environment.Exit(1);
+                return 1;
+            }
+            if (stdin) jsonBody = await Console.In.ReadToEndAsync(cancellationToken);
+            else if (input != null) jsonBody = CommandHelper.ReadJsonInput(input);
+            else
+            {
+                _logger.Error("Provide --input <file> or --stdin.");
+                Environment.Exit(1);
+                return 1;
+            }
+            var (client, _) = CommandHelper.BuildClient();
+            var service = new ProgressService(client);
+            await service.BatchUpdateAsync(jsonBody);
+            ConsoleOutput.WriteJson(new Dictionary<string, string> { ["success"] = "true" });
             return 0;
         });
         return command;
@@ -544,6 +602,149 @@ public static class ItemsCommand
             var service = new ChaptersService(client);
             var result = await service.SetAsync(id, canonical);
             ConsoleOutput.WriteJson(result, AppJsonContext.Default.ChaptersSetResponse);
+            return 0;
+        });
+        return command;
+    }
+
+    private static Command CreateProgressCommand()
+    {
+        var command = new Command("progress", "Read and write your media progress on library items");
+        command.AddHelpSection("Notes", HelpSectionPosition.Top,
+            "Single record per library item covers both audio and ebook",
+            "state. Books only — podcast episodes are out of scope.");
+        command.Subcommands.Add(CreateProgressGetCommand());
+        command.Subcommands.Add(CreateProgressSetCommand());
+        command.Subcommands.Add(CreateProgressRemoveCommand());
+        return command;
+    }
+
+    private static Command CreateProgressGetCommand()
+    {
+        var libraryItemOption = new Option<string>("--library-item") { Description = "Library item ID", Required = true };
+        var command = new Command("get", "Read your progress on a library item") { libraryItemOption };
+        command.AddHelpSection("Notes", HelpSectionPosition.Top,
+            "Single record covers both audio and ebook state. 404 if no",
+            "progress recorded yet. Books only.");
+        command.AddExamples(
+            "abs-cli items progress get --library-item \"li_abc\"");
+        command.AddResponseExample<MediaProgress>();
+        command.SetAction(async (parseResult, cancellationToken) =>
+        {
+            var lid = parseResult.GetValue(libraryItemOption)!;
+            var (client, _) = CommandHelper.BuildClient();
+            var service = new ProgressService(client);
+            var result = await service.GetAsync(lid);
+            ConsoleOutput.WriteJson(result, AppJsonContext.Default.MediaProgress);
+            return 0;
+        });
+        return command;
+    }
+
+    private static Command CreateProgressSetCommand()
+    {
+        var libraryItemOption = new Option<string>("--library-item") { Description = "Library item ID", Required = true };
+        var currentTimeOption = new Option<double?>("--current-time") { Description = "Audio position in seconds" };
+        var isFinishedOption = new Option<bool?>("--is-finished") { Description = "true|false; explicit value required (omit to leave unchanged)" };
+        var ebookLocationOption = new Option<string?>("--ebook-location") { Description = "EPUB CFI string; pass \"\" to clear" };
+        var ebookProgressOption = new Option<double?>("--ebook-progress") { Description = "Ebook completion fraction (0..1)" };
+        var hideFromContinueOption = new Option<bool?>("--hide-from-continue-listening") { Description = "true|false; explicit value required" };
+        var finishedAtOption = new Option<string?>("--finished-at") { Description = "ISO 8601 finish timestamp; requires --is-finished true (backdating)" };
+        var command = new Command("set", "Set / update / clear progress fields for a library item")
+        {
+            libraryItemOption, currentTimeOption, isFinishedOption,
+            ebookLocationOption, ebookProgressOption, hideFromContinueOption, finishedAtOption
+        };
+        command.AddHelpSection("Notes", HelpSectionPosition.Top,
+            "Booleans take explicit true|false (omit to leave unchanged). At",
+            "least one body flag is required. --finished-at is only honored",
+            "when paired with --is-finished true (use case: backdating a",
+            "completion timestamp). Echoes the post-update progress via a",
+            "follow-up GET.");
+        command.AddExamples(
+            "abs-cli items progress set --library-item \"li_abc\" --is-finished true",
+            "abs-cli items progress set --library-item \"li_abc\" --current-time 1234.5",
+            "abs-cli items progress set --library-item \"li_abc\" --ebook-location \"\" --ebook-progress 0",
+            "abs-cli items progress set --library-item \"li_abc\" --is-finished true --finished-at \"2026-05-28T12:00:00Z\"");
+        command.AddResponseExample<MediaProgress>();
+        command.SetAction(async (parseResult, cancellationToken) =>
+        {
+            var lid = parseResult.GetValue(libraryItemOption)!;
+            var currentTime = parseResult.GetValue(currentTimeOption);
+            var isFinished = parseResult.GetValue(isFinishedOption);
+            var ebookLocation = parseResult.GetValue(ebookLocationOption);
+            var ebookProgress = parseResult.GetValue(ebookProgressOption);
+            var hideFromContinue = parseResult.GetValue(hideFromContinueOption);
+            var finishedAtRaw = parseResult.GetValue(finishedAtOption);
+
+            var body = new ProgressUpdateRequest
+            {
+                CurrentTime = currentTime,
+                IsFinished = isFinished,
+                EbookLocation = ebookLocation,
+                EbookProgress = ebookProgress,
+                HideFromContinueListening = hideFromContinue
+            };
+
+            // --finished-at requires --is-finished true (server only honors
+            // user-supplied finishedAt during the unfinished→finished
+            // transition; see MediaProgress.js:192-197).
+            if (finishedAtRaw != null)
+            {
+                if (isFinished != true)
+                {
+                    _logger.Error("--finished-at only applies with --is-finished true (server ignores it otherwise).");
+                    Environment.Exit(1);
+                    return 1;
+                }
+                if (!DateTimeOffset.TryParse(finishedAtRaw, CultureInfo.InvariantCulture,
+                        DateTimeStyles.AssumeUniversal, out var dto))
+                {
+                    _logger.Error($"--finished-at value '{finishedAtRaw}' is not valid ISO 8601.");
+                    Environment.Exit(1);
+                    return 1;
+                }
+                body.FinishedAt = dto.ToUnixTimeMilliseconds();
+            }
+
+            // At least one body flag required.
+            if (currentTime == null && isFinished == null && ebookLocation == null
+                && ebookProgress == null && hideFromContinue == null && body.FinishedAt == null)
+            {
+                _logger.Error("Specify at least one of --current-time, --is-finished, --ebook-location, --ebook-progress, --hide-from-continue-listening, --finished-at");
+                Environment.Exit(1);
+                return 1;
+            }
+
+            var (client, _) = CommandHelper.BuildClient();
+            var service = new ProgressService(client);
+            var result = await service.SetAsync(lid, body);
+            ConsoleOutput.WriteJson(result, AppJsonContext.Default.MediaProgress);
+            return 0;
+        });
+        return command;
+    }
+
+    private static Command CreateProgressRemoveCommand()
+    {
+        var libraryItemOption = new Option<string>("--library-item") { Description = "Library item ID", Required = true };
+        var command = new Command("remove", "Clear all progress for a library item") { libraryItemOption };
+        command.AddHelpSection("Notes", HelpSectionPosition.Top,
+            "Removes both audio and ebook progress in one shot — server has",
+            "no per-half delete. To reset only one half, use `items progress",
+            "set` with cleared values for the half you want zeroed (e.g.",
+            "--ebook-location \"\" --ebook-progress 0).");
+        command.AddExamples(
+            "abs-cli items progress remove --library-item \"li_abc\"");
+        command.AddHelpSection("Response shape", HelpSectionPosition.Bottom,
+            "{ \"success\": \"true\" }");
+        command.SetAction(async (parseResult, cancellationToken) =>
+        {
+            var lid = parseResult.GetValue(libraryItemOption)!;
+            var (client, _) = CommandHelper.BuildClient();
+            var service = new ProgressService(client);
+            await service.RemoveAsync(lid);
+            ConsoleOutput.WriteJson(new Dictionary<string, string> { ["success"] = "true" });
             return 0;
         });
         return command;

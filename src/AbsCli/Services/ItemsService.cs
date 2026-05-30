@@ -35,15 +35,18 @@ public class ItemsService
     }
 
     /// <summary>
-    /// Get a single library item in ABS's expanded shape. Adds `?expanded=1`
-    /// to the URL so the server returns libraryFiles[], lastScan,
-    /// scanVersion, oldLibraryItemId, and the deeper media shape.
+    /// Get a single library item in ABS's expanded shape. Adds
+    /// <c>?expanded=1</c> to the URL. If <paramref name="include"/> is
+    /// non-empty, appends <c>&amp;include=...</c> (comma-separated values
+    /// passed verbatim). Valid values: <c>progress</c>, <c>rssfeed</c>,
+    /// <c>share</c> (admin + book only), <c>downloads</c> (podcast only).
     /// </summary>
-    public async Task<LibraryItemExpanded> GetExpandedAsync(string id)
+    public async Task<LibraryItemExpanded> GetExpandedAsync(string id, string? include = null)
     {
-        return await _client.GetAsync(
-            ApiEndpoints.Item(id) + "?expanded=1",
-            AppJsonContext.Default.LibraryItemExpanded);
+        var url = ApiEndpoints.Item(id) + "?expanded=1";
+        if (!string.IsNullOrEmpty(include))
+            url += "&include=" + Uri.EscapeDataString(include);
+        return await _client.GetAsync(url, AppJsonContext.Default.LibraryItemExpanded);
     }
 
     public async Task<UpdateMediaResponse> UpdateMediaAsync(string id, string jsonBody)

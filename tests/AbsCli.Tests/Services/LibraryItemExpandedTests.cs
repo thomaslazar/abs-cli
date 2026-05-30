@@ -138,4 +138,38 @@ public class LibraryItemExpandedTests
         Assert.Equal("ebook", back.LibraryFiles[0].FileType);
         Assert.False(back.LibraryFiles[0].IsSupplementary);
     }
+
+    [Fact]
+    public void LibraryItemExpanded_RoundTrip_WithIncludeDecorators()
+    {
+        // Simulates the response when items get --include progress,rssfeed is used.
+        var json = """
+        {
+          "id":"li_x","libraryId":"lib_1","mediaType":"book",
+          "userMediaProgress":{"id":"mp_1","userId":"u_1","libraryItemId":"li_x",
+            "mediaItemId":"b_x","mediaItemType":"book","duration":0,"progress":0,
+            "currentTime":0,"isFinished":true,"hideFromContinueListening":false,
+            "ebookLocation":null,"ebookProgress":null,
+            "lastUpdate":0,"startedAt":0,"finishedAt":null,"episodeId":null},
+          "rssFeed":{"id":"feed_1","slug":"s"}
+        }
+        """;
+        var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.LibraryItemExpanded)!;
+        Assert.NotNull(back.UserMediaProgress);
+        Assert.True(back.UserMediaProgress!.IsFinished);
+        Assert.NotNull(back.RssFeed);
+        Assert.Equal("feed_1", back.RssFeed!.Id);
+    }
+
+    [Fact]
+    public void LibraryItemExpanded_DecoratorFields_OmittedWhenNull()
+    {
+        var obj = new LibraryItemExpanded { Id = "li_x" };
+        var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.LibraryItemExpanded);
+        Assert.DoesNotContain("userMediaProgress", json);
+        Assert.DoesNotContain("rssFeed", json);
+        Assert.DoesNotContain("mediaItemShare", json);
+        Assert.DoesNotContain("episodeDownloadsQueued", json);
+        Assert.DoesNotContain("episodesDownloading", json);
+    }
 }

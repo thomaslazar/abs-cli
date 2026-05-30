@@ -132,4 +132,24 @@ public class LibraryItemExpanded
 
     [JsonPropertyName("size")]
     public long Size { get; set; }
+
+    [JsonPropertyName("userMediaProgress")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public MediaProgress? UserMediaProgress { get; set; }
+
+    [JsonPropertyName("rssFeed")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public RssFeed? RssFeed { get; set; }
+
+    [JsonPropertyName("mediaItemShare")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public JsonElement? MediaItemShare { get; set; }
+
+    [JsonPropertyName("episodeDownloadsQueued")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<JsonElement>? EpisodeDownloadsQueued { get; set; }
+
+    [JsonPropertyName("episodesDownloading")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<JsonElement>? EpisodesDownloading { get; set; }
 }
