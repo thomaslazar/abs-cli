@@ -66,4 +66,10 @@ public static class ApiEndpoints
     public static string CollectionBatchAdd(string id) => $"api/collections/{id}/batch/add";
     public static string CollectionBatchRemove(string id) => $"api/collections/{id}/batch/remove";
     public static string LibraryCollections(string libraryId) => $"api/libraries/{libraryId}/collections";
+
+    // Me + Progress
+    public const string Me = "api/me";
+    public static string MeProgress(string libraryItemId) => $"api/me/progress/{libraryItemId}";
+    public static string MeProgressById(string progressId) => $"api/me/progress/{progressId}";
+    public const string MeProgressBatchUpdate = "api/me/progress/batch/update";
 }
