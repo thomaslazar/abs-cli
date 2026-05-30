@@ -16,6 +16,7 @@ public static class ItemsCommand
         command.Subcommands.Add(CreateGetCommand());
         command.Subcommands.Add(CreateUpdateCommand());
         command.Subcommands.Add(CreateBatchUpdateCommand());
+        command.Subcommands.Add(CreateBatchUpdateProgressCommand());
         command.Subcommands.Add(CreateBatchGetCommand());
         command.Subcommands.Add(CreateScanCommand());
         command.Subcommands.Add(CreateCoverCommand());
@@ -207,6 +208,50 @@ public static class ItemsCommand
             var service = new ItemsService(client);
             var result = await service.BatchGetAsync(jsonBody);
             ConsoleOutput.WriteJson(result, AppJsonContext.Default.BatchGetResponse);
+            return 0;
+        });
+        return command;
+    }
+
+    private static Command CreateBatchUpdateProgressCommand()
+    {
+        var inputOption = new Option<string?>("--input") { Description = "JSON file with array body" };
+        var stdinOption = new Option<bool>("--stdin") { Description = "Read JSON array from stdin" };
+        var command = new Command("batch-update-progress", "Bulk update media progress from a JSON array")
+            { inputOption, stdinOption };
+        command.AddHelpSection("Notes", HelpSectionPosition.Top,
+            "Server returns 200 even when individual entries fail (errors",
+            "only logged server-side). No per-entry feedback. Recommend",
+            "pre-validating client-side or following up with `items",
+            "progress get` for entries that matter.");
+        command.AddExamples(
+            "abs-cli items batch-update-progress --input updates.json",
+            "echo '[{\"libraryItemId\":\"li_a\",\"isFinished\":true}]' | abs-cli items batch-update-progress --stdin");
+        command.AddHelpSection("Response shape", HelpSectionPosition.Bottom,
+            "{ \"success\": \"true\" }");
+        command.SetAction(async (parseResult, cancellationToken) =>
+        {
+            var input = parseResult.GetValue(inputOption);
+            var stdin = parseResult.GetValue(stdinOption);
+            string jsonBody;
+            if (stdin && input != null)
+            {
+                _logger.Error("Provide --input or --stdin, not both.");
+                Environment.Exit(1);
+                return 1;
+            }
+            if (stdin) jsonBody = await Console.In.ReadToEndAsync(cancellationToken);
+            else if (input != null) jsonBody = CommandHelper.ReadJsonInput(input);
+            else
+            {
+                _logger.Error("Provide --input <file> or --stdin.");
+                Environment.Exit(1);
+                return 1;
+            }
+            var (client, _) = CommandHelper.BuildClient();
+            var service = new ProgressService(client);
+            await service.BatchUpdateAsync(jsonBody);
+            ConsoleOutput.WriteJson(new Dictionary<string, string> { ["success"] = "true" });
             return 0;
         });
         return command;
