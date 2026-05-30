@@ -1,4 +1,5 @@
 using System.CommandLine;
+using System.Globalization;
 using System.Text.Json;
 using AbsCli.Models;
 using AbsCli.Output;
@@ -696,7 +697,8 @@ public static class ItemsCommand
                     Environment.Exit(1);
                     return 1;
                 }
-                if (!DateTimeOffset.TryParse(finishedAtRaw, out var dto))
+                if (!DateTimeOffset.TryParse(finishedAtRaw, CultureInfo.InvariantCulture,
+                        DateTimeStyles.AssumeUniversal, out var dto))
                 {
                     _logger.Error($"--finished-at value '{finishedAtRaw}' is not valid ISO 8601.");
                     Environment.Exit(1);
