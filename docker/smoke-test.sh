@@ -808,6 +808,92 @@ export ABS_TOKEN="$SAVE_TOKEN"
 
 # ============================================================
 echo ""
+echo "=== Me + Progress ==="
+# ============================================================
+
+# 1. me — assert username and permissions are present
+output=$($CLI me 2>/dev/null)
+assert_json_key "me has username" "username" "$output"
+assert_json_key "me has permissions" "permissions" "$output"
+
+# Pick a seeded library item to operate on (independent fetch — the
+# Collections block also does this but runs AFTER this one).
+progress_items_json=$($CLI items list --limit 1 2>/dev/null)
+PROGRESS_LID=$(echo "$progress_items_json" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('results',[{}])[0].get('id',''))" 2>/dev/null)
+if [ -z "$PROGRESS_LID" ]; then
+    fail "progress: seeded library item available" "no items"
+else
+    pass "progress: seeded library item available"
+fi
+
+# Cleanup trap — in case mid-flow abort leaves progress set
+progress_cleanup() {
+    if [ -n "${PROGRESS_LID:-}" ]; then
+        $CLI items progress remove --library-item "$PROGRESS_LID" >/dev/null 2>&1 || true
+    fi
+}
+trap progress_cleanup EXIT
+
+# 2. progress get on item with no progress yet → 404 exit 2
+output=$($CLI items progress get --library-item "$PROGRESS_LID" 2>&1 || true)
+if echo "$output" | grep -qi "not found"; then
+    pass "progress get: 404 surfaces when no progress recorded"
+else
+    fail "progress get: 404 surfaces when no progress recorded" "got: ${output:0:200}"
+fi
+
+# 3. progress set --is-finished true
+output=$($CLI items progress set --library-item "$PROGRESS_LID" --is-finished true 2>/dev/null)
+assert_json_expr "progress set persisted isFinished:true" "d['isFinished']==True" "$output"
+
+# 4. progress get returns isFinished:true
+output=$($CLI items progress get --library-item "$PROGRESS_LID" 2>/dev/null)
+assert_json_expr "progress get sees isFinished:true" "d['isFinished']==True" "$output"
+
+# 5. items get --include progress returns userMediaProgress with the same state
+output=$($CLI items get --id "$PROGRESS_LID" --include progress 2>/dev/null)
+assert_json_expr "items get --include progress decorates with progress" \
+    "d.get('userMediaProgress',{}).get('isFinished')==True" "$output"
+
+# 6. batch-update-progress flips isFinished back to false
+echo "[{\"libraryItemId\":\"$PROGRESS_LID\",\"isFinished\":false}]" \
+    | $CLI items batch-update-progress --stdin >/dev/null 2>&1
+output=$($CLI items progress get --library-item "$PROGRESS_LID" 2>/dev/null)
+assert_json_expr "batch-update-progress flipped isFinished to false" "d['isFinished']==False" "$output"
+
+# 7. progress remove clears the record
+output=$($CLI items progress remove --library-item "$PROGRESS_LID" 2>/dev/null)
+assert_json_expr "progress remove returns success:true" "d['success']=='true'" "$output"
+
+# 8. follow-up progress get returns 404
+output=$($CLI items progress get --library-item "$PROGRESS_LID" 2>&1 || true)
+if echo "$output" | grep -qi "not found"; then
+    pass "progress get after remove surfaces 404"
+else
+    fail "progress get after remove surfaces 404" "got: ${output:0:200}"
+fi
+
+# 9. progress set with no body flags → exit 1
+output=$($CLI items progress set --library-item "$PROGRESS_LID" 2>&1 || true)
+if echo "$output" | grep -qi "Specify at least one"; then
+    pass "progress set rejects empty body flags"
+else
+    fail "progress set rejects empty body flags" "got: ${output:0:200}"
+fi
+
+# 10. --finished-at without --is-finished true → exit 1
+output=$($CLI items progress set --library-item "$PROGRESS_LID" --finished-at "2026-05-28T12:00:00Z" 2>&1 || true)
+if echo "$output" | grep -qi "finished-at only applies"; then
+    pass "progress set rejects --finished-at without --is-finished true"
+else
+    fail "progress set rejects --finished-at without --is-finished true" "got: ${output:0:200}"
+fi
+
+trap - EXIT
+PROGRESS_LID=""
+
+# ============================================================
+echo ""
 echo "=== Collections ==="
 # ============================================================
 
