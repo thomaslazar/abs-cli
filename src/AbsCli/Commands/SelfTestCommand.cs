@@ -254,6 +254,44 @@ public static class SelfTestCommand
                 Assert(back.Id == "li_z", $"id: {back.Id}");
             });
 
+            Check("Me round-trip", () =>
+            {
+                var obj = new Me
+                {
+                    Id = "u_1",
+                    Username = "testuser",
+                    Type = "user",
+                    IsActive = true,
+                    CreatedAt = 0
+                };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.Me);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.Me)!;
+                Assert(back.Username == "testuser", $"username: {back.Username}");
+            });
+
+            Check("MediaProgress round-trip", () =>
+            {
+                var obj = new MediaProgress
+                {
+                    Id = "mp_1",
+                    UserId = "u_1",
+                    MediaItemId = "b_1",
+                    MediaItemType = "book",
+                    IsFinished = true
+                };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.MediaProgress);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.MediaProgress)!;
+                Assert(back.IsFinished, $"isFinished: {back.IsFinished}");
+            });
+
+            Check("ProgressUpdateRequest round-trip", () =>
+            {
+                var obj = new ProgressUpdateRequest { IsFinished = true };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.ProgressUpdateRequest);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.ProgressUpdateRequest)!;
+                Assert(back.IsFinished == true, $"isFinished: {back.IsFinished}");
+            });
+
             Check("RssFeed round-trip", () =>
             {
                 var obj = new RssFeed { Id = "feed_1", Slug = "s" };
