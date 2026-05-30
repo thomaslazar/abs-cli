@@ -23,6 +23,7 @@ rootCommand.Subcommands.Add(LibrariesCommand.Create());
 rootCommand.Subcommands.Add(ItemsCommand.Create());
 rootCommand.Subcommands.Add(SeriesCommand.Create());
 rootCommand.Subcommands.Add(AuthorsCommand.Create());
+rootCommand.Subcommands.Add(CollectionsCommand.Create());
 rootCommand.Subcommands.Add(SearchCommand.Create());
 rootCommand.Subcommands.Add(BackupCommand.Create());
 rootCommand.Subcommands.Add(CacheCommand.Create());

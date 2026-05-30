@@ -56,6 +56,11 @@ namespace AbsCli.Models;
 [JsonSerializable(typeof(UploadManifestEntry))]
 [JsonSerializable(typeof(UploadReceipt))]
 [JsonSerializable(typeof(List<UploadManifestEntry>))]
+[JsonSerializable(typeof(Collection))]
+[JsonSerializable(typeof(RssFeed))]
+[JsonSerializable(typeof(CollectionCreateRequest))]
+[JsonSerializable(typeof(CollectionBooksRequest))]
+[JsonSerializable(typeof(CollectionBookRequest))]
 [JsonSourceGenerationOptions(WriteIndented = true)]
 public partial class AppJsonContext : JsonSerializerContext;
 

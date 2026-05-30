@@ -213,6 +213,55 @@ public static class SelfTestCommand
                 Assert(back.Page == 0, $"page: {back.Page}");
             });
 
+            Check("Collection round-trip", () =>
+            {
+                var obj = new Collection
+                {
+                    Id = "col_x",
+                    LibraryId = "lib_1",
+                    Name = "set",
+                    Description = null,
+                    Books = new(),
+                    LastUpdate = 1,
+                    CreatedAt = 0
+                };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.Collection);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.Collection)!;
+                Assert(back.Id == "col_x", $"id: {back.Id}");
+            });
+
+            Check("CollectionCreateRequest round-trip", () =>
+            {
+                var obj = new CollectionCreateRequest { LibraryId = "lib_1", Name = "n", Books = new() { "li_a" } };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.CollectionCreateRequest);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.CollectionCreateRequest)!;
+                Assert(back.Books[0] == "li_a", $"books: {back.Books[0]}");
+            });
+
+            Check("CollectionBooksRequest round-trip", () =>
+            {
+                var obj = new CollectionBooksRequest { Books = new() { "li_a", "li_b" } };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.CollectionBooksRequest);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.CollectionBooksRequest)!;
+                Assert(back.Books.Count == 2, $"count: {back.Books.Count}");
+            });
+
+            Check("CollectionBookRequest round-trip", () =>
+            {
+                var obj = new CollectionBookRequest { Id = "li_z" };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.CollectionBookRequest);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.CollectionBookRequest)!;
+                Assert(back.Id == "li_z", $"id: {back.Id}");
+            });
+
+            Check("RssFeed round-trip", () =>
+            {
+                var obj = new RssFeed { Id = "feed_1", Slug = "s" };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.RssFeed);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.RssFeed)!;
+                Assert(back.Id == "feed_1", $"id: {back.Id}");
+            });
+
             Check("BackupItem round-trip", () =>
             {
                 var obj = new BackupItem
