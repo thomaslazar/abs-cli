@@ -94,10 +94,19 @@ public static class ItemsCommand
     {
         var idOption = new Option<string>("--id") { Description = "Item ID", Required = true };
         var expandedOption = new Option<bool>("--expanded") { Description = "Return the expanded shape" };
-        var command = new Command("get", "Get a single library item by ID") { idOption, expandedOption };
+        var includeOption = new Option<string?>("--include") { Description = "Comma-separated include flags (progress, rssfeed, share, downloads). Auto-implies --expanded." };
+        var command = new Command("get", "Get a single library item by ID") { idOption, expandedOption, includeOption };
+        command.AddHelpSection("Notes", HelpSectionPosition.Top,
+            "--include automatically implies --expanded (server's include",
+            "parser only fires under expanded=1). Values: progress (your",
+            "media progress for this item), rssfeed (open RSS feed if any),",
+            "share (admin and book-only; silently skipped otherwise),",
+            "downloads (podcast-only; silently skipped for books).");
         command.AddExamples(
             "abs-cli items get --id \"li_abc123\"",
-            "abs-cli items get --id \"li_abc123\" --expanded");
+            "abs-cli items get --id \"li_abc123\" --expanded",
+            "abs-cli items get --id \"li_abc123\" --include progress",
+            "abs-cli items get --id \"li_abc123\" --include progress,rssfeed");
         command.AddResponseExample<LibraryItemMinified>();
         command.AddMediaUnionShapes();
         command.AddHelpSection("Response shape (--expanded)", HelpSectionPosition.Bottom,
@@ -105,12 +114,14 @@ public static class ItemsCommand
         command.SetAction(async (parseResult, cancellationToken) =>
         {
             var id = parseResult.GetValue(idOption)!;
-            var expanded = parseResult.GetValue(expandedOption);
+            var explicitExpanded = parseResult.GetValue(expandedOption);
+            var include = parseResult.GetValue(includeOption);
+            var expanded = explicitExpanded || !string.IsNullOrEmpty(include);
             var (client, _) = CommandHelper.BuildClient();
             var service = new ItemsService(client);
             if (expanded)
             {
-                var result = await service.GetExpandedAsync(id);
+                var result = await service.GetExpandedAsync(id, include);
                 ConsoleOutput.WriteJson(result, AppJsonContext.Default.LibraryItemExpanded);
             }
             else
