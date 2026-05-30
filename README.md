@@ -195,7 +195,7 @@ abs-cli config set defaultLibrary <library-id>
 | `libraries get --id <id>` | Get a single library |
 | `libraries scan [--force]` | Trigger a library scan (admin, async) |
 | `items list` | List items (`--filter`, `--sort`, `--limit`, `--page`, `--desc`) |
-| `items get --id <id> [--expanded]` | Get a single item (`--expanded` returns `libraryFiles[]`, `lastScan`, `scanVersion`) |
+| `items get --id <id> [--expanded] [--include progress,rssfeed,share,downloads]` | Get a single item (`--expanded` returns `libraryFiles[]`, `lastScan`, `scanVersion`; `--include` auto-implies `--expanded`) |
 | `items update --id <id> --input <json>` | Update item metadata |
 | `items batch-update` | Batch update items (`--input <file>` or `--stdin`) |
 | `items batch-get` | Batch get items by ID (`--input <file>` or `--stdin`) |
@@ -210,6 +210,11 @@ abs-cli config set defaultLibrary <library-id>
 | `items encode-m4b cancel --id <id>` | Cancel a pending encode-m4b task (admin) |
 | `items embed-metadata --id <id> [--no-backup] [--force-embed-chapters] [--wait]` | Embed ABS metadata into the audio files via ffmpeg (admin) |
 | `items batch-embed-metadata {--input <file> \| --stdin} [...]` | Batch variant of `items embed-metadata` (admin) |
+| `items progress get --library-item <lid>` | Read your progress on a library item |
+| `items progress set --library-item <lid> [flags]` | Set / mark finished / clear progress fields (typed flags; `--finished-at` requires `--is-finished true`) |
+| `items progress remove --library-item <lid>` | Clear all progress for an item (both audio + ebook) |
+| `items batch-update-progress {--input <file> \| --stdin}` | Bulk update progress from a JSON array |
+| `me` | Show the currently authenticated user |
 | `collections list [--library <id>] [--limit] [--page] [--include rssfeed]` | List collections in a library (paginated) |
 | `collections get --id <id> [--include rssfeed]` | Get a single collection (expanded) |
 | `collections create [--library <id>] --name <n> [--description <d>] {--input <file> \| --stdin}` | Create a collection (requires at least one book) |
