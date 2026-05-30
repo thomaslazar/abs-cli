@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace AbsCli.Models;
@@ -51,4 +52,12 @@ public class UserPermissions
 
     [JsonPropertyName("accessExplicitContent")]
     public bool AccessExplicitContent { get; set; }
+
+    /// <summary>
+    /// Catch-all for permission flags ABS may add in future versions.
+    /// Lets the DTO round-trip the full permissions object without
+    /// enumerating every flag the CLI doesn't act on.
+    /// </summary>
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Extra { get; set; }
 }

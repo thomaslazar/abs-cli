@@ -99,4 +99,70 @@ public class MeServiceTests
         var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.ProgressUpdateRequest);
         Assert.Contains("\"ebookLocation\": \"\"", json);
     }
+
+    [Fact]
+    public void Me_RoundTrip_Minimal()
+    {
+        var obj = new Me
+        {
+            Id = "u_1",
+            Username = "testuser",
+            Email = "test@example.com",
+            Type = "user",
+            Token = "abc",
+            IsActive = true,
+            LastSeen = 1716000000000,
+            CreatedAt = 1715000000000,
+            Permissions = new UserPermissions { Update = true, Delete = false }
+        };
+        var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.Me);
+        var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.Me)!;
+        Assert.Equal("u_1", back.Id);
+        Assert.Equal("testuser", back.Username);
+        Assert.Equal("test@example.com", back.Email);
+        Assert.True(back.IsActive);
+        Assert.NotNull(back.Permissions);
+        Assert.True(back.Permissions!.Update);
+        Assert.False(back.Permissions.Delete);
+    }
+
+    [Fact]
+    public void Me_Deserializes_FullPayload()
+    {
+        // Simulates ABS's actual /api/me response including arrays and
+        // bookmarks (round-tripped as JsonElement, never typed).
+        var json = """
+        {
+          "id":"u_1","username":"testuser","email":null,"type":"user",
+          "token":"t","isOldToken":false,
+          "permissions":{"download":true,"update":true,"delete":false,
+                         "upload":true,"accessAllLibraries":true,
+                         "accessAllTags":true,"accessExplicitContent":true},
+          "librariesAccessible":[],"itemTagsSelected":[],
+          "mediaProgress":[],"bookmarks":[{"libraryItemId":"li_1","time":42}],
+          "seriesHideFromContinueListening":[],
+          "isActive":true,"isLocked":false,"lastSeen":1716000000000,
+          "createdAt":1715000000000,"hasOpenIDLink":false
+        }
+        """;
+        var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.Me)!;
+        Assert.Equal("u_1", back.Id);
+        Assert.Single(back.Bookmarks);
+        Assert.NotNull(back.Permissions);
+        Assert.True(back.Permissions!.Download);
+    }
+
+    [Fact]
+    public void UserPermissions_Extra_PreservesUnknownFields()
+    {
+        // ABS may add new permission keys; CLI must round-trip them via the
+        // extension-data catch-all.
+        var json = """{"update":true,"delete":false,"customNewPerm":true}""";
+        var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.UserPermissions)!;
+        Assert.True(back.Update);
+        Assert.NotNull(back.Extra);
+        Assert.True(back.Extra!.ContainsKey("customNewPerm"));
+        var roundtripped = JsonSerializer.Serialize(back, AppJsonContext.Default.UserPermissions);
+        Assert.Contains("customNewPerm", roundtripped);
+    }
 }
