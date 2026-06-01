@@ -68,6 +68,17 @@ json_get() {
     echo "$1" | python3 -c "import sys,json; print(json.load(sys.stdin)$2)" 2>/dev/null
 }
 
+cleanup_items() {
+    # $1 = tmp dir to remove (may be empty), remaining args = library item IDs to hard-delete
+    abs_login root root
+    local tmp="$1"; shift
+    local id
+    for id in "$@"; do
+        [ -n "$id" ] && $CLI items delete --id "$id" --hard >/dev/null 2>&1 || true
+    done
+    [ -n "$tmp" ] && rm -rf "$tmp"
+}
+
 abs_login() {
     # $1 username, $2 password — non-interactive CLI login (writes config).
     $CLI login --server "$ABS_URL" --username "$1" --password-stdin <<<"$2" >/dev/null 2>&1
@@ -301,13 +312,7 @@ with open('$DELETE_TMP/d.mp3', 'wb') as f:
     [f.write(frame) for _ in range(38)]
 "
 DEL_ITEM_1=""; DEL_ITEM_2=""; DEL_ITEM_3=""
-delete_cleanup() {
-    abs_login root root
-    for v in "$DEL_ITEM_1" "$DEL_ITEM_2" "$DEL_ITEM_3"; do
-        [ -n "$v" ] && $CLI items delete --id "$v" --hard >/dev/null 2>&1 || true
-    done
-    rm -rf "$DELETE_TMP"
-}
+delete_cleanup() { cleanup_items "${DELETE_TMP:-}" "${DEL_ITEM_1:-}" "${DEL_ITEM_2:-}" "${DEL_ITEM_3:-}"; }
 trap delete_cleanup EXIT
 
 # Single soft delete
@@ -1242,12 +1247,7 @@ echo "=== Encode M4B Commands ==="
 ENCODE_TMP=$(mktemp -d)
 ENCODE_ITEM_ID=""
 CANCEL_TEST_ITEM_ID=""
-encode_cleanup() {
-    abs_login root root
-    [ -n "${ENCODE_ITEM_ID:-}" ] && $CLI items delete --id "$ENCODE_ITEM_ID" --hard >/dev/null 2>&1 || true
-    [ -n "${CANCEL_TEST_ITEM_ID:-}" ] && $CLI items delete --id "$CANCEL_TEST_ITEM_ID" --hard >/dev/null 2>&1 || true
-    rm -rf "$ENCODE_TMP"
-}
+encode_cleanup() { cleanup_items "${ENCODE_TMP:-}" "${ENCODE_ITEM_ID:-}" "${CANCEL_TEST_ITEM_ID:-}"; }
 trap encode_cleanup EXIT
 
 ffmpeg -y -f lavfi -i "sine=frequency=440:duration=30" -ac 2 -c:a libmp3lame -b:a 128k \
@@ -1459,11 +1459,7 @@ echo "=== Chapter Commands ==="
 
 CHAPTERS_TMP=$(mktemp -d)
 CHAPTERS_ITEM_ID=""
-chapters_cleanup() {
-    abs_login root root
-    [ -n "${CHAPTERS_ITEM_ID:-}" ] && $CLI items delete --id "$CHAPTERS_ITEM_ID" --hard >/dev/null 2>&1 || true
-    rm -rf "$CHAPTERS_TMP"
-}
+chapters_cleanup() { cleanup_items "${CHAPTERS_TMP:-}" "${CHAPTERS_ITEM_ID:-}"; }
 trap chapters_cleanup EXIT
 
 # Use the real ffmpeg fixture pattern from the encode-m4b block to avoid
@@ -1645,12 +1641,7 @@ echo "=== Embed Metadata Commands ==="
 EMBED_TMP=$(mktemp -d)
 EMBED_ITEM_ID=""
 EMBED_ITEM_ID_2=""
-embed_cleanup() {
-    abs_login root root
-    [ -n "${EMBED_ITEM_ID:-}" ] && $CLI items delete --id "$EMBED_ITEM_ID" --hard >/dev/null 2>&1 || true
-    [ -n "${EMBED_ITEM_ID_2:-}" ] && $CLI items delete --id "$EMBED_ITEM_ID_2" --hard >/dev/null 2>&1 || true
-    rm -rf "$EMBED_TMP"
-}
+embed_cleanup() { cleanup_items "${EMBED_TMP:-}" "${EMBED_ITEM_ID:-}" "${EMBED_ITEM_ID_2:-}"; }
 trap embed_cleanup EXIT
 
 # Two real-audio fixtures via ffmpeg (matches encode-m4b smoke pattern).
