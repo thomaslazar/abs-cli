@@ -19,6 +19,8 @@ public static class ItemsCommand
         command.Subcommands.Add(CreateBatchUpdateCommand());
         command.Subcommands.Add(CreateBatchUpdateProgressCommand());
         command.Subcommands.Add(CreateBatchGetCommand());
+        command.Subcommands.Add(CreateDeleteCommand());
+        command.Subcommands.Add(CreateBatchDeleteCommand());
         command.Subcommands.Add(CreateScanCommand());
         command.Subcommands.Add(CreateCoverCommand());
         command.Subcommands.Add(CreateEncodeM4bCommand());
@@ -220,6 +222,76 @@ public static class ItemsCommand
             var service = new ItemsService(client);
             var result = await service.BatchGetAsync(jsonBody);
             ConsoleOutput.WriteJson(result, AppJsonContext.Default.BatchGetResponse);
+            return 0;
+        });
+        return command;
+    }
+
+    private static Command CreateDeleteCommand()
+    {
+        var idOption = new Option<string>("--id") { Description = "Item ID", Required = true };
+        var hardOption = new Option<bool>("--hard") { Description = "Also delete files from disk (default: DB-only soft delete)" };
+        var command = new Command("delete", "Delete a library item") { idOption, hardOption };
+        command.AddPermissionRequired("delete");
+        command.AddHelpSection("Notes", HelpSectionPosition.Top,
+            "Soft delete (default) removes the item from ABS's database only —",
+            "files stay on disk and a rescan re-imports it. --hard also deletes",
+            "the files from disk (irreversible). Either way, authors and series",
+            "left empty by the deletion are pruned.");
+        command.AddExamples(
+            "abs-cli items delete --id \"li_abc123\"",
+            "abs-cli items delete --id \"li_abc123\" --hard");
+        command.AddHelpSection("Response shape", HelpSectionPosition.Bottom,
+            "{ \"success\": \"true\" }");
+        command.SetAction(async (parseResult, cancellationToken) =>
+        {
+            var id = parseResult.GetValue(idOption)!;
+            var hard = parseResult.GetValue(hardOption);
+            var (client, _) = CommandHelper.BuildClient();
+            var service = new ItemsService(client);
+            await service.DeleteAsync(id, hard);
+            ConsoleOutput.WriteJson(new Dictionary<string, string> { ["success"] = "true" });
+            return 0;
+        });
+        return command;
+    }
+
+    private static Command CreateBatchDeleteCommand()
+    {
+        var inputOption = new Option<string?>("--input") { Description = "JSON file with {\"libraryItemIds\":[...]}" };
+        var stdinOption = new Option<bool>("--stdin") { Description = "Read JSON from stdin" };
+        var hardOption = new Option<bool>("--hard") { Description = "Also delete files from disk (applies to every id in the batch)" };
+        var command = new Command("batch-delete", "Delete multiple library items")
+            { inputOption, stdinOption, hardOption };
+        command.AddPermissionRequired("delete");
+        command.AddHelpSection("Notes", HelpSectionPosition.Top,
+            "--hard applies to every id in the batch (server has no per-item",
+            "granularity). All-or-nothing on access: if you lack access to any",
+            "item in the batch, the whole request is refused. Soft vs hard",
+            "semantics identical to `items delete`.");
+        command.AddExamples(
+            "abs-cli items batch-delete --input ids.json",
+            "echo '{\"libraryItemIds\":[\"li_a\",\"li_b\"]}' | abs-cli items batch-delete --stdin --hard");
+        command.AddHelpSection("Response shape", HelpSectionPosition.Bottom,
+            "{ \"success\": \"true\" }");
+        command.SetAction(async (parseResult, cancellationToken) =>
+        {
+            var input = parseResult.GetValue(inputOption);
+            var stdin = parseResult.GetValue(stdinOption);
+            var hard = parseResult.GetValue(hardOption);
+            string jsonBody;
+            if (stdin) jsonBody = await Console.In.ReadToEndAsync(cancellationToken);
+            else if (input != null) jsonBody = CommandHelper.ReadJsonInput(input);
+            else
+            {
+                _logger.Error("Provide --input <file> or --stdin");
+                Environment.Exit(1);
+                return 1;
+            }
+            var (client, _) = CommandHelper.BuildClient();
+            var service = new ItemsService(client);
+            await service.BatchDeleteAsync(jsonBody, hard);
+            ConsoleOutput.WriteJson(new Dictionary<string, string> { ["success"] = "true" });
             return 0;
         });
         return command;
