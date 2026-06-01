@@ -64,7 +64,8 @@ assert $expr
 }
 
 json_get() {
-    # $1 = JSON string, $2 = python subscript chain (e.g. "['results'][0]['id']")
+    # $1 = JSON string, $2 = python expression appended to the parsed object
+    # e.g. "['results'][0]['id']", ".get('id','')", "['relPath'].lstrip('/')"
     echo "$1" | python3 -c "import sys,json; print(json.load(sys.stdin)$2)" 2>/dev/null
 }
 
@@ -628,7 +629,7 @@ output=$($CLI upload --title "Smoke Test Upload" --author "Test Author" \
     --folder "$FOLDER_ID" --wait --files "$UPLOAD_TMP/test.mp3" 2>/dev/null)
 UPLOADED_ITEM_ID=""
 assert_json_expr "upload --wait returned item JSON" "'id' in d" "$output"
-UPLOADED_ITEM_ID=$(json_get "$output" "['id']")
+UPLOADED_ITEM_ID=$(json_get "$output" "['id']" || echo "")
 
 abs_login root root
 
@@ -1112,7 +1113,7 @@ with open('$COVER_FILE', 'wb') as f:
 # --- Mode 1: --file (multipart upload) ---
 output=$($CLI items cover set --id "$FIRST_ITEM_ID" --file "$COVER_FILE" 2>/dev/null)
 assert_json_expr "items cover set --file applied cover" "d['success']==True and d['cover']" "$output"
-SERVER_COVER_PATH=$(json_get "$output" "['cover']")
+SERVER_COVER_PATH=$(json_get "$output" "['cover']" || echo "")
 
 output=$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)
 assert_json_expr "items get reports non-null coverPath after --file set" "d['media'].get('coverPath')" "$output"
