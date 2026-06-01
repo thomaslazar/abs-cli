@@ -75,6 +75,20 @@ public class ItemsService
         return await _client.PostAsync(ApiEndpoints.ItemsBatchGet, jsonBody, AppJsonContext.Default.BatchGetResponse);
     }
 
+    public async Task DeleteAsync(string id, bool hard)
+    {
+        var url = ApiEndpoints.Item(id);
+        if (hard) url += "?hard=1";
+        await _client.DeleteAsync(url, "'delete' permission");
+    }
+
+    public async Task BatchDeleteAsync(string jsonBody, bool hard)
+    {
+        var url = ApiEndpoints.ItemsBatchDelete;
+        if (hard) url += "?hard=1";
+        await _client.PostAsync(url, jsonBody, "'delete' permission");
+    }
+
     public async Task<ScanResult> ScanAsync(string id)
     {
         return await _client.PostEmptyAsync(ApiEndpoints.ItemScan(id),
