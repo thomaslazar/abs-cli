@@ -82,8 +82,7 @@ else
     exit 1
 fi
 
-LIB_ID=$($CLI libraries list 2>/dev/null \
-    | python3 -c "import sys,json; print(json.load(sys.stdin)['libraries'][0]['id'])")
+LIB_ID=$(json_get "$($CLI libraries list 2>/dev/null)" "['libraries'][0]['id']")
 
 echo "ABS_URL=$ABS_URL  LIB_ID=$LIB_ID"
 echo ""
@@ -206,15 +205,14 @@ assert_json_expr "items list pagination: 5 results" "len(d['results'])==5" "$out
 assert_json_expr "items list pagination: total still 16" "d['total']==16" "$output"
 
 # Get single item
-FIRST_ITEM_ID=$(echo "$output" | python3 -c "import sys,json; print(json.load(sys.stdin)['results'][0]['id'])")
+FIRST_ITEM_ID=$(json_get "$output" "['results'][0]['id']")
 output=$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)
 assert_json_key "items get has id" "id" "$output"
 assert_json_expr "items get correct id" "d['id']=='$FIRST_ITEM_ID'" "$output"
 assert_json_key "items get has media" "media" "$output"
 
 # Update metadata — change title, verify it sticks
-ORIGINAL_TITLE=$(echo "$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)" \
-    | python3 -c "import sys,json; print(json.load(sys.stdin)['media']['metadata']['title'])")
+ORIGINAL_TITLE=$(json_get "$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)" "['media']['metadata']['title']")
 output=$(echo '{"metadata":{"title":"Smoke Test Updated Title"}}' | $CLI items update --id "$FIRST_ITEM_ID" --stdin 2>/dev/null)
 assert_json_key "items update returns updated item" "libraryItem" "$output"
 
@@ -259,8 +257,7 @@ echo '{"metadata":{"publisher":null}}' \
     | $CLI items update --id "$FIRST_ITEM_ID" --stdin 2>/dev/null > /dev/null
 
 # Batch get — fetch two items by ID
-SECOND_ITEM_ID=$($CLI items list --limit 5 --page 0 2>/dev/null \
-    | python3 -c "import sys,json; print(json.load(sys.stdin)['results'][1]['id'])")
+SECOND_ITEM_ID=$(json_get "$($CLI items list --limit 5 --page 0 2>/dev/null)" "['results'][1]['id']")
 output=$(echo "{\"libraryItemIds\":[\"$FIRST_ITEM_ID\",\"$SECOND_ITEM_ID\"]}" \
     | $CLI items batch-get --stdin 2>/dev/null)
 assert_json_expr "batch-get returns 2 items" "len(d.get('libraryItems',[]))==2" "$output"
@@ -278,8 +275,8 @@ else
 fi
 
 # Verify both items actually got the new publisher.
-pub_a=$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null | python3 -c "import sys,json; print(json.load(sys.stdin)['media']['metadata'].get('publisher'))")
-pub_b=$($CLI items get --id "$SECOND_ITEM_ID" 2>/dev/null | python3 -c "import sys,json; print(json.load(sys.stdin)['media']['metadata'].get('publisher'))")
+pub_a=$(json_get "$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)" "['media']['metadata'].get('publisher')")
+pub_b=$(json_get "$($CLI items get --id "$SECOND_ITEM_ID" 2>/dev/null)" "['media']['metadata'].get('publisher')")
 if [ "$pub_a" = "Smoke Batch Press A" ] && [ "$pub_b" = "Smoke Batch Press B" ]; then
     pass "batch-update persisted both items"
 else
@@ -296,8 +293,7 @@ echo "=== Item Delete ==="
 
 # Resolve FOLDER_ID locally — this section runs before the Upload
 # section (which sets the shared FOLDER_ID), so don't depend on it.
-DELETE_FOLDER_ID=$($CLI libraries get --id "$LIB_ID" 2>/dev/null \
-    | python3 -c "import sys,json; print(json.load(sys.stdin)['folders'][0]['id'])")
+DELETE_FOLDER_ID=$(json_get "$($CLI libraries get --id "$LIB_ID" 2>/dev/null)" "['folders'][0]['id']")
 DELETE_TMP=$(mktemp -d)
 python3 -c "
 header = bytes([0xFF, 0xFB, 0x90, 0x00]); frame = header + b'\x00' * 413
@@ -316,7 +312,7 @@ trap delete_cleanup EXIT
 
 # Single soft delete
 out=$($CLI upload --library "$LIB_ID" --folder "$DELETE_FOLDER_ID" --title "DELETE_SOFT" --author "Del Author" --wait --files "$DELETE_TMP/d.mp3" 2>/dev/null)
-DEL_ITEM_1=$(echo "$out" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
+DEL_ITEM_1=$(json_get "$out" ".get('id','')")
 out=$($CLI items delete --id "$DEL_ITEM_1" 2>/dev/null)
 assert_json_expr "items delete returns success" "d['success']=='true'" "$out"
 out=$($CLI items get --id "$DEL_ITEM_1" 2>&1 || true)
@@ -325,9 +321,9 @@ DEL_ITEM_1=""
 
 # Batch hard delete (two items)
 out=$($CLI upload --library "$LIB_ID" --folder "$DELETE_FOLDER_ID" --title "DELETE_B1" --author "Del Author" --wait --files "$DELETE_TMP/d.mp3" 2>/dev/null)
-DEL_ITEM_2=$(echo "$out" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
+DEL_ITEM_2=$(json_get "$out" ".get('id','')")
 out=$($CLI upload --library "$LIB_ID" --folder "$DELETE_FOLDER_ID" --title "DELETE_B2" --author "Del Author" --wait --files "$DELETE_TMP/d.mp3" 2>/dev/null)
-DEL_ITEM_3=$(echo "$out" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
+DEL_ITEM_3=$(json_get "$out" ".get('id','')")
 out=$(echo "{\"libraryItemIds\":[\"$DEL_ITEM_2\",\"$DEL_ITEM_3\"]}" | $CLI items batch-delete --stdin --hard 2>/dev/null)
 assert_json_expr "items batch-delete returns success" "d['success']=='true'" "$out"
 out=$($CLI items get --id "$DEL_ITEM_2" 2>&1 || true)
@@ -338,7 +334,7 @@ DEL_ITEM_2=""; DEL_ITEM_3=""
 
 # Permission denial: readonlyuser lacks delete (part E)
 out=$($CLI upload --library "$LIB_ID" --folder "$DELETE_FOLDER_ID" --title "DELETE_DENY" --author "Del Author" --wait --files "$DELETE_TMP/d.mp3" 2>/dev/null)
-DEL_ITEM_1=$(echo "$out" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
+DEL_ITEM_1=$(json_get "$out" ".get('id','')")
 abs_login readonlyuser readonlypass
 out=$($CLI items delete --id "$DEL_ITEM_1" 2>&1 || true)
 if echo "$out" | grep -qi "permission denied.*delete"; then pass "items delete: readonlyuser hits 'delete' permission denial"; else fail "items delete: readonlyuser hits 'delete' permission denial" "got: ${out:0:160}"; fi
@@ -360,7 +356,7 @@ assert_json_expr "series list has 3 series" "d['total']==3" "$output"
 assert_json_expr "series list returns results" "len(d['results'])==3" "$output"
 
 # Get a specific series
-FIRST_SERIES_ID=$(echo "$output" | python3 -c "import sys,json; print(json.load(sys.stdin)['results'][0]['id'])")
+FIRST_SERIES_ID=$(json_get "$output" "['results'][0]['id']")
 output=$($CLI series get --id "$FIRST_SERIES_ID" 2>/dev/null)
 assert_json_key "series get has id" "id" "$output"
 assert_json_key "series get has name" "name" "$output"
@@ -403,7 +399,7 @@ fi
 
 # Reverse sort by name — first result should NOT be the alphabetically-first name
 output=$($CLI authors list --sort name --desc 2>/dev/null)
-FIRST_NAME=$(echo "$output" | python3 -c "import sys,json; print(json.load(sys.stdin)['results'][0]['name'])")
+FIRST_NAME=$(json_get "$output" "['results'][0]['name']")
 ALPHA_FIRST=$(echo "$output" | python3 -c "import sys,json; print(sorted(a['name'] for a in json.load(sys.stdin)['results'])[0])")
 if [ "$FIRST_NAME" != "$ALPHA_FIRST" ]; then
     pass "authors list --sort name --desc starts with last name alphabetically"
@@ -568,7 +564,7 @@ output=$($CLI backup create 2>/dev/null)
 assert_json_key "backup create returns backups" "backups" "$output"
 assert_json_expr "backup create has at least 1 backup" "len(d['backups'])>=1" "$output"
 
-BACKUP_ID=$(echo "$output" | python3 -c "import sys,json; print(json.load(sys.stdin)['backups'][-1]['id'])")
+BACKUP_ID=$(json_get "$output" "['backups'][-1]['id']")
 
 output=$($CLI backup list 2>/dev/null)
 assert_json_key "backup list has backups" "backups" "$output"
@@ -610,8 +606,7 @@ echo ""
 echo "=== Upload Command ==="
 # ============================================================
 
-FOLDER_ID=$(echo "$($CLI libraries get --id "$LIB_ID" 2>/dev/null)" \
-    | python3 -c "import sys,json; print(json.load(sys.stdin)['folders'][0]['id'])")
+FOLDER_ID=$(json_get "$($CLI libraries get --id "$LIB_ID" 2>/dev/null)" "['folders'][0]['id']")
 
 UPLOAD_TMP=$(mktemp -d)
 python3 -c "
@@ -629,7 +624,7 @@ output=$($CLI upload --title "Smoke Test Upload" --author "Test Author" \
 UPLOADED_ITEM_ID=""
 if echo "$output" | python3 -c "import sys,json; d=json.load(sys.stdin); assert 'id' in d" 2>/dev/null; then
     pass "upload --wait returned item JSON"
-    UPLOADED_ITEM_ID=$(echo "$output" | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
+    UPLOADED_ITEM_ID=$(json_get "$output" "['id']")
 else
     fail "upload --wait returned item JSON" "no id in response"
     echo "    response: ${output:0:200}"
@@ -660,10 +655,10 @@ run_drift_case() {
         return
     fi
     local actual
-    actual=$(echo "$out" | python3 -c "import sys,json; print(json.load(sys.stdin)['relPath'].lstrip('/'))" 2>/dev/null || echo "PARSE_ERROR")
+    actual=$(json_get "$out" "['relPath'].lstrip('/')" || echo "PARSE_ERROR")
     if [ "$actual" = "$expected_relpath" ]; then
         pass "sanitize drift: $label"
-        local item_id=$(echo "$out" | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])" 2>/dev/null)
+        local item_id=$(json_get "$out" "['id']")
         [ -n "$item_id" ] && $CLI items delete --id "$item_id" --hard >/dev/null 2>&1 || true
     else
         fail "sanitize drift: $label" "expected relPath '$expected_relpath', got '$actual'"
@@ -732,7 +727,7 @@ fi
 prefix_out=$($CLI upload --title "Collision Prefix" --author "Collide Author Prefix" \
     --folder "$FOLDER_ID" --prefix-source-dir --wait \
     --files "$COLLIDE_TMP"/Part1/*.mp3 "$COLLIDE_TMP"/Part2/*.mp3 2>/dev/null)
-PREFIX_ITEM=$(echo "$prefix_out" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))" 2>/dev/null || echo "")
+PREFIX_ITEM=$(json_get "$prefix_out" ".get('id','')" || echo "")
 if [ -n "$PREFIX_ITEM" ]; then
     pass "upload --prefix-source-dir created item"
     abs_login root root
@@ -753,7 +748,7 @@ cat > "$COLLIDE_TMP/manifest.json" <<EOF
 EOF
 manifest_out=$($CLI upload --title "Collision Manifest" --author "Collide Author Manifest" \
     --folder "$FOLDER_ID" --files-manifest "$COLLIDE_TMP/manifest.json" --wait 2>/dev/null)
-MANIFEST_ITEM=$(echo "$manifest_out" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))" 2>/dev/null || echo "")
+MANIFEST_ITEM=$(json_get "$manifest_out" ".get('id','')" || echo "")
 if [ -n "$MANIFEST_ITEM" ]; then
     pass "upload --files-manifest created item"
     abs_login root root
@@ -1122,7 +1117,7 @@ with open('$COVER_FILE', 'wb') as f:
 output=$($CLI items cover set --id "$FIRST_ITEM_ID" --file "$COVER_FILE" 2>/dev/null)
 if echo "$output" | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['success']==True and d['cover']" 2>/dev/null; then
     pass "items cover set --file applied cover"
-    SERVER_COVER_PATH=$(echo "$output" | python3 -c "import sys,json; print(json.load(sys.stdin)['cover'])")
+    SERVER_COVER_PATH=$(json_get "$output" "['cover']")
 else
     fail "items cover set --file applied cover" "unexpected response"
     echo "    response: ${output:0:200}"
@@ -1270,7 +1265,7 @@ fi
 output=$($CLI upload --library "$LIB_ID" --folder "$FOLDER_ID" \
     --title "ENCODE_M4B_TEST" --author "Smoke Author" \
     --wait --files "$ENCODE_TMP/track1.mp3" "$ENCODE_TMP/track2.mp3" 2>/dev/null)
-ENCODE_ITEM_ID=$(echo "$output" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id', ''))" 2>/dev/null)
+ENCODE_ITEM_ID=$(json_get "$output" ".get('id', '')")
 if [ -n "$ENCODE_ITEM_ID" ]; then
     pass "encode-m4b: upload created a library item (id=$ENCODE_ITEM_ID)"
 else
@@ -1378,7 +1373,7 @@ fi
 output=$($CLI upload --library "$LIB_ID" --folder "$FOLDER_ID" \
     --title "ENCODE_M4B_CANCEL_TEST" --author "Smoke Author" \
     --wait --files "$ENCODE_TMP/track1.mp3" "$ENCODE_TMP/track2.mp3" 2>/dev/null)
-CANCEL_TEST_ITEM_ID=$(echo "$output" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id', ''))" 2>/dev/null)
+CANCEL_TEST_ITEM_ID=$(json_get "$output" ".get('id', '')")
 if [ -n "$CANCEL_TEST_ITEM_ID" ]; then
     pass "encode-m4b cancel: upload created cancel-test item (id=$CANCEL_TEST_ITEM_ID)"
 else
@@ -1481,7 +1476,7 @@ output=$($CLI upload --folder "$FOLDER_ID" \
     --title "CHAPTERS_TEST" --author "Smoke Author" \
     --wait --files "$CHAPTERS_TMP/test.mp3" 2>/dev/null)
 abs_login root root
-CHAPTERS_ITEM_ID=$(echo "$output" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id', ''))" 2>/dev/null)
+CHAPTERS_ITEM_ID=$(json_get "$output" ".get('id', '')")
 if [ -n "$CHAPTERS_ITEM_ID" ]; then
     pass "chapters: upload created test item (id=$CHAPTERS_ITEM_ID)"
 else
@@ -1669,12 +1664,12 @@ abs_login uploaduser uploadpass
 output=$($CLI upload --folder "$FOLDER_ID" \
     --title "EMBED_METADATA_TEST_1" --author "Smoke Author" \
     --wait --files "$EMBED_TMP/track1.mp3" 2>/dev/null)
-EMBED_ITEM_ID=$(echo "$output" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id', ''))" 2>/dev/null)
+EMBED_ITEM_ID=$(json_get "$output" ".get('id', '')")
 
 output=$($CLI upload --folder "$FOLDER_ID" \
     --title "EMBED_METADATA_TEST_2" --author "Smoke Author" \
     --wait --files "$EMBED_TMP/track2.mp3" 2>/dev/null)
-EMBED_ITEM_ID_2=$(echo "$output" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id', ''))" 2>/dev/null)
+EMBED_ITEM_ID_2=$(json_get "$output" ".get('id', '')")
 
 abs_login root root
 
