@@ -13,13 +13,22 @@ public static class LoginCommand
         {
             Description = "Audiobookshelf server URL"
         };
+        var usernameOption = new Option<string?>("--username") { Description = "Username (prompts if omitted)" };
+        var passwordOption = new Option<string?>("--password") { Description = "Password — visible in process list / shell history; prefer --password-stdin" };
+        var passwordStdinOption = new Option<bool>("--password-stdin") { Description = "Read the password from the first line of stdin" };
         var command = new Command("login", "Authenticate with an Audiobookshelf server")
         {
-            serverOption
+            serverOption, usernameOption, passwordOption, passwordStdinOption
         };
+        command.AddHelpSection("Notes", HelpSectionPosition.Top,
+            "--password is visible in the process list and shell history. Prefer",
+            "--password-stdin (reads the first line of stdin) for scripted use.",
+            "Any credential not supplied via flag is prompted for interactively",
+            "(username plain, password hidden).");
         command.AddExamples(
             "abs-cli login --server https://abs.example.com",
-            "abs-cli login");
+            "abs-cli login --server https://abs.example.com --username agent --password-stdin <<<\"$ABS_PW\"",
+            "abs-cli login --server https://abs.example.com --username agent --password \"$ABS_PW\"");
         command.SetAction(async (parseResult, cancellationToken) =>
         {
             var server = parseResult.GetValue(serverOption);
@@ -34,10 +43,39 @@ public static class LoginCommand
                 _logger.Error("Server URL is required.");
                 Environment.Exit(1);
             }
-            Console.Error.Write("Username: ");
-            var username = Console.ReadLine()?.Trim();
-            Console.Error.Write("Password: ");
-            var password = ReadPassword();
+            var usernameFlag = parseResult.GetValue(usernameOption);
+            var passwordFlag = parseResult.GetValue(passwordOption);
+            var passwordStdin = parseResult.GetValue(passwordStdinOption);
+            if (passwordFlag != null && passwordStdin)
+            {
+                _logger.Error("Provide --password or --password-stdin, not both.");
+                Environment.Exit(1);
+            }
+            var username = usernameFlag;
+            if (string.IsNullOrEmpty(username))
+            {
+                Console.Error.Write("Username: ");
+                username = Console.ReadLine()?.Trim();
+            }
+            string? password;
+            if (passwordFlag != null)
+            {
+                password = passwordFlag;
+            }
+            else if (passwordStdin)
+            {
+                password = ReadPasswordFromStdin(Console.In);
+                if (string.IsNullOrEmpty(password))
+                {
+                    _logger.Error("No password on stdin.");
+                    Environment.Exit(1);
+                }
+            }
+            else
+            {
+                Console.Error.Write("Password: ");
+                password = ReadPassword();
+            }
             if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
             {
                 _logger.Error("Username and password are required.");
@@ -76,6 +114,17 @@ public static class LoginCommand
             return 0;
         });
         return command;
+    }
+
+    /// <summary>
+    /// Read a password from stdin: the first line, stripped of a single
+    /// trailing CRLF/LF. Returns "" if stdin is empty. A password with an
+    /// embedded newline is not supportable via this path.
+    /// </summary>
+    internal static string ReadPasswordFromStdin(TextReader reader)
+    {
+        var line = reader.ReadLine();
+        return line ?? "";
     }
 
     private static string ReadPassword()
