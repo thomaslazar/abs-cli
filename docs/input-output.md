@@ -16,11 +16,11 @@
 ## Input for Updates
 
 ```bash
-# Single item from JSON string
-abs-cli items update --id abc123 --input '{"metadata":{"language":"English"}}'
-
-# Single item from file
+# Single item from file (--input is file-path only)
 abs-cli items update --id abc123 --input update.json
+
+# Single item from stdin (pipe inline JSON)
+echo '{"metadata":{"language":"English"}}' | abs-cli items update --id abc123 --stdin
 
 # Batch from file
 abs-cli items batch-update --input updates.json

@@ -8,6 +8,10 @@ services:
       - abs-metadata:/metadata
     environment:
       - PORT=80
+      # The smoke test authenticates via `abs-cli login` at every section
+      # (no curl token plumbing), which exceeds ABS's default auth rate
+      # limit (40 logins / 10 min). Disable it on this disposable test stack.
+      - RATE_LIMIT_AUTH_MAX=0
 
 volumes:
   abs-config:

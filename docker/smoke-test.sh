@@ -63,24 +63,30 @@ assert $expr
     fi
 }
 
-# --- Get auth token and library ID from ABS directly ---
-echo "Setting up test context..."
-TOKEN=$(curl -sf -X POST "$ABS_URL/login" \
-    -H 'Content-Type: application/json' \
-    -H 'X-Return-Tokens: true' \
-    -d '{"username":"root","password":"root"}' \
-    | python3 -c "import sys,json; print(json.load(sys.stdin)['user']['accessToken'])")
+abs_login() {
+    # $1 username, $2 password — non-interactive CLI login (writes config).
+    $CLI login --server "$ABS_URL" --username "$1" --password-stdin <<<"$2" >/dev/null 2>&1
+}
 
-LIB_ID=$(curl -sf "$ABS_URL/api/libraries" \
-    -H "Authorization: Bearer $TOKEN" \
+# --- Authenticate via the CLI (dogfoods non-interactive login) ---
+echo "Setting up test context..."
+if abs_login root root; then
+    pass "login: root non-interactive login succeeds"
+else
+    fail "login: root non-interactive login succeeds" "abs_login root failed"
+    exit 1
+fi
+
+LIB_ID=$($CLI libraries list 2>/dev/null \
     | python3 -c "import sys,json; print(json.load(sys.stdin)['libraries'][0]['id'])")
 
 echo "ABS_URL=$ABS_URL  LIB_ID=$LIB_ID"
 echo ""
 
-# Export env so CLI picks them up
+# Server + library context for commands that take them explicitly.
+# NOTE: no auth token is exported — auth is driven by the config file
+# that `$CLI login` writes (flag → env → file precedence).
 export ABS_SERVER="$ABS_URL"
-export ABS_TOKEN="$TOKEN"
 export ABS_LIBRARY="$LIB_ID"
 
 # ============================================================
@@ -204,7 +210,7 @@ assert_json_key "items get has media" "media" "$output"
 # Update metadata — change title, verify it sticks
 ORIGINAL_TITLE=$(echo "$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)" \
     | python3 -c "import sys,json; print(json.load(sys.stdin)['media']['metadata']['title'])")
-output=$($CLI items update --id "$FIRST_ITEM_ID" --input '{"metadata":{"title":"Smoke Test Updated Title"}}' 2>/dev/null)
+output=$(echo '{"metadata":{"title":"Smoke Test Updated Title"}}' | $CLI items update --id "$FIRST_ITEM_ID" --stdin 2>/dev/null)
 assert_json_key "items update returns updated item" "libraryItem" "$output"
 
 output=$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)
@@ -212,14 +218,14 @@ assert_json_expr "items update persisted new title" \
     "d['media']['metadata']['title']=='Smoke Test Updated Title'" "$output"
 
 # Restore original title
-$CLI items update --id "$FIRST_ITEM_ID" --input "{\"metadata\":{\"title\":\"$ORIGINAL_TITLE\"}}" 2>/dev/null > /dev/null
+echo "{\"metadata\":{\"title\":\"$ORIGINAL_TITLE\"}}" | $CLI items update --id "$FIRST_ITEM_ID" --stdin 2>/dev/null > /dev/null
 output=$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)
 assert_json_expr "items update restored original title" \
     "d['media']['metadata']['title']=='$ORIGINAL_TITLE'" "$output"
 
 # Update multiple fields at once
-output=$($CLI items update --id "$FIRST_ITEM_ID" \
-    --input '{"metadata":{"description":"Smoke test description","genres":["Fantasy","Epic"]}}' 2>/dev/null)
+output=$(echo '{"metadata":{"description":"Smoke test description","genres":["Fantasy","Epic"]}}' \
+    | $CLI items update --id "$FIRST_ITEM_ID" --stdin 2>/dev/null)
 assert_json_key "items multi-field update returns item" "libraryItem" "$output"
 
 output=$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)
@@ -229,8 +235,8 @@ assert_json_expr "items multi-field update: genres set" \
     "'Fantasy' in d['media']['metadata'].get('genres',[])" "$output"
 
 # Restore: clear description and genres
-$CLI items update --id "$FIRST_ITEM_ID" \
-    --input '{"metadata":{"description":null,"genres":[]}}' 2>/dev/null > /dev/null
+echo '{"metadata":{"description":null,"genres":[]}}' \
+    | $CLI items update --id "$FIRST_ITEM_ID" --stdin 2>/dev/null > /dev/null
 
 # Update from file
 TMPFILE=$(mktemp)
@@ -244,8 +250,8 @@ assert_json_expr "items update from file: publisher set" \
 rm -f "$TMPFILE"
 
 # Restore publisher
-$CLI items update --id "$FIRST_ITEM_ID" \
-    --input '{"metadata":{"publisher":null}}' 2>/dev/null > /dev/null
+echo '{"metadata":{"publisher":null}}' \
+    | $CLI items update --id "$FIRST_ITEM_ID" --stdin 2>/dev/null > /dev/null
 
 # Batch get — fetch two items by ID
 SECOND_ITEM_ID=$($CLI items list --limit 5 --page 0 2>/dev/null \
@@ -277,6 +283,65 @@ fi
 
 # Restore both
 $CLI items batch-update --stdin 2>/dev/null <<< "[{\"id\":\"$FIRST_ITEM_ID\",\"mediaPayload\":{\"metadata\":{\"publisher\":null}}},{\"id\":\"$SECOND_ITEM_ID\",\"mediaPayload\":{\"metadata\":{\"publisher\":null}}}]" > /dev/null
+
+# ============================================================
+echo ""
+echo "=== Item Delete ==="
+# ============================================================
+
+# Resolve FOLDER_ID locally — this section runs before the Upload
+# section (which sets the shared FOLDER_ID), so don't depend on it.
+DELETE_FOLDER_ID=$($CLI libraries get --id "$LIB_ID" 2>/dev/null \
+    | python3 -c "import sys,json; print(json.load(sys.stdin)['folders'][0]['id'])")
+DELETE_TMP=$(mktemp -d)
+python3 -c "
+header = bytes([0xFF, 0xFB, 0x90, 0x00]); frame = header + b'\x00' * 413
+with open('$DELETE_TMP/d.mp3', 'wb') as f:
+    [f.write(frame) for _ in range(38)]
+"
+DEL_ITEM_1=""; DEL_ITEM_2=""; DEL_ITEM_3=""
+delete_cleanup() {
+    abs_login root root
+    for v in "$DEL_ITEM_1" "$DEL_ITEM_2" "$DEL_ITEM_3"; do
+        [ -n "$v" ] && $CLI items delete --id "$v" --hard >/dev/null 2>&1 || true
+    done
+    rm -rf "$DELETE_TMP"
+}
+trap delete_cleanup EXIT
+
+# Single soft delete
+out=$($CLI upload --library "$LIB_ID" --folder "$DELETE_FOLDER_ID" --title "DELETE_SOFT" --author "Del Author" --wait --files "$DELETE_TMP/d.mp3" 2>/dev/null)
+DEL_ITEM_1=$(echo "$out" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
+out=$($CLI items delete --id "$DEL_ITEM_1" 2>/dev/null)
+assert_json_expr "items delete returns success" "d['success']=='true'" "$out"
+out=$($CLI items get --id "$DEL_ITEM_1" 2>&1 || true)
+if echo "$out" | grep -qi "not found"; then pass "soft-deleted item is gone"; else fail "soft-deleted item is gone" "got: ${out:0:160}"; fi
+DEL_ITEM_1=""
+
+# Batch hard delete (two items)
+out=$($CLI upload --library "$LIB_ID" --folder "$DELETE_FOLDER_ID" --title "DELETE_B1" --author "Del Author" --wait --files "$DELETE_TMP/d.mp3" 2>/dev/null)
+DEL_ITEM_2=$(echo "$out" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
+out=$($CLI upload --library "$LIB_ID" --folder "$DELETE_FOLDER_ID" --title "DELETE_B2" --author "Del Author" --wait --files "$DELETE_TMP/d.mp3" 2>/dev/null)
+DEL_ITEM_3=$(echo "$out" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
+out=$(echo "{\"libraryItemIds\":[\"$DEL_ITEM_2\",\"$DEL_ITEM_3\"]}" | $CLI items batch-delete --stdin --hard 2>/dev/null)
+assert_json_expr "items batch-delete returns success" "d['success']=='true'" "$out"
+out=$($CLI items get --id "$DEL_ITEM_2" 2>&1 || true)
+if echo "$out" | grep -qi "not found"; then pass "batch-hard-deleted item 1 gone"; else fail "batch-hard-deleted item 1 gone" "got: ${out:0:160}"; fi
+out=$($CLI items get --id "$DEL_ITEM_3" 2>&1 || true)
+if echo "$out" | grep -qi "not found"; then pass "batch-hard-deleted item 2 gone"; else fail "batch-hard-deleted item 2 gone" "got: ${out:0:160}"; fi
+DEL_ITEM_2=""; DEL_ITEM_3=""
+
+# Permission denial: readonlyuser lacks delete (part E)
+out=$($CLI upload --library "$LIB_ID" --folder "$DELETE_FOLDER_ID" --title "DELETE_DENY" --author "Del Author" --wait --files "$DELETE_TMP/d.mp3" 2>/dev/null)
+DEL_ITEM_1=$(echo "$out" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
+abs_login readonlyuser readonlypass
+out=$($CLI items delete --id "$DEL_ITEM_1" 2>&1 || true)
+if echo "$out" | grep -qi "permission denied.*delete"; then pass "items delete: readonlyuser hits 'delete' permission denial"; else fail "items delete: readonlyuser hits 'delete' permission denial" "got: ${out:0:160}"; fi
+abs_login root root
+
+delete_cleanup
+trap - EXIT
+DEL_ITEM_1=""
 
 # ============================================================
 echo ""
@@ -383,7 +448,7 @@ authors = json.load(sys.stdin)
 authors.append({'name': 'Smoke Test Throwaway'})
 print(json.dumps({'metadata': {'authors': authors}}))
 ")
-$CLI items update --id "$FIRST_ITEM_ID" --input "$THROWAWAY_PAYLOAD" 2>/dev/null > /dev/null
+echo "$THROWAWAY_PAYLOAD" | $CLI items update --id "$FIRST_ITEM_ID" --stdin 2>/dev/null > /dev/null
 
 output=$($CLI authors list 2>/dev/null)
 assert_json_expr "authors update added throwaway author" \
@@ -406,7 +471,7 @@ RESTORE_PAYLOAD=$(python3 -c "
 import json
 print(json.dumps({'metadata': {'authors': json.loads('$ORIGINAL_AUTHORS')}}))
 ")
-$CLI items update --id "$FIRST_ITEM_ID" --input "$RESTORE_PAYLOAD" 2>/dev/null > /dev/null
+echo "$RESTORE_PAYLOAD" | $CLI items update --id "$FIRST_ITEM_ID" --stdin 2>/dev/null > /dev/null
 
 # --- update merge-on-rename (rename throwaway into an existing author) ---
 MERGEE_PAYLOAD=$(echo "$ORIGINAL_AUTHORS" | python3 -c "
@@ -415,7 +480,7 @@ authors = json.load(sys.stdin)
 authors.append({'name': 'Smoke Test Mergee'})
 print(json.dumps({'metadata': {'authors': authors}}))
 ")
-$CLI items update --id "$FIRST_ITEM_ID" --input "$MERGEE_PAYLOAD" 2>/dev/null > /dev/null
+echo "$MERGEE_PAYLOAD" | $CLI items update --id "$FIRST_ITEM_ID" --stdin 2>/dev/null > /dev/null
 
 MERGEE_ID=$($CLI authors list 2>/dev/null | python3 -c "
 import sys,json
@@ -434,7 +499,7 @@ assert_json_expr "authors update merge removed throwaway" \
 assert_json_expr "authors list still 7 after merge" "len(d['results'])==7" "$output"
 
 # Restore book to original authors (merge added Jim Butcher to FIRST_ITEM_ID)
-$CLI items update --id "$FIRST_ITEM_ID" --input "$RESTORE_PAYLOAD" 2>/dev/null > /dev/null
+echo "$RESTORE_PAYLOAD" | $CLI items update --id "$FIRST_ITEM_ID" --stdin 2>/dev/null > /dev/null
 
 # --- image set/get/remove ---
 output=$($CLI authors image set --id "$AUTHOR_ID" --url "https://placehold.co/64x64.png" 2>/dev/null)
@@ -552,14 +617,7 @@ with open('$UPLOAD_TMP/test.mp3', 'wb') as f:
         f.write(frame)
 "
 
-UPLOAD_TOKEN=$(curl -sf -X POST "$ABS_URL/login" \
-    -H 'Content-Type: application/json' \
-    -H 'X-Return-Tokens: true' \
-    -d '{"username":"uploaduser","password":"uploadpass"}' \
-    | python3 -c "import sys,json; print(json.load(sys.stdin)['user']['accessToken'])")
-
-SAVE_TOKEN="$ABS_TOKEN"
-export ABS_TOKEN="$UPLOAD_TOKEN"
+abs_login uploaduser uploadpass
 
 output=$($CLI upload --title "Smoke Test Upload" --author "Test Author" \
     --folder "$FOLDER_ID" --wait --files "$UPLOAD_TMP/test.mp3" 2>/dev/null)
@@ -572,12 +630,11 @@ else
     echo "    response: ${output:0:200}"
 fi
 
-export ABS_TOKEN="$SAVE_TOKEN"
+abs_login root root
 
 # Cleanup: hard-delete the uploaded item (also removes orphan author "Test Author")
 if [ -n "$UPLOADED_ITEM_ID" ]; then
-    curl -sf -X DELETE "$ABS_URL/api/items/$UPLOADED_ITEM_ID?hard=1" \
-        -H "Authorization: Bearer $ABS_TOKEN" > /dev/null 2>&1 || true
+    $CLI items delete --id "$UPLOADED_ITEM_ID" --hard >/dev/null 2>&1 || true
 fi
 
 # --- Sanitisation drift detection ---
@@ -587,12 +644,12 @@ fi
 
 run_drift_case() {
     local label="$1" title="$2" author="$3" expected_relpath="$4" sequence_arg="$5" series_arg="$6"
-    export ABS_TOKEN="$UPLOAD_TOKEN"
+    abs_login uploaduser uploadpass
     local out
     out=$($CLI upload --title "$title" --author "$author" $series_arg $sequence_arg \
         --folder "$FOLDER_ID" --wait --files "$UPLOAD_TMP/test.mp3" 2>&1)
     local rc=$?
-    export ABS_TOKEN="$SAVE_TOKEN"
+    abs_login root root
     if [ $rc -ne 0 ]; then
         fail "sanitize drift: $label" "upload failed: ${out:0:300}"
         return
@@ -602,8 +659,7 @@ run_drift_case() {
     if [ "$actual" = "$expected_relpath" ]; then
         pass "sanitize drift: $label"
         local item_id=$(echo "$out" | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])" 2>/dev/null)
-        [ -n "$item_id" ] && curl -sf -X DELETE "$ABS_URL/api/items/$item_id?hard=1" \
-            -H "Authorization: Bearer $ABS_TOKEN" > /dev/null 2>&1 || true
+        [ -n "$item_id" ] && $CLI items delete --id "$item_id" --hard >/dev/null 2>&1 || true
     else
         fail "sanitize drift: $label" "expected relPath '$expected_relpath', got '$actual'"
     fi
@@ -656,7 +712,7 @@ for d in ['$COLLIDE_TMP/Part1', '$COLLIDE_TMP/Part2']:
                 f.write(frame)
 "
 
-export ABS_TOKEN="$UPLOAD_TOKEN"
+abs_login uploaduser uploadpass
 
 # Default: collision detected, error, no upload
 collide_out=$($CLI upload --title "Collision Default" --author "Collide Author" \
@@ -674,10 +730,9 @@ prefix_out=$($CLI upload --title "Collision Prefix" --author "Collide Author Pre
 PREFIX_ITEM=$(echo "$prefix_out" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))" 2>/dev/null || echo "")
 if [ -n "$PREFIX_ITEM" ]; then
     pass "upload --prefix-source-dir created item"
-    export ABS_TOKEN="$SAVE_TOKEN"
-    curl -sf -X DELETE "$ABS_URL/api/items/$PREFIX_ITEM?hard=1" \
-        -H "Authorization: Bearer $ABS_TOKEN" > /dev/null 2>&1 || true
-    export ABS_TOKEN="$UPLOAD_TOKEN"
+    abs_login root root
+    $CLI items delete --id "$PREFIX_ITEM" --hard >/dev/null 2>&1 || true
+    abs_login uploaduser uploadpass
 else
     fail "upload --prefix-source-dir created item" "item not found in library"
 fi
@@ -696,15 +751,14 @@ manifest_out=$($CLI upload --title "Collision Manifest" --author "Collide Author
 MANIFEST_ITEM=$(echo "$manifest_out" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))" 2>/dev/null || echo "")
 if [ -n "$MANIFEST_ITEM" ]; then
     pass "upload --files-manifest created item"
-    export ABS_TOKEN="$SAVE_TOKEN"
-    curl -sf -X DELETE "$ABS_URL/api/items/$MANIFEST_ITEM?hard=1" \
-        -H "Authorization: Bearer $ABS_TOKEN" > /dev/null 2>&1 || true
-    export ABS_TOKEN="$UPLOAD_TOKEN"
+    abs_login root root
+    $CLI items delete --id "$MANIFEST_ITEM" --hard >/dev/null 2>&1 || true
+    abs_login uploaduser uploadpass
 else
     fail "upload --files-manifest created item" "item not found in library"
 fi
 
-export ABS_TOKEN="$SAVE_TOKEN"
+abs_login root root
 rm -rf "$COLLIDE_TMP"
 
 # ============================================================
@@ -712,14 +766,7 @@ echo ""
 echo "=== Permission Errors ==="
 # ============================================================
 
-TEST_TOKEN=$(curl -sf -X POST "$ABS_URL/login" \
-    -H 'Content-Type: application/json' \
-    -H 'X-Return-Tokens: true' \
-    -d '{"username":"testuser","password":"testpass"}' \
-    | python3 -c "import sys,json; print(json.load(sys.stdin)['user']['accessToken'])")
-
-SAVE_TOKEN="$ABS_TOKEN"
-export ABS_TOKEN="$TEST_TOKEN"
+abs_login testuser testpass
 
 UPLOAD_TMP2=$(mktemp -d)
 python3 -c "
@@ -743,20 +790,14 @@ else
     fail "backup list as testuser shows permission denied" "got: ${error_output:0:200}"
 fi
 
-export ABS_TOKEN="$SAVE_TOKEN"
+abs_login root root
 
 # canUpdate denials: testuser AND uploaduser both have update=true in seed.sh,
 # so they can't exercise these paths. readonlyuser has update=false.
-READONLY_TOKEN=$(curl -sf -X POST "$ABS_URL/login" \
-    -H 'Content-Type: application/json' \
-    -H 'X-Return-Tokens: true' \
-    -d '{"username":"readonlyuser","password":"readonlypass"}' \
-    | python3 -c "import sys,json; print(json.load(sys.stdin)['user']['accessToken'])")
+abs_login readonlyuser readonlypass
 
-export ABS_TOKEN="$READONLY_TOKEN"
-
-error_output=$($CLI items update --id "$FIRST_ITEM_ID" \
-    --input '{"metadata":{"title":"Should Fail"}}' 2>&1 || true)
+error_output=$(echo '{"metadata":{"title":"Should Fail"}}' \
+    | $CLI items update --id "$FIRST_ITEM_ID" --stdin 2>&1 || true)
 if echo "$error_output" | grep -q "'update' permission"; then
     pass "items update as readonlyuser hits 'update' permission denial"
 else
@@ -804,7 +845,7 @@ else
     fail "cache purge as readonlyuser hits 'admin permission' denial" "got: ${error_output:0:200}"
 fi
 
-export ABS_TOKEN="$SAVE_TOKEN"
+abs_login root root
 
 # ============================================================
 echo ""
@@ -998,17 +1039,14 @@ else
 fi
 
 # 11. permission denied as readonlyuser (no `update` perm — seeded by docker/seed.sh)
-if [ -n "${READONLY_TOKEN:-}" ]; then
-    SAVE_TOKEN_COLLECTIONS="$ABS_TOKEN"
-    export ABS_TOKEN="$READONLY_TOKEN"
-    output=$(echo "{\"books\":[\"$LID1\"]}" \
-        | $CLI collections create --name "denied" --stdin 2>&1 || true)
-    export ABS_TOKEN="$SAVE_TOKEN_COLLECTIONS"
-    if echo "$output" | grep -qi "permission denied.*update"; then
-        pass "collections create: readonlyuser hits 'update' permission denial"
-    else
-        fail "collections create: readonlyuser hits 'update' permission denial" "got: ${output:0:200}"
-    fi
+abs_login readonlyuser readonlypass
+output=$(echo "{\"books\":[\"$LID1\"]}" \
+    | $CLI collections create --name "denied" --stdin 2>&1 || true)
+abs_login root root
+if echo "$output" | grep -qi "permission denied.*update"; then
+    pass "collections create: readonlyuser hits 'update' permission denial"
+else
+    fail "collections create: readonlyuser hits 'update' permission denial" "got: ${output:0:200}"
 fi
 
 trap - EXIT
@@ -1205,14 +1243,9 @@ ENCODE_TMP=$(mktemp -d)
 ENCODE_ITEM_ID=""
 CANCEL_TEST_ITEM_ID=""
 encode_cleanup() {
-    if [ -n "$ENCODE_ITEM_ID" ]; then
-        curl -sf -X DELETE "$ABS_URL/api/items/$ENCODE_ITEM_ID?hard=1" \
-            -H "Authorization: Bearer $ABS_TOKEN" > /dev/null 2>&1 || true
-    fi
-    if [ -n "$CANCEL_TEST_ITEM_ID" ]; then
-        curl -sf -X DELETE "$ABS_URL/api/items/$CANCEL_TEST_ITEM_ID?hard=1" \
-            -H "Authorization: Bearer $ABS_TOKEN" > /dev/null 2>&1 || true
-    fi
+    abs_login root root
+    [ -n "${ENCODE_ITEM_ID:-}" ] && $CLI items delete --id "$ENCODE_ITEM_ID" --hard >/dev/null 2>&1 || true
+    [ -n "${CANCEL_TEST_ITEM_ID:-}" ] && $CLI items delete --id "$CANCEL_TEST_ITEM_ID" --hard >/dev/null 2>&1 || true
     rm -rf "$ENCODE_TMP"
 }
 trap encode_cleanup EXIT
@@ -1405,17 +1438,14 @@ else
 fi
 
 # Permission denial: non-admin user attempting start should 403.
-if [ -n "${UPLOAD_TOKEN:-}" ]; then
-    SAVE_TOKEN_ENCODE="$ABS_TOKEN"
-    export ABS_TOKEN="$UPLOAD_TOKEN"
-    output=$($CLI items encode-m4b start --id "$ENCODE_ITEM_ID" --codec copy 2>&1 || true)
-    export ABS_TOKEN="$SAVE_TOKEN_ENCODE"
-    if echo "$output" | grep -qi "permission denied.*admin"; then
-        pass "encode-m4b start: non-admin user gets 403 admin-permission message"
-    else
-        fail "encode-m4b start: non-admin user gets 403 admin-permission message" "wrong / missing 403"
-        echo "    response: ${output:0:200}"
-    fi
+abs_login uploaduser uploadpass
+output=$($CLI items encode-m4b start --id "$ENCODE_ITEM_ID" --codec copy 2>&1 || true)
+abs_login root root
+if echo "$output" | grep -qi "permission denied.*admin"; then
+    pass "encode-m4b start: non-admin user gets 403 admin-permission message"
+else
+    fail "encode-m4b start: non-admin user gets 403 admin-permission message" "wrong / missing 403"
+    echo "    response: ${output:0:200}"
 fi
 
 # Cleanup runs via the trap above; call it explicitly so re-runs in the same shell are clean.
@@ -1430,10 +1460,8 @@ echo "=== Chapter Commands ==="
 CHAPTERS_TMP=$(mktemp -d)
 CHAPTERS_ITEM_ID=""
 chapters_cleanup() {
-    if [ -n "$CHAPTERS_ITEM_ID" ]; then
-        curl -sf -X DELETE "$ABS_URL/api/items/$CHAPTERS_ITEM_ID?hard=1" \
-            -H "Authorization: Bearer $ABS_TOKEN" > /dev/null 2>&1 || true
-    fi
+    abs_login root root
+    [ -n "${CHAPTERS_ITEM_ID:-}" ] && $CLI items delete --id "$CHAPTERS_ITEM_ID" --hard >/dev/null 2>&1 || true
     rm -rf "$CHAPTERS_TMP"
 }
 trap chapters_cleanup EXIT
@@ -1443,12 +1471,11 @@ trap chapters_cleanup EXIT
 ffmpeg -y -f lavfi -i "sine=frequency=440:duration=5" -ac 2 -c:a libmp3lame -b:a 128k \
     "$CHAPTERS_TMP/test.mp3" > /dev/null 2>&1
 
-SAVE_TOKEN="$ABS_TOKEN"
-export ABS_TOKEN="$UPLOAD_TOKEN"
+abs_login uploaduser uploadpass
 output=$($CLI upload --folder "$FOLDER_ID" \
     --title "CHAPTERS_TEST" --author "Smoke Author" \
     --wait --files "$CHAPTERS_TMP/test.mp3" 2>/dev/null)
-export ABS_TOKEN="$SAVE_TOKEN"
+abs_login root root
 CHAPTERS_ITEM_ID=$(echo "$output" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id', ''))" 2>/dev/null)
 if [ -n "$CHAPTERS_ITEM_ID" ]; then
     pass "chapters: upload created test item (id=$CHAPTERS_ITEM_ID)"
@@ -1619,14 +1646,9 @@ EMBED_TMP=$(mktemp -d)
 EMBED_ITEM_ID=""
 EMBED_ITEM_ID_2=""
 embed_cleanup() {
-    if [ -n "$EMBED_ITEM_ID" ]; then
-        curl -sf -X DELETE "$ABS_URL/api/items/$EMBED_ITEM_ID?hard=1" \
-            -H "Authorization: Bearer $ABS_TOKEN" > /dev/null 2>&1 || true
-    fi
-    if [ -n "$EMBED_ITEM_ID_2" ]; then
-        curl -sf -X DELETE "$ABS_URL/api/items/$EMBED_ITEM_ID_2?hard=1" \
-            -H "Authorization: Bearer $ABS_TOKEN" > /dev/null 2>&1 || true
-    fi
+    abs_login root root
+    [ -n "${EMBED_ITEM_ID:-}" ] && $CLI items delete --id "$EMBED_ITEM_ID" --hard >/dev/null 2>&1 || true
+    [ -n "${EMBED_ITEM_ID_2:-}" ] && $CLI items delete --id "$EMBED_ITEM_ID_2" --hard >/dev/null 2>&1 || true
     rm -rf "$EMBED_TMP"
 }
 trap embed_cleanup EXIT
@@ -1637,8 +1659,7 @@ ffmpeg -y -f lavfi -i "sine=frequency=440:duration=5" -ac 2 -c:a libmp3lame -b:a
 ffmpeg -y -f lavfi -i "sine=frequency=523:duration=5" -ac 2 -c:a libmp3lame -b:a 128k \
     "$EMBED_TMP/track2.mp3" > /dev/null 2>&1
 
-SAVE_TOKEN="$ABS_TOKEN"
-export ABS_TOKEN="$UPLOAD_TOKEN"
+abs_login uploaduser uploadpass
 
 output=$($CLI upload --folder "$FOLDER_ID" \
     --title "EMBED_METADATA_TEST_1" --author "Smoke Author" \
@@ -1650,7 +1671,7 @@ output=$($CLI upload --folder "$FOLDER_ID" \
     --wait --files "$EMBED_TMP/track2.mp3" 2>/dev/null)
 EMBED_ITEM_ID_2=$(echo "$output" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id', ''))" 2>/dev/null)
 
-export ABS_TOKEN="$SAVE_TOKEN"
+abs_login root root
 
 if [ -n "$EMBED_ITEM_ID" ] && [ -n "$EMBED_ITEM_ID_2" ]; then
     pass "embed-metadata: uploaded two test items ($EMBED_ITEM_ID, $EMBED_ITEM_ID_2)"
@@ -1751,9 +1772,9 @@ else
 fi
 
 # Permission denial: uploaduser is non-admin.
-export ABS_TOKEN="$UPLOAD_TOKEN"
+abs_login uploaduser uploadpass
 output=$($CLI items embed-metadata --id "$EMBED_ITEM_ID" 2>&1 || true)
-export ABS_TOKEN="$SAVE_TOKEN"
+abs_login root root
 if echo "$output" | grep -q "admin permission"; then
     pass "embed-metadata: uploaduser hits admin permission denial"
 else
@@ -1926,10 +1947,9 @@ else
 fi
 
 # Permission denial: readonlyuser (no canUpdate) → 403.
-SAVE_TOKEN="$ABS_TOKEN"
-export ABS_TOKEN="$READONLY_TOKEN"
+abs_login readonlyuser readonlypass
 output=$($CLI items toggle-ebook-status --id "$EBOOK_ITEM_ID" --ino "$PRIMARY_INO" 2>&1 || true)
-export ABS_TOKEN="$SAVE_TOKEN"
+abs_login root root
 if echo "$output" | grep -q "'update' permission"; then
     pass "toggle-ebook-status: readonlyuser hits 'update' permission denial"
 else

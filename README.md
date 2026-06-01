@@ -127,7 +127,7 @@ abs-cli upload --title "The Hobbit" --author "J.R.R. Tolkien" --files hobbit.m4b
 abs-cli metadata search --provider audible.de --title "The Hobbit" --author "Tolkien"
 
 # Update metadata
-abs-cli items update --id <item-id> --input '{"metadata":{"title":"New Title"}}'
+echo '{"metadata":{"title":"New Title"}}' | abs-cli items update --id <item-id> --stdin
 
 # Create a backup before bulk changes
 abs-cli backup create
@@ -162,7 +162,7 @@ The agent:
 1. Creates a backup (`abs-cli backup create`)
 2. Searches for affected items (`abs-cli search`, `abs-cli items list --limit 200` with pagination for broader checks)
 3. For each affected item, inspects existing metadata (author name, title, description) to infer the language — or searches a provider to confirm (`abs-cli metadata search --provider audible.de --title "..."`)
-4. Applies fixes it's confident about (`abs-cli items update --id <id> --input '{"metadata":{"language":"German"}}'`)
+4. Applies fixes it's confident about (`echo '{"metadata":{"language":"German"}}' | abs-cli items update --id <id> --stdin`)
 5. Asks you about ambiguous cases — "This book has a German author but an English title, which language should I set?"
 
 Same pattern works for any metadata issue: missing series assignments, inconsistent author naming, books without ASIN/ISBN, missing covers. You describe the problem, the agent investigates and fixes, escalating when unsure.
@@ -188,7 +188,7 @@ abs-cli config set defaultLibrary <library-id>
 
 | Command | Description |
 |---------|-------------|
-| `login` | Authenticate and store tokens |
+| `login [--server <url>] [--username <u>] [--password <pw> \| --password-stdin]` | Authenticate and store tokens (flags fall back to interactive prompt) |
 | `config get` | Show current configuration |
 | `config set <key> <value>` | Set a configuration value (`server`, `defaultLibrary`) |
 | `libraries list` | List all libraries |
@@ -196,7 +196,7 @@ abs-cli config set defaultLibrary <library-id>
 | `libraries scan [--force]` | Trigger a library scan (admin, async) |
 | `items list` | List items (`--filter`, `--sort`, `--limit`, `--page`, `--desc`) |
 | `items get --id <id> [--expanded] [--include progress,rssfeed,share,downloads]` | Get a single item (`--expanded` returns `libraryFiles[]`, `lastScan`, `scanVersion`; `--include` auto-implies `--expanded`) |
-| `items update --id <id> --input <json>` | Update item metadata |
+| `items update --id <id> {--input <file> \| --stdin}` | Update item metadata (JSON body from file or stdin; inline JSON no longer accepted) |
 | `items batch-update` | Batch update items (`--input <file>` or `--stdin`) |
 | `items batch-get` | Batch get items by ID (`--input <file>` or `--stdin`) |
 | `items scan --id <id>` | Scan a single item (admin, sync) |
@@ -214,6 +214,8 @@ abs-cli config set defaultLibrary <library-id>
 | `items progress set --library-item <lid> [flags]` | Set / mark finished / clear progress fields (typed flags; `--finished-at` requires `--is-finished true`) |
 | `items progress remove --library-item <lid>` | Clear all progress for an item (both audio + ebook) |
 | `items batch-update-progress {--input <file> \| --stdin}` | Bulk update progress from a JSON array |
+| `items delete --id <id> [--hard]` | Delete an item (soft = DB only; `--hard` also removes files) |
+| `items batch-delete {--input <file> \| --stdin} [--hard]` | Delete multiple items by ID |
 | `me` | Show the currently authenticated user |
 | `collections list [--library <id>] [--limit] [--page] [--include rssfeed]` | List collections in a library (paginated) |
 | `collections get --id <id> [--include rssfeed]` | Get a single collection (expanded) |

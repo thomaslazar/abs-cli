@@ -19,6 +19,7 @@ public static class ApiEndpoints
     public static string ItemEbookFileStatus(string id, string fileIno) => $"api/items/{id}/ebook/{fileIno}/status";
     public const string ItemsBatchUpdate = "api/items/batch/update";
     public const string ItemsBatchGet = "api/items/batch/get";
+    public const string ItemsBatchDelete = "api/items/batch/delete";
 
     public static string SeriesById(string id) => $"api/series/{id}";
     public static string AuthorById(string id) => $"api/authors/{id}";
