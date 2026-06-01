@@ -28,6 +28,11 @@ jobs:
     services:
       audiobookshelf:
         image: advplyr/audiobookshelf:2.35.0
+        # The smoke authenticates via `abs-cli login` at every section, which
+        # exceeds ABS's default auth rate limit (40 logins / 10 min). Disable
+        # it on this disposable CI instance.
+        env:
+          RATE_LIMIT_AUTH_MAX: '0'
         ports:
           - 13378:80
     steps:
