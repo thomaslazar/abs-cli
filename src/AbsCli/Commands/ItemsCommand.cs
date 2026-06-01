@@ -140,20 +140,33 @@ public static class ItemsCommand
     private static Command CreateUpdateCommand()
     {
         var idOption = new Option<string>("--id") { Description = "Item ID", Required = true };
-        var inputOption = new Option<string>("--input") { Description = "JSON input (string or file path)", Required = true };
-        var command = new Command("update", "Update a single item's metadata") { idOption, inputOption };
+        var inputOption = new Option<string?>("--input") { Description = "JSON file with the update body" };
+        var stdinOption = new Option<bool>("--stdin") { Description = "Read the update body from stdin" };
+        var command = new Command("update", "Update a single item's metadata") { idOption, inputOption, stdinOption };
         command.AddPermissionRequired("update");
+        command.AddHelpSection("Notes", HelpSectionPosition.Top,
+            "Reads the update body from a JSON file (--input <file>) or stdin",
+            "(--stdin). Inline JSON strings are no longer accepted — pipe via",
+            "--stdin instead.");
         command.AddExamples(
-            "abs-cli items update --id \"li_abc123\" --input '{\"metadata\":{\"title\":\"New Title\"}}'",
             "abs-cli items update --id \"li_abc123\" --input payload.json",
-            "abs-cli items update --id \"li_abc123\" --input '{\"metadata\":{\"genres\":[\"Fantasy\",\"Epic\"]}}'");
+            "echo '{\"metadata\":{\"title\":\"New Title\"}}' | abs-cli items update --id \"li_abc123\" --stdin");
         command.AddResponseExample<UpdateMediaResponse>();
         command.AddMediaUnionShapes();
         command.SetAction(async (parseResult, cancellationToken) =>
         {
             var id = parseResult.GetValue(idOption)!;
-            var input = parseResult.GetValue(inputOption)!;
-            var jsonBody = CommandHelper.ReadJsonInput(input);
+            var input = parseResult.GetValue(inputOption);
+            var stdin = parseResult.GetValue(stdinOption);
+            string jsonBody;
+            if (stdin) jsonBody = await Console.In.ReadToEndAsync(cancellationToken);
+            else if (input != null) jsonBody = CommandHelper.ReadJsonInput(input);
+            else
+            {
+                _logger.Error("Provide --input <file> or --stdin");
+                Environment.Exit(1);
+                return 1;
+            }
             var (client, _) = CommandHelper.BuildClient();
             var service = new ItemsService(client);
             var result = await service.UpdateMediaAsync(id, jsonBody);
