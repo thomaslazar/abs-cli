@@ -159,8 +159,20 @@ public static class ItemsCommand
             var input = parseResult.GetValue(inputOption);
             var stdin = parseResult.GetValue(stdinOption);
             string jsonBody;
-            if (stdin) jsonBody = await Console.In.ReadToEndAsync(cancellationToken);
-            else if (input != null) jsonBody = CommandHelper.ReadJsonInput(input);
+            if (stdin)
+            {
+                jsonBody = await Console.In.ReadToEndAsync(cancellationToken);
+            }
+            else if (input != null)
+            {
+                if (!File.Exists(input))
+                {
+                    _logger.Error($"--input must be a file path (got '{input}'). For inline JSON, pipe via --stdin.");
+                    Environment.Exit(1);
+                    return 1;
+                }
+                jsonBody = CommandHelper.ReadJsonInput(input);
+            }
             else
             {
                 _logger.Error("Provide --input <file> or --stdin");
