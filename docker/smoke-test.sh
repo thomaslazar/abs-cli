@@ -860,7 +860,7 @@ assert_json_key "me has permissions" "permissions" "$output"
 # Pick a seeded library item to operate on (independent fetch — the
 # Collections block also does this but runs AFTER this one).
 progress_items_json=$($CLI items list --limit 1 2>/dev/null)
-PROGRESS_LID=$(echo "$progress_items_json" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('results',[{}])[0].get('id',''))" 2>/dev/null)
+PROGRESS_LID=$(json_get "$progress_items_json" ".get('results',[{}])[0].get('id','')")
 if [ -z "$PROGRESS_LID" ]; then
     fail "progress: seeded library item available" "no items"
 else
@@ -948,9 +948,9 @@ trap collections_cleanup EXIT
 
 # Grab three seeded book library item IDs for the smoke flow.
 items_json=$($CLI items list --limit 3 2>/dev/null)
-LID1=$(echo "$items_json" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('results',[{}])[0].get('id',''))" 2>/dev/null)
-LID2=$(echo "$items_json" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('results',[{},{}])[1].get('id',''))" 2>/dev/null)
-LID3=$(echo "$items_json" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('results',[{},{},{}])[2].get('id',''))" 2>/dev/null)
+LID1=$(json_get "$items_json" ".get('results',[{}])[0].get('id','')")
+LID2=$(json_get "$items_json" ".get('results',[{},{}])[1].get('id','')")
+LID3=$(json_get "$items_json" ".get('results',[{},{},{}])[2].get('id','')")
 if [ -z "$LID1" ] || [ -z "$LID2" ] || [ -z "$LID3" ]; then
     fail "collections: 3 library items available" "missing seeded items"
 else
@@ -965,7 +965,7 @@ assert_json_key "collections list has total" "total" "$output"
 # 2. create with two books (via --stdin)
 output=$(echo "{\"books\":[\"$LID1\",\"$LID2\"]}" \
     | $CLI collections create --name "smoke test" --stdin 2>/dev/null)
-COLLECTION_ID=$(echo "$output" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('id',''))" 2>/dev/null)
+COLLECTION_ID=$(json_get "$output" ".get('id','')")
 if [ -n "$COLLECTION_ID" ]; then
     pass "collections create returns an id"
 else
@@ -999,7 +999,7 @@ fi
 # 7. reorder (put LID3 first)
 output=$(echo "{\"books\":[\"$LID3\",\"$LID2\",\"$LID1\"]}" \
     | $CLI collections reorder --id "$COLLECTION_ID" --stdin 2>/dev/null)
-FIRST_ID=$(echo "$output" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('books',[{}])[0].get('id',''))" 2>/dev/null)
+FIRST_ID=$(json_get "$output" ".get('books',[{}])[0].get('id','')")
 if [ "$FIRST_ID" = "$LID3" ]; then
     pass "reorder put LID3 first"
 else
@@ -1199,8 +1199,8 @@ fi
 # to any single provider (e.g. Google returns no covers at all for some
 # seeded titles like "Rivers of London").
 item_json=$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)
-item_title=$(echo "$item_json" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['media']['metadata'].get('title') or '')")
-item_author=$(echo "$item_json" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['media']['metadata'].get('authorName') or '')")
+item_title=$(json_get "$item_json" "['media']['metadata'].get('title') or ''")
+item_author=$(json_get "$item_json" "['media']['metadata'].get('authorName') or ''")
 
 if [ -n "$item_title" ]; then
     covers_json=$($CLI metadata covers --provider best --title "$item_title" --author "$item_author" 2>/dev/null)
