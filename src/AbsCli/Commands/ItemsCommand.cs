@@ -279,7 +279,7 @@ public static class ItemsCommand
         command.AddPermissionRequired("delete");
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
             "--hard applies to every id in the batch (server has no per-item",
-            "granularity). All-or-nothing on access: if you lack access to any",
+            "granularity). Access is all-or-nothing: if you lack access to any",
             "item in the batch, the whole request is refused. Soft vs hard",
             "semantics identical to `items delete`.");
         command.AddExamples(
