@@ -63,6 +63,11 @@ assert $expr
     fi
 }
 
+json_get() {
+    # $1 = JSON string, $2 = python subscript chain (e.g. "['results'][0]['id']")
+    echo "$1" | python3 -c "import sys,json; print(json.load(sys.stdin)$2)" 2>/dev/null
+}
+
 abs_login() {
     # $1 username, $2 password — non-interactive CLI login (writes config).
     $CLI login --server "$ABS_URL" --username "$1" --password-stdin <<<"$2" >/dev/null 2>&1
