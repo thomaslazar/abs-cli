@@ -286,6 +286,65 @@ $CLI items batch-update --stdin 2>/dev/null <<< "[{\"id\":\"$FIRST_ITEM_ID\",\"m
 
 # ============================================================
 echo ""
+echo "=== Item Delete ==="
+# ============================================================
+
+# Resolve FOLDER_ID locally — this section runs before the Upload
+# section (which sets the shared FOLDER_ID), so don't depend on it.
+DELETE_FOLDER_ID=$($CLI libraries get --id "$LIB_ID" 2>/dev/null \
+    | python3 -c "import sys,json; print(json.load(sys.stdin)['folders'][0]['id'])")
+DELETE_TMP=$(mktemp -d)
+python3 -c "
+header = bytes([0xFF, 0xFB, 0x90, 0x00]); frame = header + b'\x00' * 413
+with open('$DELETE_TMP/d.mp3', 'wb') as f:
+    [f.write(frame) for _ in range(38)]
+"
+DEL_ITEM_1=""; DEL_ITEM_2=""; DEL_ITEM_3=""
+delete_cleanup() {
+    abs_login root root
+    for v in "$DEL_ITEM_1" "$DEL_ITEM_2" "$DEL_ITEM_3"; do
+        [ -n "$v" ] && $CLI items delete --id "$v" --hard >/dev/null 2>&1 || true
+    done
+    rm -rf "$DELETE_TMP"
+}
+trap delete_cleanup EXIT
+
+# Single soft delete
+out=$($CLI upload --library "$LIB_ID" --folder "$DELETE_FOLDER_ID" --title "DELETE_SOFT" --author "Del Author" --wait --files "$DELETE_TMP/d.mp3" 2>/dev/null)
+DEL_ITEM_1=$(echo "$out" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
+out=$($CLI items delete --id "$DEL_ITEM_1" 2>/dev/null)
+assert_json_expr "items delete returns success" "d['success']=='true'" "$out"
+out=$($CLI items get --id "$DEL_ITEM_1" 2>&1 || true)
+if echo "$out" | grep -qi "not found"; then pass "soft-deleted item is gone"; else fail "soft-deleted item is gone" "got: ${out:0:160}"; fi
+DEL_ITEM_1=""
+
+# Batch hard delete (two items)
+out=$($CLI upload --library "$LIB_ID" --folder "$DELETE_FOLDER_ID" --title "DELETE_B1" --author "Del Author" --wait --files "$DELETE_TMP/d.mp3" 2>/dev/null)
+DEL_ITEM_2=$(echo "$out" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
+out=$($CLI upload --library "$LIB_ID" --folder "$DELETE_FOLDER_ID" --title "DELETE_B2" --author "Del Author" --wait --files "$DELETE_TMP/d.mp3" 2>/dev/null)
+DEL_ITEM_3=$(echo "$out" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
+out=$(echo "{\"libraryItemIds\":[\"$DEL_ITEM_2\",\"$DEL_ITEM_3\"]}" | $CLI items batch-delete --stdin --hard 2>/dev/null)
+assert_json_expr "items batch-delete returns success" "d['success']=='true'" "$out"
+out=$($CLI items get --id "$DEL_ITEM_2" 2>&1 || true)
+if echo "$out" | grep -qi "not found"; then pass "batch-hard-deleted item 1 gone"; else fail "batch-hard-deleted item 1 gone" "got: ${out:0:160}"; fi
+out=$($CLI items get --id "$DEL_ITEM_3" 2>&1 || true)
+if echo "$out" | grep -qi "not found"; then pass "batch-hard-deleted item 2 gone"; else fail "batch-hard-deleted item 2 gone" "got: ${out:0:160}"; fi
+DEL_ITEM_2=""; DEL_ITEM_3=""
+
+# Permission denial: readonlyuser lacks delete (part E)
+out=$($CLI upload --library "$LIB_ID" --folder "$DELETE_FOLDER_ID" --title "DELETE_DENY" --author "Del Author" --wait --files "$DELETE_TMP/d.mp3" 2>/dev/null)
+DEL_ITEM_1=$(echo "$out" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
+abs_login readonlyuser readonlypass
+out=$($CLI items delete --id "$DEL_ITEM_1" 2>&1 || true)
+if echo "$out" | grep -qi "permission denied.*delete"; then pass "items delete: readonlyuser hits 'delete' permission denial"; else fail "items delete: readonlyuser hits 'delete' permission denial" "got: ${out:0:160}"; fi
+abs_login root root
+
+delete_cleanup
+trap - EXIT
+DEL_ITEM_1=""
+
+# ============================================================
+echo ""
 echo "=== Series Commands ==="
 # ============================================================
 
