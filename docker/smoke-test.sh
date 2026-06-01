@@ -210,7 +210,7 @@ assert_json_key "items get has media" "media" "$output"
 # Update metadata — change title, verify it sticks
 ORIGINAL_TITLE=$(echo "$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)" \
     | python3 -c "import sys,json; print(json.load(sys.stdin)['media']['metadata']['title'])")
-output=$($CLI items update --id "$FIRST_ITEM_ID" --input '{"metadata":{"title":"Smoke Test Updated Title"}}' 2>/dev/null)
+output=$(echo '{"metadata":{"title":"Smoke Test Updated Title"}}' | $CLI items update --id "$FIRST_ITEM_ID" --stdin 2>/dev/null)
 assert_json_key "items update returns updated item" "libraryItem" "$output"
 
 output=$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)
@@ -218,14 +218,14 @@ assert_json_expr "items update persisted new title" \
     "d['media']['metadata']['title']=='Smoke Test Updated Title'" "$output"
 
 # Restore original title
-$CLI items update --id "$FIRST_ITEM_ID" --input "{\"metadata\":{\"title\":\"$ORIGINAL_TITLE\"}}" 2>/dev/null > /dev/null
+echo "{\"metadata\":{\"title\":\"$ORIGINAL_TITLE\"}}" | $CLI items update --id "$FIRST_ITEM_ID" --stdin 2>/dev/null > /dev/null
 output=$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)
 assert_json_expr "items update restored original title" \
     "d['media']['metadata']['title']=='$ORIGINAL_TITLE'" "$output"
 
 # Update multiple fields at once
-output=$($CLI items update --id "$FIRST_ITEM_ID" \
-    --input '{"metadata":{"description":"Smoke test description","genres":["Fantasy","Epic"]}}' 2>/dev/null)
+output=$(echo '{"metadata":{"description":"Smoke test description","genres":["Fantasy","Epic"]}}' \
+    | $CLI items update --id "$FIRST_ITEM_ID" --stdin 2>/dev/null)
 assert_json_key "items multi-field update returns item" "libraryItem" "$output"
 
 output=$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)
@@ -235,8 +235,8 @@ assert_json_expr "items multi-field update: genres set" \
     "'Fantasy' in d['media']['metadata'].get('genres',[])" "$output"
 
 # Restore: clear description and genres
-$CLI items update --id "$FIRST_ITEM_ID" \
-    --input '{"metadata":{"description":null,"genres":[]}}' 2>/dev/null > /dev/null
+echo '{"metadata":{"description":null,"genres":[]}}' \
+    | $CLI items update --id "$FIRST_ITEM_ID" --stdin 2>/dev/null > /dev/null
 
 # Update from file
 TMPFILE=$(mktemp)
@@ -250,8 +250,8 @@ assert_json_expr "items update from file: publisher set" \
 rm -f "$TMPFILE"
 
 # Restore publisher
-$CLI items update --id "$FIRST_ITEM_ID" \
-    --input '{"metadata":{"publisher":null}}' 2>/dev/null > /dev/null
+echo '{"metadata":{"publisher":null}}' \
+    | $CLI items update --id "$FIRST_ITEM_ID" --stdin 2>/dev/null > /dev/null
 
 # Batch get — fetch two items by ID
 SECOND_ITEM_ID=$($CLI items list --limit 5 --page 0 2>/dev/null \
@@ -389,7 +389,7 @@ authors = json.load(sys.stdin)
 authors.append({'name': 'Smoke Test Throwaway'})
 print(json.dumps({'metadata': {'authors': authors}}))
 ")
-$CLI items update --id "$FIRST_ITEM_ID" --input "$THROWAWAY_PAYLOAD" 2>/dev/null > /dev/null
+echo "$THROWAWAY_PAYLOAD" | $CLI items update --id "$FIRST_ITEM_ID" --stdin 2>/dev/null > /dev/null
 
 output=$($CLI authors list 2>/dev/null)
 assert_json_expr "authors update added throwaway author" \
@@ -412,7 +412,7 @@ RESTORE_PAYLOAD=$(python3 -c "
 import json
 print(json.dumps({'metadata': {'authors': json.loads('$ORIGINAL_AUTHORS')}}))
 ")
-$CLI items update --id "$FIRST_ITEM_ID" --input "$RESTORE_PAYLOAD" 2>/dev/null > /dev/null
+echo "$RESTORE_PAYLOAD" | $CLI items update --id "$FIRST_ITEM_ID" --stdin 2>/dev/null > /dev/null
 
 # --- update merge-on-rename (rename throwaway into an existing author) ---
 MERGEE_PAYLOAD=$(echo "$ORIGINAL_AUTHORS" | python3 -c "
@@ -421,7 +421,7 @@ authors = json.load(sys.stdin)
 authors.append({'name': 'Smoke Test Mergee'})
 print(json.dumps({'metadata': {'authors': authors}}))
 ")
-$CLI items update --id "$FIRST_ITEM_ID" --input "$MERGEE_PAYLOAD" 2>/dev/null > /dev/null
+echo "$MERGEE_PAYLOAD" | $CLI items update --id "$FIRST_ITEM_ID" --stdin 2>/dev/null > /dev/null
 
 MERGEE_ID=$($CLI authors list 2>/dev/null | python3 -c "
 import sys,json
@@ -440,7 +440,7 @@ assert_json_expr "authors update merge removed throwaway" \
 assert_json_expr "authors list still 7 after merge" "len(d['results'])==7" "$output"
 
 # Restore book to original authors (merge added Jim Butcher to FIRST_ITEM_ID)
-$CLI items update --id "$FIRST_ITEM_ID" --input "$RESTORE_PAYLOAD" 2>/dev/null > /dev/null
+echo "$RESTORE_PAYLOAD" | $CLI items update --id "$FIRST_ITEM_ID" --stdin 2>/dev/null > /dev/null
 
 # --- image set/get/remove ---
 output=$($CLI authors image set --id "$AUTHOR_ID" --url "https://placehold.co/64x64.png" 2>/dev/null)
@@ -1184,14 +1184,9 @@ ENCODE_TMP=$(mktemp -d)
 ENCODE_ITEM_ID=""
 CANCEL_TEST_ITEM_ID=""
 encode_cleanup() {
-    if [ -n "$ENCODE_ITEM_ID" ]; then
-        curl -sf -X DELETE "$ABS_URL/api/items/$ENCODE_ITEM_ID?hard=1" \
-            -H "Authorization: Bearer $ABS_TOKEN" > /dev/null 2>&1 || true
-    fi
-    if [ -n "$CANCEL_TEST_ITEM_ID" ]; then
-        curl -sf -X DELETE "$ABS_URL/api/items/$CANCEL_TEST_ITEM_ID?hard=1" \
-            -H "Authorization: Bearer $ABS_TOKEN" > /dev/null 2>&1 || true
-    fi
+    abs_login root root
+    [ -n "${ENCODE_ITEM_ID:-}" ] && $CLI items delete --id "$ENCODE_ITEM_ID" --hard >/dev/null 2>&1 || true
+    [ -n "${CANCEL_TEST_ITEM_ID:-}" ] && $CLI items delete --id "$CANCEL_TEST_ITEM_ID" --hard >/dev/null 2>&1 || true
     rm -rf "$ENCODE_TMP"
 }
 trap encode_cleanup EXIT
@@ -1406,10 +1401,8 @@ echo "=== Chapter Commands ==="
 CHAPTERS_TMP=$(mktemp -d)
 CHAPTERS_ITEM_ID=""
 chapters_cleanup() {
-    if [ -n "$CHAPTERS_ITEM_ID" ]; then
-        curl -sf -X DELETE "$ABS_URL/api/items/$CHAPTERS_ITEM_ID?hard=1" \
-            -H "Authorization: Bearer $ABS_TOKEN" > /dev/null 2>&1 || true
-    fi
+    abs_login root root
+    [ -n "${CHAPTERS_ITEM_ID:-}" ] && $CLI items delete --id "$CHAPTERS_ITEM_ID" --hard >/dev/null 2>&1 || true
     rm -rf "$CHAPTERS_TMP"
 }
 trap chapters_cleanup EXIT
@@ -1594,14 +1587,9 @@ EMBED_TMP=$(mktemp -d)
 EMBED_ITEM_ID=""
 EMBED_ITEM_ID_2=""
 embed_cleanup() {
-    if [ -n "$EMBED_ITEM_ID" ]; then
-        curl -sf -X DELETE "$ABS_URL/api/items/$EMBED_ITEM_ID?hard=1" \
-            -H "Authorization: Bearer $ABS_TOKEN" > /dev/null 2>&1 || true
-    fi
-    if [ -n "$EMBED_ITEM_ID_2" ]; then
-        curl -sf -X DELETE "$ABS_URL/api/items/$EMBED_ITEM_ID_2?hard=1" \
-            -H "Authorization: Bearer $ABS_TOKEN" > /dev/null 2>&1 || true
-    fi
+    abs_login root root
+    [ -n "${EMBED_ITEM_ID:-}" ] && $CLI items delete --id "$EMBED_ITEM_ID" --hard >/dev/null 2>&1 || true
+    [ -n "${EMBED_ITEM_ID_2:-}" ] && $CLI items delete --id "$EMBED_ITEM_ID_2" --hard >/dev/null 2>&1 || true
     rm -rf "$EMBED_TMP"
 }
 trap embed_cleanup EXIT
