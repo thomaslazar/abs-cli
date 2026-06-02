@@ -112,7 +112,7 @@ public static class ItemsCommand
             "abs-cli items get --id \"li_abc123\" --include progress,rssfeed");
         command.AddResponseExample<LibraryItemMinified>();
         command.AddMediaUnionShapes();
-        command.AddHelpSection("Response shape (--expanded)", HelpSectionPosition.Bottom,
+        command.AddShapeSection("Response shape (--expanded)",
             ResponseExamples.For(typeof(LibraryItemExpanded)).Split('\n'));
         command.SetAction(async (parseResult, cancellationToken) =>
         {
@@ -266,7 +266,7 @@ public static class ItemsCommand
         command.AddExamples(
             "abs-cli items delete --id \"li_abc123\"",
             "abs-cli items delete --id \"li_abc123\" --hard");
-        command.AddHelpSection("Response shape", HelpSectionPosition.Bottom,
+        command.AddShapeSection("Response shape",
             "{ \"success\": \"true\" }");
         command.SetAction(async (parseResult, cancellationToken) =>
         {
@@ -297,7 +297,7 @@ public static class ItemsCommand
         command.AddExamples(
             "abs-cli items batch-delete --input ids.json",
             "echo '{\"libraryItemIds\":[\"li_a\",\"li_b\"]}' | abs-cli items batch-delete --stdin --hard");
-        command.AddHelpSection("Response shape", HelpSectionPosition.Bottom,
+        command.AddShapeSection("Response shape",
             "{ \"success\": \"true\" }");
         command.SetAction(async (parseResult, cancellationToken) =>
         {
@@ -336,7 +336,7 @@ public static class ItemsCommand
         command.AddExamples(
             "abs-cli items batch-update-progress --input updates.json",
             "echo '[{\"libraryItemId\":\"li_a\",\"isFinished\":true}]' | abs-cli items batch-update-progress --stdin");
-        command.AddHelpSection("Response shape", HelpSectionPosition.Bottom,
+        command.AddShapeSection("Response shape",
             "{ \"success\": \"true\" }");
         command.SetAction(async (parseResult, cancellationToken) =>
         {
@@ -489,7 +489,7 @@ public static class ItemsCommand
         command.AddPermissionRequired("delete");
         command.AddExamples(
             "abs-cli items cover remove --id \"li_abc123\"");
-        command.AddHelpSection("Response shape", HelpSectionPosition.Bottom,
+        command.AddShapeSection("Response shape",
             "{ \"success\": \"true\" }");
         command.SetAction(async parseResult =>
         {
@@ -833,7 +833,7 @@ public static class ItemsCommand
             "--ebook-location \"\" --ebook-progress 0).");
         command.AddExamples(
             "abs-cli items progress remove --library-item \"li_abc\"");
-        command.AddHelpSection("Response shape", HelpSectionPosition.Bottom,
+        command.AddShapeSection("Response shape",
             "{ \"success\": \"true\" }");
         command.SetAction(async (parseResult, cancellationToken) =>
         {

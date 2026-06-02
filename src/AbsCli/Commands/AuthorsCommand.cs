@@ -234,7 +234,7 @@ public static class AuthorsCommand
             "it.");
         command.AddExamples(
             "abs-cli authors delete --id \"aut_xyz\"");
-        command.AddHelpSection("Response shape", HelpSectionPosition.Bottom,
+        command.AddShapeSection("Response shape",
             "{ \"success\": \"true\" }");
         command.SetAction(async (parseResult, cancellationToken) =>
         {

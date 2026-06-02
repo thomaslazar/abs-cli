@@ -14,7 +14,7 @@ public enum HelpSectionPosition { Top, Bottom }
 /// </summary>
 public static class HelpExtensions
 {
-    private record Section(string Title, string[] Lines, HelpSectionPosition Position);
+    private record Section(string Title, string[] Lines, HelpSectionPosition Position, bool IsShape = false);
 
     // ConcurrentDictionary so parallel xUnit test classes building independent
     // command trees can mutate the outer map without corrupting it. Each Command
@@ -32,6 +32,12 @@ public static class HelpExtensions
     {
         var sections = CommandSections.GetOrAdd(command, _ => new List<Section>());
         sections.Add(new Section(title, lines, position));
+    }
+
+    public static void AddShapeSection(this Command command, string title, params string[] lines)
+    {
+        var sections = CommandSections.GetOrAdd(command, _ => new List<Section>());
+        sections.Add(new Section(title, lines, HelpSectionPosition.Bottom, IsShape: true));
     }
 
     public static void AddExamples(this Command command, params string[] examples)
@@ -59,13 +65,11 @@ public static class HelpExtensions
     /// </summary>
     public static void AddMediaUnionShapes(this Command command)
     {
-        command.AddHelpSection(
+        command.AddShapeSection(
             "Book media shape (when mediaType is \"book\")",
-            HelpSectionPosition.Bottom,
             ResponseExamples.For(typeof(AbsCli.Models.BookMediaMinified)).Split('\n'));
-        command.AddHelpSection(
+        command.AddShapeSection(
             "Podcast media shape (when mediaType is \"podcast\")",
-            HelpSectionPosition.Bottom,
             ResponseExamples.For(typeof(AbsCli.Models.PodcastMedia)).Split('\n'));
     }
 
@@ -83,7 +87,7 @@ public static class HelpExtensions
     }
 
     private static void AddResponseExampleSection(Command command, string json)
-        => command.AddHelpSection("Response shape", HelpSectionPosition.Bottom, json.Split('\n'));
+        => command.AddShapeSection("Response shape", json.Split('\n'));
 
     private static string SpliceResultsArray(string envelopeJson, string elementJson)
     {
