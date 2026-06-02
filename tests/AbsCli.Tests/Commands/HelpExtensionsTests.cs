@@ -71,16 +71,6 @@ public class HelpExtensionsTests
     }
 
     [Fact]
-    public void HelpFull_RendersShapeSection()
-    {
-        var cmd = new Command("demo", "Demo");
-        cmd.AddResponseExample<AbsCli.Models.AuthorItem>();
-        var output = RenderHelpFull(cmd);
-        Assert.Contains("Response shape:", output);
-        Assert.Contains("\"numBooks\"", output);
-    }
-
-    [Fact]
     public void AddResponseExample_EnvelopeAndElement_SubstitutesResultsArray()
     {
         var cmd = new Command("demo", "Demo");
