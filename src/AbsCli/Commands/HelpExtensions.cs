@@ -131,7 +131,7 @@ public static class HelpExtensions
         if (helpOption.Action is not HelpAction defaultAction)
             throw new InvalidOperationException(
                 $"HelpOption.Action is {helpOption.Action?.GetType().Name ?? "null"}, expected HelpAction.");
-        helpOption.Action = new CustomHelpAction(defaultAction, includeShapes: true);
+        helpOption.Action = new CustomHelpAction(defaultAction, includeShapes: false);
         var fullHelp = new Option<bool>("--help-full")
         {
             Description = "Show full help including response-shape blocks.",
@@ -158,8 +158,17 @@ public static class HelpExtensions
             WriteSections(command, output, HelpSectionPosition.Top, _includeShapes);
             var rc = _inner.Invoke(parseResult);
             WriteSections(command, output, HelpSectionPosition.Bottom, _includeShapes);
+            if (!_includeShapes) WriteShapeHint(command, output);
             return rc;
         }
+    }
+
+    private static void WriteShapeHint(Command command, TextWriter output)
+    {
+        if (!CommandSections.TryGetValue(command, out var sections)) return;
+        if (!sections.Any(s => s.IsShape)) return;
+        output.WriteLine("Run --help-full to see response shape(s).");
+        output.WriteLine();
     }
 
     private static void WriteSections(Command command, TextWriter output, HelpSectionPosition position, bool includeShapes)

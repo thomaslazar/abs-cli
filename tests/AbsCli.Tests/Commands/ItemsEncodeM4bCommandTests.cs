@@ -13,7 +13,7 @@ public class ItemsEncodeM4bCommandTests
         root.UseCustomHelpSections();
         var output = new StringWriter();
         var config = new InvocationConfiguration { Output = output };
-        var args = path.Concat(new[] { "--help" }).ToArray();
+        var args = path.Concat(new[] { "--help-full" }).ToArray();
         root.Parse(args).Invoke(config);
         return output.ToString();
     }
