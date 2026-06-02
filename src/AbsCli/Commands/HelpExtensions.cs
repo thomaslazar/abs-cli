@@ -131,30 +131,43 @@ public static class HelpExtensions
         if (helpOption.Action is not HelpAction defaultAction)
             throw new InvalidOperationException(
                 $"HelpOption.Action is {helpOption.Action?.GetType().Name ?? "null"}, expected HelpAction.");
-        helpOption.Action = new CustomHelpAction(defaultAction);
+        helpOption.Action = new CustomHelpAction(defaultAction, includeShapes: true);
+        var fullHelp = new Option<bool>("--help-full")
+        {
+            Description = "Show full help including response-shape blocks.",
+            Recursive = true,
+            Action = new CustomHelpAction(defaultAction, includeShapes: true),
+        };
+        root.Options.Add(fullHelp);
     }
 
     private sealed class CustomHelpAction : SynchronousCommandLineAction
     {
         private readonly HelpAction _inner;
-        public CustomHelpAction(HelpAction inner) { _inner = inner; }
+        private readonly bool _includeShapes;
+        public CustomHelpAction(HelpAction inner, bool includeShapes)
+        {
+            _inner = inner;
+            _includeShapes = includeShapes;
+        }
 
         public override int Invoke(ParseResult parseResult)
         {
             var command = parseResult.CommandResult.Command;
             var output = parseResult.InvocationConfiguration.Output;
-            WriteSections(command, output, HelpSectionPosition.Top);
+            WriteSections(command, output, HelpSectionPosition.Top, _includeShapes);
             var rc = _inner.Invoke(parseResult);
-            WriteSections(command, output, HelpSectionPosition.Bottom);
+            WriteSections(command, output, HelpSectionPosition.Bottom, _includeShapes);
             return rc;
         }
     }
 
-    private static void WriteSections(Command command, TextWriter output, HelpSectionPosition position)
+    private static void WriteSections(Command command, TextWriter output, HelpSectionPosition position, bool includeShapes)
     {
         if (!CommandSections.TryGetValue(command, out var sections)) return;
         foreach (var section in sections.Where(s => s.Position == position))
         {
+            if (section.IsShape && !includeShapes) continue;
             output.WriteLine($"{section.Title}:");
             foreach (var line in section.Lines)
                 output.WriteLine($"  {line}");

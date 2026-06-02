@@ -60,6 +60,26 @@ public class HelpExtensionsTests
         Assert.Contains("\"numBooks\"", output);
     }
 
+    private static string RenderHelpFull(Command command)
+    {
+        var root = new RootCommand { command };
+        root.UseCustomHelpSections();
+        var output = new StringWriter();
+        var config = new InvocationConfiguration { Output = output };
+        root.Parse(new[] { command.Name, "--help-full" }).Invoke(config);
+        return output.ToString();
+    }
+
+    [Fact]
+    public void HelpFull_RendersShapeSection()
+    {
+        var cmd = new Command("demo", "Demo");
+        cmd.AddResponseExample<AbsCli.Models.AuthorItem>();
+        var output = RenderHelpFull(cmd);
+        Assert.Contains("Response shape:", output);
+        Assert.Contains("\"numBooks\"", output);
+    }
+
     [Fact]
     public void AddResponseExample_EnvelopeAndElement_SubstitutesResultsArray()
     {
