@@ -147,19 +147,47 @@ Full notes: see [CHANGELOG.md](../CHANGELOG.md) or `abs-cli changelog`.
 
 ---
 
+### v0.6.0 — Deletion, progress, collections & help polish (shipped 2026-06-02)
+
+Rounds out the agent-driven management surface: deleting items, managing
+per-user listening progress, full collections support, non-interactive login,
+and help output that stays scannable as the command set grows.
+
+- **`items delete` / `items batch-delete`** — Remove library items via
+  `DELETE /api/items/:id` and `POST /api/items/batch/delete`. Soft delete
+  (DB only, default) vs `--hard` (also removes files from disk, irreversible).
+  `delete` permission; author/series cascade-prune.
+- **Non-interactive `login`** — `--username` / `--password` /
+  `--password-stdin`, each falling back to the interactive prompt when absent.
+  `--password-stdin` avoids process-list / shell-history exposure.
+- **`items update --stdin`** — Aligns `items update` with the batch-* shape
+  (`--input <file>` or `--stdin`), retiring the inline-JSON-or-file `--input`
+  behavior (breaking).
+- **`items progress get|set|remove` + `items batch-update-progress`** — Mark
+  books listened / read / in-progress for the current user. Wraps the
+  `GET/PATCH/DELETE /api/me/progress/*` endpoints. No special permission.
+- **`items get --include=<flags>`** — Opt-in for ABS's
+  `?include=progress,rssfeed,downloads,share`; auto-implies `--expanded`.
+- **`abs-cli me`** — Show the currently authenticated user (`GET /api/me`):
+  `id`, `username`, `type`, `permissions`, …
+- **Collections** — `collections list|get|create|update|reorder|delete|add|`
+  `remove|batch-add|batch-remove` covering the full ABS collections endpoint
+  set. Library-scoped; `update`/`reorder` split on ABS's overloaded PATCH;
+  `update` permission for mutations, `delete` for collection delete.
+- **Extended help mode** — Plain `--help` hides the `Response shape:` blocks
+  (printing a one-line pointer) to stay scannable; the global recursive
+  `--help-full` flag shows the complete help including them.
+- **Smoke-test tidying** — Pure test-harness DRY: `json_get` and
+  `cleanup_items` helpers collapse the repeated JSON-extraction one-liners and
+  per-section cleanup traps. No CLI behavior change.
+
+Full notes: see [CHANGELOG.md](../CHANGELOG.md) or `abs-cli changelog`.
+
+---
+
 ## Next
 
-### v0.6.0 — TBD
-
-- **`items delete` + `items batch-delete`** — Remove library items via `DELETE /api/items/:id` and `POST /api/items/batch/delete`. Soft delete (DB only, default) vs `--hard` (also removes files from disk, irreversible). `delete` permission; author/series cascade-prune. Research: [docs/specs/research/2026-05-30-delete-login-update-stdin.md](specs/research/2026-05-30-delete-login-update-stdin.md).
-- **`login --username` / `--password` / `--password-stdin`** — Non-interactive credential parameters on the `login` command; each falls back to the interactive prompt when absent. `--password-stdin` avoids process-list/history exposure. See same research doc.
-- **`items update --stdin`** — Bring `items update` in line with the batch-* shape (`--input <file>` or `--stdin`), retiring the inline-JSON-or-file `--input` behavior (breaking). See same research doc.
-- **Smoke-test tidying** — Dedicated follow-up after the delete/login/update-stdin PR de-curls the smoke. Collapse the repeated `python3 -c "import sys,json…"` JSON-extraction one-liners into a `json_get` helper, and parameterize the near-identical per-section `*_cleanup()` traps (`encode_cleanup` / `chapters_cleanup` / `embed_cleanup` / `progress_cleanup` / `collections_cleanup`) into one reusable helper. Pure test-harness DRY; no CLI behavior change. Kept out of the delete/login PR to keep that diff focused.
-- **Extended help mode** — Hide response-shape blocks from `--help` by default; surface them via an explicit flag (e.g. `--help-shape`, `--help-full`) or a separate subcommand. Today every command renders one or two `Response shape:` blocks, and `items get --expanded` adds a second one — without a way to opt out, the help output drifts toward unreadable as more commands ship.
-- **`items get --include=<flags>`** — Opt-in for ABS's `?include=progress,rssfeed,downloads,share` query parameter. Adds user-progress, RSS feed, download, and share state to the response (each as a nullable field). **Auto-implies `--expanded`** — the server-side include parser only fires under `expanded=1` (`LibraryItemController.js:72-99`). Bundled with `me` + `items progress` since `--include progress` reads what `items progress set` writes — see same research doc.
-- **`items progress get|set|remove` + `items batch-update-progress`** — Mark books as listened / read / in-progress for the current user. Wraps `GET /api/me/progress/:id`, `PATCH /api/me/progress/:libraryItemId` (body: `isFinished`, `currentTime`, `ebookProgress`, …), `DELETE /api/me/progress/:id`, and `PATCH /api/me/progress/batch/update`. No special permission — every authenticated user manages their own progress. Closes the "I cannot tell the CLI a book is already listened" gap; pairs with `items get --include=progress` for read-back. Research: [docs/specs/research/2026-05-30-me-progress-include.md](specs/research/2026-05-30-me-progress-include.md).
-- **`abs-cli me`** — Show the currently authenticated user. Wraps `GET /api/me` and returns the user object (`id`, `username`, `type`, `permissions`, …). Today `config get` only shows server + masked tokens; the username is printed once at login and then unrecoverable without a token decode. No special permission. Pairs with the new `items progress` verbs so agents can confirm whose progress they're about to touch. Bundled with `items progress` for shipping — see same research doc.
-- **Collections** — `abs-cli collections list|get|create|update|reorder|delete|add|remove|batch-add|batch-remove` covering the full ABS collections endpoint set (`CollectionController.js` plus `GET /api/libraries/:id/collections`). Library-scoped (`list` mirrors `series list` / `authors list` — paginated, `--sort` / `--desc` / `--filter` / `--include rssfeed` / `--minified`; global `GET /api/collections` is dropped). Two-verb split on ABS's overloaded `PATCH /api/collections/:id`: `update` for name/description, `reorder` for the books-array reshuffle (which does not add or remove — that's `add` / `remove` / `batch-add` / `batch-remove`). Permissions: `update` for create / update / reorder / membership changes; `delete` for collection delete. Sharp edges flagged in research (no empty collections, single-add 400s on duplicate vs batch-add silent skip, books referenced by libraryItemId everywhere despite the server's `:bookId` URL naming, RSS feed auto-close on delete). Research: [docs/specs/research/2026-05-22-collections.md](specs/research/2026-05-22-collections.md).
+_Nothing scheduled. The next milestone lands here once scoped._
 
 ---
 
