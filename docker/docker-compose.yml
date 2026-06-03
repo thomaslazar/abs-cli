@@ -1,6 +1,6 @@
 services:
   audiobookshelf:
-    image: advplyr/audiobookshelf:2.35.0
+    image: advplyr/audiobookshelf:2.35.1
     ports:
       - "13378:80"
     volumes:

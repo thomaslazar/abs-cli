@@ -9,7 +9,7 @@ the project README and checked at runtime.
 |----------------|--------------|-------|
 | 0.1.x — 0.2.4   | 2.33.1        | Initial release, baseline API |
 | 0.2.5 — 0.4.0   | 2.33.1 — 2.33.2 | No API surface changes in 2.33.2 (maintenance release; internal refactors, image-endpoint clamping, cross-library bulk-download guard) |
-| 0.5.0+          | 2.33.1 — 2.35.0 | v2.34 closes the upstream batch-update `canUpdate` gap (now returns 403 for users without update permission); v2.35 adds a 60s server-side refresh-token grace period (CLI behavior unchanged). DTO sweep confirmed no response-shape changes for endpoints abs-cli consumes. |
+| 0.5.0+          | 2.33.1 — 2.35.1 | v2.34 closes the upstream batch-update `canUpdate` gap (now returns 403 for users without update permission); v2.35 adds a 60s server-side refresh-token grace period (CLI behavior unchanged). v2.35.1 is a patch with internal-only fixes (BookAuthor dedup guard, case-insensitive user lookup) — no response-shape, endpoint, or permission changes for endpoints abs-cli consumes. DTO sweep confirmed no response-shape changes for endpoints abs-cli consumes. |
 
 This table grows as new ABS versions are tested. A single CLI version may support
 multiple ABS versions if the API surface hasn't changed.
@@ -19,7 +19,7 @@ multiple ABS versions if the API surface hasn't changed.
 On first API call, the CLI reads the ABS server version from the login response
 (`serverSettings.version`). If the version is outside the known-compatible range:
 
-- **Newer than tested:** Warning to stderr: `Warning: ABS server version 2.35.0 has not been tested with this version of abs-cli. Proceed with caution.`
+- **Newer than tested:** Warning to stderr — e.g. against a hypothetical future release above the tested ceiling: `Warning: ABS server version 2.36.0 has not been tested with this version of abs-cli. Proceed with caution.`
 - **Older than supported:** Warning to stderr: `Warning: ABS server version 2.30.0 is older than the minimum supported version (2.33.1). Some features may not work.`
 
 Warnings only — the CLI does not refuse to run. The user decides whether to proceed.
