@@ -3,6 +3,98 @@
 All notable changes to abs-cli are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## 0.6.0 — 2026-06-02
+
+### Highlights
+
+- **Collections.** Full collections surface: `collections list|get|create|`
+  `update|reorder|delete|add|remove|batch-add|batch-remove`. Library-scoped
+  `list` mirrors `series`/`authors` (paginated, `--sort`/`--desc`/`--filter`/
+  `--include rssfeed`/`--minified`). `update` (name/description) and `reorder`
+  (book-order reshuffle) split ABS's overloaded PATCH; membership changes use
+  the add/remove/batch verbs.
+- **Listening progress.** `items progress get|set|remove` and
+  `items batch-update-progress` let the current user mark books
+  listened/read/in-progress (wraps `/api/me/progress/*`; no special
+  permission). `items get --include=progress,rssfeed,downloads,share` reads
+  that state back (auto-implies `--expanded`).
+- **`abs-cli me`.** Show the currently authenticated user (`GET /api/me`):
+  `id`, `username`, `type`, `permissions`, … Pairs with the progress verbs so
+  agents can confirm whose progress they're touching.
+- **Item deletion.** `items delete` and `items batch-delete` remove library
+  items — soft delete (DB only, default) vs `--hard` (also removes files from
+  disk, irreversible). Requires `delete` permission.
+- **Non-interactive login.** `login --username` / `--password` /
+  `--password-stdin`, each falling back to the interactive prompt when absent.
+  `--password-stdin` keeps credentials out of the process list and shell
+  history.
+- **Extended help mode.** Plain `--help` now hides the `Response shape:` blocks
+  (printing a one-line pointer) to stay scannable; the global `--help-full`
+  flag shows the complete help including them.
+- **ABS 2.35.1 support.** Tested range widened to `2.33.1 — 2.35.1`. v2.35.1 is
+  a patch with internal-only fixes — no response-shape, endpoint, or permission
+  changes for endpoints abs-cli consumes.
+
+### ⚠ Breaking change
+
+`items update` now takes its update body via `--input <file>` or `--stdin`,
+matching the `batch-*` commands. The previous inline-JSON-or-file `--input`
+behavior is removed — `--input` is now strictly a file path. Pipe JSON via
+`--stdin` (e.g. `echo '{...}' | abs-cli items update --id X --stdin`) or pass a
+file with `--input payload.json`.
+
+### Features
+
+- feat: add Collection and RssFeed models
+- feat: add collection request DTOs
+- feat: add collections batch-add and batch-remove subcommands
+- feat: add CollectionsCommand skeleton and tri-state body builder
+- feat: add collections create subcommand
+- feat: add collections delete subcommand
+- feat: add collections endpoint constants
+- feat: add collections get subcommand
+- feat: add collections list subcommand
+- feat: add collections reorder subcommand
+- feat: add CollectionsService skeleton
+- feat: add collections single add/remove subcommands
+- feat: add collections update subcommand
+- feat: add --help-full option and includeShapes plumbing
+- feat: add --include decorator fields to LibraryItemExpanded
+- feat: add --include to items get with auto-imply expanded
+- feat: add items batch-delete endpoint constant
+- feat: add items batch-update-progress subcommand
+- feat: add items delete and batch-delete subcommands
+- feat: add items progress get/set/remove subcommands
+- feat: add ItemsService delete and batch-delete
+- feat: add me command
+- feat: add MediaProgress and ProgressUpdateRequest models
+- feat: add Me model and extend UserPermissions with JsonExtensionData
+- feat: add me + progress endpoint constants
+- feat: add MeService
+- feat: add ProgressService
+- feat: add SelfTest entries for collections models
+- feat: hide response shapes from --help, show via --help-full
+- feat: implement CollectionsService batch membership methods
+- feat: implement CollectionsService.CreateAsync
+- feat: implement CollectionsService.DeleteAsync
+- feat: implement CollectionsService read methods
+- feat: implement CollectionsService single membership methods
+- feat: implement CollectionsService update and reorder
+- feat: ItemsService.GetExpandedAsync accepts optional include
+- feat: items update uses --input <file> / --stdin (breaking)
+- feat: login accepts --username / --password / --password-stdin
+- feat: wire CollectionsCommand into root
+- feat: wire MeCommand into root and add SelfTest entries
+
+### Fixes
+
+- fix: enforce file-only --input on items update; update input-output doc
+- fix: lowercase all-or-nothing in batch-delete help to match test
+- fix: parse --finished-at with invariant culture and assume UTC
+- fix: preserve unknown RssFeed fields via JsonExtensionData
+- fix: rename seed TMPDIR var so multi-ebook fixture mktemp survives
+- fix: use READONLY_TOKEN, add trap cleanup, defensive JSON parsing in collections smoke
+
 ## 0.5.0 — 2026-05-20
 
 ### Highlights
