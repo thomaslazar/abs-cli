@@ -19,7 +19,7 @@ multiple ABS versions if the API surface hasn't changed.
 On first API call, the CLI reads the ABS server version from the login response
 (`serverSettings.version`). If the version is outside the known-compatible range:
 
-- **Newer than tested:** Warning to stderr: `Warning: ABS server version 2.36.0 has not been tested with this version of abs-cli. Proceed with caution.`
+- **Newer than tested:** Warning to stderr — e.g. against a hypothetical future release above the tested ceiling: `Warning: ABS server version 2.36.0 has not been tested with this version of abs-cli. Proceed with caution.`
 - **Older than supported:** Warning to stderr: `Warning: ABS server version 2.30.0 is older than the minimum supported version (2.33.1). Some features may not work.`
 
 Warnings only — the CLI does not refuse to run. The user decides whether to proceed.
