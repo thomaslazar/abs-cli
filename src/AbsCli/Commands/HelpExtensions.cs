@@ -14,7 +14,7 @@ public enum HelpSectionPosition { Top, Bottom }
 /// </summary>
 public static class HelpExtensions
 {
-    private record Section(string Title, string[] Lines, HelpSectionPosition Position);
+    private record Section(string Title, string[] Lines, HelpSectionPosition Position, bool IsShape = false);
 
     // ConcurrentDictionary so parallel xUnit test classes building independent
     // command trees can mutate the outer map without corrupting it. Each Command
@@ -32,6 +32,12 @@ public static class HelpExtensions
     {
         var sections = CommandSections.GetOrAdd(command, _ => new List<Section>());
         sections.Add(new Section(title, lines, position));
+    }
+
+    public static void AddShapeSection(this Command command, string title, params string[] lines)
+    {
+        var sections = CommandSections.GetOrAdd(command, _ => new List<Section>());
+        sections.Add(new Section(title, lines, HelpSectionPosition.Bottom, IsShape: true));
     }
 
     public static void AddExamples(this Command command, params string[] examples)
@@ -59,13 +65,11 @@ public static class HelpExtensions
     /// </summary>
     public static void AddMediaUnionShapes(this Command command)
     {
-        command.AddHelpSection(
+        command.AddShapeSection(
             "Book media shape (when mediaType is \"book\")",
-            HelpSectionPosition.Bottom,
             ResponseExamples.For(typeof(AbsCli.Models.BookMediaMinified)).Split('\n'));
-        command.AddHelpSection(
+        command.AddShapeSection(
             "Podcast media shape (when mediaType is \"podcast\")",
-            HelpSectionPosition.Bottom,
             ResponseExamples.For(typeof(AbsCli.Models.PodcastMedia)).Split('\n'));
     }
 
@@ -83,7 +87,7 @@ public static class HelpExtensions
     }
 
     private static void AddResponseExampleSection(Command command, string json)
-        => command.AddHelpSection("Response shape", HelpSectionPosition.Bottom, json.Split('\n'));
+        => command.AddShapeSection("Response shape", json.Split('\n'));
 
     private static string SpliceResultsArray(string envelopeJson, string elementJson)
     {
@@ -127,30 +131,52 @@ public static class HelpExtensions
         if (helpOption.Action is not HelpAction defaultAction)
             throw new InvalidOperationException(
                 $"HelpOption.Action is {helpOption.Action?.GetType().Name ?? "null"}, expected HelpAction.");
-        helpOption.Action = new CustomHelpAction(defaultAction);
+        helpOption.Action = new CustomHelpAction(defaultAction, includeShapes: false);
+        var fullHelp = new Option<bool>("--help-full")
+        {
+            Description = "Show full help including response-shape blocks.",
+            Recursive = true,
+            Action = new CustomHelpAction(defaultAction, includeShapes: true),
+        };
+        root.Options.Add(fullHelp);
     }
 
     private sealed class CustomHelpAction : SynchronousCommandLineAction
     {
         private readonly HelpAction _inner;
-        public CustomHelpAction(HelpAction inner) { _inner = inner; }
+        private readonly bool _includeShapes;
+        public CustomHelpAction(HelpAction inner, bool includeShapes)
+        {
+            _inner = inner;
+            _includeShapes = includeShapes;
+        }
 
         public override int Invoke(ParseResult parseResult)
         {
             var command = parseResult.CommandResult.Command;
             var output = parseResult.InvocationConfiguration.Output;
-            WriteSections(command, output, HelpSectionPosition.Top);
+            WriteSections(command, output, HelpSectionPosition.Top, _includeShapes);
             var rc = _inner.Invoke(parseResult);
-            WriteSections(command, output, HelpSectionPosition.Bottom);
+            WriteSections(command, output, HelpSectionPosition.Bottom, _includeShapes);
+            if (!_includeShapes) WriteShapeHint(command, output);
             return rc;
         }
     }
 
-    private static void WriteSections(Command command, TextWriter output, HelpSectionPosition position)
+    private static void WriteShapeHint(Command command, TextWriter output)
+    {
+        if (!CommandSections.TryGetValue(command, out var sections)) return;
+        if (!sections.Any(s => s.IsShape)) return;
+        output.WriteLine("Run --help-full to see response shape(s).");
+        output.WriteLine();
+    }
+
+    private static void WriteSections(Command command, TextWriter output, HelpSectionPosition position, bool includeShapes)
     {
         if (!CommandSections.TryGetValue(command, out var sections)) return;
         foreach (var section in sections.Where(s => s.Position == position))
         {
+            if (section.IsShape && !includeShapes) continue;
             output.WriteLine($"{section.Title}:");
             foreach (var line in section.Lines)
                 output.WriteLine($"  {line}");

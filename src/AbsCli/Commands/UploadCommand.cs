@@ -69,7 +69,7 @@ public static class UploadCommand
             "LibraryItemMinified. On timeout (~2 min) the receipt is emitted to stdout",
             "and the command exits 1.");
         command.AddResponseExample<UploadReceipt>();
-        command.AddHelpSection("Response shape (with --wait, on success)",
+        command.AddShapeSection("Response shape (with --wait, on success)",
             "LibraryItemMinified — same shape as 'abs-cli items get --help'.");
         command.SetAction(async (parseResult, cancellationToken) =>
         {

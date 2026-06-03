@@ -55,9 +55,19 @@ public class HelpExtensionsTests
     {
         var cmd = new Command("demo", "Demo");
         cmd.AddResponseExample<AbsCli.Models.AuthorItem>();
-        var output = RenderHelp(cmd);
+        var output = RenderHelpFull(cmd);
         Assert.Contains("Response shape:", output);
         Assert.Contains("\"numBooks\"", output);
+    }
+
+    private static string RenderHelpFull(Command command)
+    {
+        var root = new RootCommand { command };
+        root.UseCustomHelpSections();
+        var output = new StringWriter();
+        var config = new InvocationConfiguration { Output = output };
+        root.Parse(new[] { command.Name, "--help-full" }).Invoke(config);
+        return output.ToString();
     }
 
     [Fact]
@@ -67,9 +77,38 @@ public class HelpExtensionsTests
         cmd.AddResponseExample(
             typeof(AbsCli.Models.PaginatedResponse),
             typeof(AbsCli.Models.LibraryItemMinified));
-        var output = RenderHelp(cmd);
+        var output = RenderHelpFull(cmd);
         Assert.Contains("Response shape:", output);
         Assert.Contains("\"results\"", output);
         Assert.Contains("\"mediaType\"", output);
+    }
+
+    [Fact]
+    public void PlainHelp_HidesShapeSection_AndShowsHint()
+    {
+        var cmd = new Command("demo", "Demo");
+        cmd.AddResponseExample<AbsCli.Models.AuthorItem>();
+        var output = RenderHelp(cmd);
+        Assert.DoesNotContain("Response shape:", output);
+        Assert.Contains("Run --help-full to see response shape", output);
+    }
+
+    [Fact]
+    public void HelpFull_ShowsShape_AndOmitsHint()
+    {
+        var cmd = new Command("demo", "Demo");
+        cmd.AddResponseExample<AbsCli.Models.AuthorItem>();
+        var output = RenderHelpFull(cmd);
+        Assert.Contains("Response shape:", output);
+        Assert.DoesNotContain("Run --help-full", output);
+    }
+
+    [Fact]
+    public void PlainHelp_NoShapeSection_OmitsHint()
+    {
+        var cmd = new Command("demo", "Demo");
+        cmd.AddHelpSection("Examples", "abs-cli demo");
+        var output = RenderHelp(cmd);
+        Assert.DoesNotContain("Run --help-full", output);
     }
 }

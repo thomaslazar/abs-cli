@@ -257,6 +257,8 @@ abs-cli config set defaultLibrary <library-id>
 
 Every command supports `--help` with examples and reference sections. Commands that require a non-default ABS permission render a `Permission required:` block at the top of their `--help` (one of `admin`, `update`, `upload`, `download`, `delete`); the absence of that block means any authenticated user can run the command.
 
+Add `--help-full` to see the full help including `Response shape:` blocks. Plain `--help` omits those blocks (printing a one-line pointer instead) to keep output scannable — this CLI is designed for AI-agent consumption where terse default help reduces noise.
+
 ## Logging
 
 Errors and warnings go to stderr by default with a timestamp + level prefix:

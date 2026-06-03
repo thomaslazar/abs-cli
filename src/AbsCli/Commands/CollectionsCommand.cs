@@ -246,7 +246,7 @@ public static class CollectionsCommand
             "away immediately.");
         command.AddExamples(
             "abs-cli collections delete --id \"col_abc\"");
-        command.AddHelpSection("Response shape", HelpSectionPosition.Bottom,
+        command.AddShapeSection("Response shape",
             "{ \"success\": \"true\" }");
         command.SetAction(async (parseResult, cancellationToken) =>
         {
