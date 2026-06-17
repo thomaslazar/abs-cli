@@ -61,13 +61,17 @@ public static class UploadCommand
             "abs-cli upload --title \"My Audiobook\" --files-manifest manifest.json",
             "cat manifest.json | abs-cli upload --title \"My Audiobook\" --files-manifest -");
         command.AddHelpSection("Output",
-            "Without --wait: returns an upload receipt (the files have landed but the",
-            "library item has not been scanned yet). The receipt's relPath identifies",
-            "the item once 'items scan' or the next scan tick picks it up.",
+            "Without --wait: returns an upload receipt. The files have landed but the",
+            "item is not scanned yet. The receipt's relPath is a best-effort prediction;",
+            "for very long titles ABS truncates path segments, so the real on-disk path",
+            "is the server's, not the receipt's.",
             "",
-            "With --wait: polls until the item appears, returns it as a",
-            "LibraryItemMinified. On timeout (~2 min) the receipt is emitted to stdout",
-            "and the command exits 1.");
+            "With --wait: polls until the item appears and returns it as a",
+            "LibraryItemMinified, matched by per-segment path prefix (tolerant of the",
+            "server's title truncation). If it can't be auto-confirmed within ~2 min",
+            "(still scanning, or a long title colliding with another recent item) the",
+            "receipt is emitted with a warning and the command exits 1 — the files are",
+            "uploaded regardless, so do not re-upload.");
         command.AddResponseExample<UploadReceipt>();
         command.AddShapeSection("Response shape (with --wait, on success)",
             "LibraryItemMinified — same shape as 'abs-cli items get --help'.");
@@ -133,19 +137,15 @@ public static class UploadCommand
             var receipt = await service.UploadAsync(libraryId, folderId, title, author, series, sequence, uploadList);
             if (wait)
             {
-                // Match by relPath — deterministic given that we compute the
-                // exact path ABS wrote to using the same sanitisation. The
-                // old title-substring search failed with --sequence because
-                // ABS strips the "N. -" prefix from media.metadata.title when
-                // scanning, so the CLI's search query (which included the
-                // prefix) no longer matched what ABS had indexed.
                 var item = await service.WaitForItemByPathAsync(libraryId, receipt.RelPath);
                 if (item == null)
                 {
-                    _logger.Error(
-                        $"Upload completed but the library item did not appear within the wait window. " +
-                        $"Expected relPath: '{receipt.RelPath}'. " +
-                        $"ABS may still be scanning — re-run: abs-cli items list --sort addedAt --desc --limit 5");
+                    _logger.Warn(
+                        "Upload succeeded, but the library item could not be auto-confirmed " +
+                        "within the wait window — ABS may still be scanning, or the title is " +
+                        "long enough that more than one recent item matched the predicted path. " +
+                        "The files have landed; do NOT re-upload. Identify the item with: " +
+                        "abs-cli items list --sort addedAt --desc --limit 5");
                     ConsoleOutput.WriteJson(receipt, AppJsonContext.Default.UploadReceipt);
                     Environment.Exit(1);
                     return 1;
