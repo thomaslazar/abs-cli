@@ -695,6 +695,24 @@ run_drift_case "illegal char stripped" "Pipe|Title" "Sanitize Author Pipe" \
 run_drift_case "whitespace collapsed" "Extra   Spaces   Title" "Sanitize Author WS" \
     "Sanitize Author WS/Extra Spaces Title" "" ""
 
+# --- Long-title --wait (issue #54) ---
+# A title long enough that ABS truncates the path segment. We cannot predict
+# the exact truncated relPath, so assert --wait still resolves the item (the
+# per-segment matcher tolerates the tail divergence). Pre-fix this timed out.
+LONG_TITLE="Ich täuschte Amnesie vor um meinen Verlobten loszuwerden da behauptete er Vor deinem Gedächtnisverlust warst du in mich verliebt und das ist die ganze lange Geschichte"
+abs_login uploaduser uploadpass
+long_out=$($CLI upload --title "$LONG_TITLE" --author "Long Title Author" \
+    --folder "$FOLDER_ID" --wait --files "$UPLOAD_TMP/test.mp3" 2>&1)
+long_rc=$?
+abs_login root root
+if [ $long_rc -eq 0 ] && json_get "$long_out" "['id']" >/dev/null 2>&1; then
+    pass "long-title upload --wait resolves item (issue #54)"
+    long_id=$(json_get "$long_out" "['id']")
+    [ -n "$long_id" ] && $CLI items delete --id "$long_id" --hard >/dev/null 2>&1 || true
+else
+    fail "long-title upload --wait resolves item (issue #54)" "rc=$long_rc out=${long_out:0:300}"
+fi
+
 rm -rf "$UPLOAD_TMP"
 
 # Filename-collision tests: build a 2-dir source tree where both dirs have a file
