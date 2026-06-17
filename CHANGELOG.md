@@ -3,6 +3,23 @@
 All notable changes to abs-cli are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## 0.6.1 — 2026-06-17
+
+### Highlights
+- `upload --wait` now reliably confirms uploads with very long titles. Previously, when a title was long enough that the server truncated the on-disk folder name, the predicted path no longer matched and `--wait` reported a false failure (exit 1) — even though the upload had succeeded — which was confusing and risked duplicate re-uploads (#54).
+- A no-confirmation result from `--wait` is now a clear warning that the upload **succeeded** (with guidance not to re-upload), rather than an error implying data loss.
+
+### Fixes
+- fix: match upload --wait item by tolerant per-segment relPath
+- fix: normalise leading slash in relPath matcher
+- fix: reword upload --wait no-match as success-with-warning
+
+### Internal
+- feat: add per-segment relPath matcher for upload --wait
+- refactor: drop dead client-side path truncation
+- test: smoke-cover long-title upload --wait (issue #54)
+- docs: add upload --wait relpath matching design and plan
+
 ## 0.6.0 — 2026-06-02
 
 ### Highlights
