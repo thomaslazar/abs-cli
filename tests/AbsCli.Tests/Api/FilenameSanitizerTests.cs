@@ -103,16 +103,6 @@ public class FilenameSanitizerTests
     }
 
     [Fact]
-    public void LongBasename_TruncatedToByteLimit()
-    {
-        // UTF-16 is 2 bytes per ASCII char → 300 chars = 600 bytes, exceeds 255.
-        var longName = new string('a', 300);
-        var result = FilenameSanitizer.Sanitize(longName);
-        // MaxFilenameBytes / 2 = 127 chars for ASCII-only.
-        Assert.Equal(127, result.Length);
-    }
-
-    [Fact]
     public void PredictRelPath_JoinsSanitisedPartsWithSlash()
     {
         Assert.Equal("Author/Series/Title",

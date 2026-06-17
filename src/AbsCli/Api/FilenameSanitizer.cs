@@ -20,16 +20,17 @@ namespace AbsCli.Api;
 ///   7. Strip Windows reserved basenames (con, prn, aux, nul, com[0-9], lpt[0-9]).
 ///   8. Strip trailing sequences of '.' or ' '.
 ///   9. Collapse runs of whitespace to a single space.
-///  10. If basename in UTF-16 bytes &gt; 255, truncate the basename (ext preserved).
 ///
-/// Drift risk: if ABS changes sanitise rules, CLI predictions desync silently.
-/// Smoke-test asserts that upload round-trips produce the same relPath we
-/// predicted — catches drift before it ships.
+/// Note: ABS truncates over-long path segments (~255 UTF-16 bytes) in a way the
+/// CLI does not reproduce; upload --wait tolerates that tail divergence via
+/// RelPathMatcher rather than predicting the exact truncated path.
+///
+/// Drift risk: if ABS changes sanitise rules, predictions desync. The smoke
+/// test asserts upload --wait still resolves the scanned item (exact match for
+/// short titles, per-segment prefix match for long ones).
 /// </summary>
 public static class FilenameSanitizer
 {
-    private const int MaxFilenameBytes = 255;
-
     private static readonly Regex IllegalChars = new(@"[/\?<>\\:\*\|""]", RegexOptions.Compiled);
     private static readonly Regex ControlChars = new(@"[\x00-\x1f\x80-\x9f]", RegexOptions.Compiled);
     private static readonly Regex DotsOnly = new(@"^\.+$", RegexOptions.Compiled);
@@ -59,7 +60,7 @@ public static class FilenameSanitizer
         s = TrailingDotsOrSpaces.Replace(s, "");
         s = WhitespaceRun.Replace(s, " ");
 
-        return TruncateToByteLimit(s);
+        return s;
     }
 
     /// <summary>
@@ -78,25 +79,5 @@ public static class FilenameSanitizer
             if (!string.IsNullOrEmpty(sanitized)) parts.Add(sanitized);
         }
         return string.Join('/', parts);
-    }
-
-    private static string TruncateToByteLimit(string s)
-    {
-        // ABS measures basename only (extension preserved). On upload ABS sanitises
-        // each directory part separately before Path.join, so there's no extension
-        // here — we treat the whole string as basename.
-        var byteLen = Encoding.Unicode.GetByteCount(s);
-        if (byteLen <= MaxFilenameBytes) return s;
-
-        var sb = new StringBuilder();
-        var total = 0;
-        foreach (var c in s)
-        {
-            var charBytes = Encoding.Unicode.GetByteCount(new[] { c });
-            if (total + charBytes > MaxFilenameBytes) break;
-            sb.Append(c);
-            total += charBytes;
-        }
-        return sb.ToString();
     }
 }
