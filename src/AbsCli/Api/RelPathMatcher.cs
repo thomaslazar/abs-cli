@@ -10,6 +10,8 @@ namespace AbsCli.Api;
 /// <c>temp/audiobookshelf/server/utils/fileUtils.js</c>). We therefore compare
 /// per segment: short segments must be equal; long (near-limit) segments may
 /// differ in the tail provided they share a long common prefix.
+/// Two uploads ABS sanitises to a byte-identical folder cannot be told apart
+/// (the server merges them); such collisions are out of scope here.
 /// </summary>
 public static class RelPathMatcher
 {
@@ -27,8 +29,10 @@ public static class RelPathMatcher
     /// <summary>True if a candidate relPath matches the predicted relPath.</summary>
     public static bool IsMatch(string predicted, string actual)
     {
-        var p = predicted.Split('/');
-        var a = actual.Split('/');
+        // ABS stores relPath with a leading slash; normalise both sides so the
+        // match does not depend on the caller stripping it.
+        var p = predicted.TrimStart('/').Split('/');
+        var a = actual.TrimStart('/').Split('/');
         if (p.Length != a.Length) return false;
         for (int i = 0; i < p.Length; i++)
         {

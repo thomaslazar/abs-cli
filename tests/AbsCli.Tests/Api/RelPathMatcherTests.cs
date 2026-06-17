@@ -65,4 +65,11 @@ public class RelPathMatcherTests
         var matches = RelPathMatcher.Matches("Yone/Series/Title", new[] { "A/B/C" });
         Assert.Empty(matches);
     }
+
+    [Fact]
+    public void IsMatch_NormalisesLeadingSlashOnEitherSide()
+    {
+        Assert.True(RelPathMatcher.IsMatch("Yone/Series/Title", "/Yone/Series/Title"));
+        Assert.True(RelPathMatcher.IsMatch("/Yone/Series/Title", "Yone/Series/Title"));
+    }
 }
