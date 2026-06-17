@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Web;
 using AbsCli.Api;
 using AbsCli.Models;
@@ -73,12 +74,13 @@ public class UploadService
     }
 
     /// <summary>
-    /// Poll items list (sorted by addedAt desc) and return the first item whose
-    /// relPath matches <paramref name="expectedRelPath"/>. Path-based match is
-    /// deterministic: we computed the exact folder ABS wrote the files into
-    /// using the same sanitisation ABS applies, so there is no false positive
-    /// and no false negative from title substring matching (which broke when
-    /// --sequence prefixed the uploaded title).
+    /// Poll items list (sorted by addedAt desc) and return the just-uploaded
+    /// item, matched against <paramref name="expectedRelPath"/> with tolerant
+    /// per-segment prefix matching (see <see cref="RelPathMatcher"/>) because
+    /// the CLI's predicted path and ABS's stored path diverge in the truncated
+    /// tail of long segments. Returns null if nothing matches within the window
+    /// OR if more than one recent item matches — an unresolvable collision the
+    /// caller must not guess at.
     /// </summary>
     public async Task<LibraryItemMinified?> WaitForItemByPathAsync(
         string libraryId, string expectedRelPath,
@@ -93,19 +95,24 @@ public class UploadService
             query["limit"] = "20";
             var url = ApiEndpoints.LibraryItems(libraryId) + "?" + query;
             var result = await _client.GetAsync(url, AppJsonContext.Default.PaginatedResponse);
+            var candidates = new List<(string RelPath, JsonElement Element)>();
             foreach (var itemElement in result.Results)
             {
                 if (!itemElement.TryGetProperty("relPath", out var relPathProp)) continue;
                 var relPath = relPathProp.GetString();
                 if (relPath == null) continue;
                 // ABS stores relPath with a leading slash; strip it for comparison.
-                var normalised = relPath.TrimStart('/');
-                if (string.Equals(normalised, expectedRelPath, StringComparison.Ordinal))
-                {
-                    return System.Text.Json.JsonSerializer.Deserialize(itemElement.GetRawText(),
-                        AppJsonContext.Default.LibraryItemMinified);
-                }
+                candidates.Add((relPath.TrimStart('/'), itemElement));
             }
+            var matches = RelPathMatcher.Matches(expectedRelPath, candidates.Select(c => c.RelPath));
+            if (matches.Count == 1)
+            {
+                var element = candidates.First(c => c.RelPath == matches[0]).Element;
+                return JsonSerializer.Deserialize(element.GetRawText(),
+                    AppJsonContext.Default.LibraryItemMinified);
+            }
+            // matches.Count > 1 ⇒ ambiguous collision; polling won't resolve it.
+            if (matches.Count > 1) return null;
             await Task.Delay(pollIntervalMs);
         }
         return null;
