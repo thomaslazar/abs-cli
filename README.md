@@ -259,6 +259,8 @@ Every command supports `--help` with examples and reference sections. Commands t
 
 Add `--help-full` to see the full help including `Response shape:` blocks. Plain `--help` omits those blocks (printing a one-line pointer instead) to keep output scannable — this CLI is designed for AI-agent consumption where terse default help reduces noise.
 
+For a complete map of the Audiobookshelf HTTP API and which endpoints the CLI implements, see [docs/abs-api-coverage.md](docs/abs-api-coverage.md).
+
 ## Logging
 
 Errors and warnings go to stderr by default with a timestamp + level prefix:

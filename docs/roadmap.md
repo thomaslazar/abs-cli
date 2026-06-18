@@ -193,9 +193,21 @@ _Nothing scheduled. The next milestone lands here once scoped._
 
 ## Ideas
 
-Not yet scoped — notes to pick up later.
+Not yet scoped — notes to pick up later. No particular priority.
 
-_None currently. New ideas land here before getting scheduled into a release._
+- **Tags & genres management** — `GET /api/tags`, `POST /api/tags/rename`,
+  `DELETE /api/tags/:tag`, and the `genres` equivalents.
+- **Series update** — `PATCH /api/series/:id`.
+- **Narrator management** — `GET /api/libraries/:id/narrators`,
+  `PATCH`/`DELETE /api/libraries/:id/narrators/:narratorId`.
+- **Item file management** — `GET`/`DELETE /api/items/:id/file/:fileid`,
+  `GET /api/items/:id/file/:fileid/download`, `GET /api/items/:id/ffprobe/:fileid`.
+- **Library CRUD** — `POST /api/libraries`, `PATCH /api/libraries/:id`,
+  `DELETE /api/libraries/:id`, `POST /api/libraries/order` (no match endpoints).
+- **Playlists resource** — full `/api/playlists` set (per-user, distinct from
+  library-scoped collections).
+
+Full endpoint coverage map: [docs/abs-api-coverage.md](abs-api-coverage.md).
 
 ## Deferred features
 
@@ -205,5 +217,3 @@ All are additive — nothing in the v1 architecture blocks them.
 |---------|-------------------|
 | Table output (`--table` via Spectre.Console) | JSON-only sufficient for v1; agents don't need tables |
 | Episodes resource | No podcast libraries in current use |
-| Playlists resource | Per-user playlists, distinct from library-scoped collections; not needed for metadata workflow |
-| `items files` | File management not in scope |
