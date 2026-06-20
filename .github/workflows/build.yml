@@ -105,6 +105,7 @@ jobs:
         with:
           name: abs-cli-${{ matrix.rid }}
           path: src/AbsCli/bin/Release/net10.0/${{ matrix.rid }}/publish/
+          retention-days: 5
       - name: Attach binary to GitHub Release
         if: github.event_name == 'release'
         shell: bash
