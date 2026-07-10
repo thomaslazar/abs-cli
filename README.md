@@ -238,6 +238,12 @@ abs-cli config set defaultLibrary <library-id>
 | `authors image set --id <id> --url <url>` | Apply an author image (URL only — ABS downloads) |
 | `authors image get --id <id> --output <path>` | Download the author image |
 | `authors image remove --id <id>` | Remove the author image |
+| `tags list` | List all tags (admin; server-sorted) |
+| `tags rename <old-tag> <new-tag>` | Rename a tag across all items (admin; merges if new name exists) |
+| `tags delete <tag>` | Remove a tag from all items (admin) |
+| `genres list` | List all genres (admin; unsorted) |
+| `genres rename <old-genre> <new-genre>` | Rename a genre across all items (admin; merges if new name exists) |
+| `genres delete <genre>` | Remove a genre from all items (admin) |
 | `search --query <text>` | Search across a library |
 | `upload` | Upload files to a library (`--title`, `--author`, `--series`, `--sequence`, `--wait`, `--files`, `--prefix-source-dir`, `--files-manifest`) |
 | `backup create` | Create a server backup (admin) |
