@@ -20,10 +20,8 @@ public static class GenresCommand
 
     private static Command CreateListCommand()
     {
-        var command = new Command("list", "List all genres (unsorted — server discovery order)");
+        var command = new Command("list", "List all genres (unsorted — server discovery order, unlike tags)");
         command.AddPermissionRequired("admin");
-        command.AddHelpSection("Notes", HelpSectionPosition.Top,
-            "Genres are returned unsorted (server discovery order), unlike tags.");
         command.AddExamples("abs-cli genres list");
         command.AddResponseExample<GenreListResponse>();
         command.SetAction(async (parseResult, cancellationToken) =>
