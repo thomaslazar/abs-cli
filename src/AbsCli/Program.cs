@@ -24,6 +24,7 @@ rootCommand.Subcommands.Add(ItemsCommand.Create());
 rootCommand.Subcommands.Add(SeriesCommand.Create());
 rootCommand.Subcommands.Add(AuthorsCommand.Create());
 rootCommand.Subcommands.Add(TagsCommand.Create());
+rootCommand.Subcommands.Add(GenresCommand.Create());
 rootCommand.Subcommands.Add(CollectionsCommand.Create());
 rootCommand.Subcommands.Add(MeCommand.Create());
 rootCommand.Subcommands.Add(SearchCommand.Create());
