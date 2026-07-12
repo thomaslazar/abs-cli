@@ -568,6 +568,12 @@ assert_json_key "tags rename returns numItemsUpdated" "numItemsUpdated" "$output
 output=$($CLI tags rename smoke-temp-tag-renamed smoke-temp-tag 2>&1)
 assert_json_key "tags rename back returns numItemsUpdated" "numItemsUpdated" "$output"
 
+# rename roundtrip on the throwaway genre (rename, then rename back)
+output=$($CLI genres rename smoke-temp-genre smoke-temp-genre-renamed 2>&1)
+assert_json_key "genres rename returns numItemsUpdated" "numItemsUpdated" "$output"
+output=$($CLI genres rename smoke-temp-genre-renamed smoke-temp-genre 2>&1)
+assert_json_key "genres rename back returns numItemsUpdated" "numItemsUpdated" "$output"
+
 # delete the throwaway tag & genre
 output=$($CLI tags delete smoke-temp-tag 2>&1)
 assert_json_key "tags delete returns numItemsUpdated" "numItemsUpdated" "$output"
