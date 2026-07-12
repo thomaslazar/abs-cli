@@ -343,10 +343,10 @@ streaming routes are intentionally omitted — out of scope for a management CLI
 | PATCH | `/api/settings` | Update server settings | admin | — |
 | PATCH | `/api/sorting-prefixes` | Update sorting prefixes | admin | — |
 | POST | `/api/authorize` | Authorize user | | 🔒 (login) |
-| GET | `/api/tags` | List tags | | — |
+| GET | `/api/tags` | List tags | admin | — |
 | POST | `/api/tags/rename` | Rename tag | admin | — |
 | DELETE | `/api/tags/:tag` | Delete tag | admin | — |
-| GET | `/api/genres` | List genres | | — |
+| GET | `/api/genres` | List genres | admin | — |
 | POST | `/api/genres/rename` | Rename genre | admin | — |
 | DELETE | `/api/genres/:genre` | Delete genre | admin | — |
 | POST | `/api/validate-cron` | Validate cron expression | admin | — |

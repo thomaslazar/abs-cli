@@ -110,7 +110,7 @@ echo "=== Help Screens ==="
 # ============================================================
 
 # Parent commands and self-test don't need examples (they just list subcommands)
-for cmd in "" "config" "libraries" "items" "series" "authors" "backup" "metadata" "tasks" "self-test"; do
+for cmd in "" "config" "libraries" "items" "series" "authors" "tags" "genres" "backup" "metadata" "tasks" "self-test"; do
     label="help: abs-cli $cmd --help"
     output=$($CLI $cmd --help 2>&1) || true
     if echo "$output" | grep -q "Description:\|Usage:"; then
@@ -127,6 +127,8 @@ for cmd in "login" "config get" "config set" \
            "items update" "items batch-update" "items batch-get" "items scan" \
            "series list" "series get" \
            "authors list" "authors get" \
+           "tags list" "tags rename" "tags delete" \
+           "genres list" "genres rename" "genres delete" \
            "backup create" "backup list" "backup apply" "backup download" "backup delete" "backup upload" \
            "upload" \
            "metadata search" "metadata providers" "metadata covers" \
@@ -546,6 +548,37 @@ if echo "$error_output" | grep -q "Bad request"; then
 else
     fail "authors image remove on no-image surfaces as 400" "got: ${error_output:0:200}"
 fi
+
+# ============================================================
+echo ""
+echo "=== Tags & Genres (admin) ==="
+# ============================================================
+
+output=$($CLI tags list 2>&1)
+assert_json_key "tags list returns JSON" "tags" "$output"
+assert_json_expr "tags list non-empty" "len(d['tags'])>0" "$output"
+
+output=$($CLI genres list 2>&1)
+assert_json_key "genres list returns JSON" "genres" "$output"
+assert_json_expr "genres list non-empty" "len(d['genres'])>0" "$output"
+
+# rename roundtrip on the throwaway tag (rename, then rename back)
+output=$($CLI tags rename smoke-temp-tag smoke-temp-tag-renamed 2>&1)
+assert_json_key "tags rename returns numItemsUpdated" "numItemsUpdated" "$output"
+output=$($CLI tags rename smoke-temp-tag-renamed smoke-temp-tag 2>&1)
+assert_json_key "tags rename back returns numItemsUpdated" "numItemsUpdated" "$output"
+
+# rename roundtrip on the throwaway genre (rename, then rename back)
+output=$($CLI genres rename smoke-temp-genre smoke-temp-genre-renamed 2>&1)
+assert_json_key "genres rename returns numItemsUpdated" "numItemsUpdated" "$output"
+output=$($CLI genres rename smoke-temp-genre-renamed smoke-temp-genre 2>&1)
+assert_json_key "genres rename back returns numItemsUpdated" "numItemsUpdated" "$output"
+
+# delete the throwaway tag & genre
+output=$($CLI tags delete smoke-temp-tag 2>&1)
+assert_json_key "tags delete returns numItemsUpdated" "numItemsUpdated" "$output"
+output=$($CLI genres delete smoke-temp-genre 2>&1)
+assert_json_key "genres delete returns numItemsUpdated" "numItemsUpdated" "$output"
 
 # ============================================================
 echo ""

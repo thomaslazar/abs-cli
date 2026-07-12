@@ -73,4 +73,18 @@ public static class ApiEndpoints
     public static string MeProgress(string libraryItemId) => $"api/me/progress/{libraryItemId}";
     public static string MeProgressById(string progressId) => $"api/me/progress/{progressId}";
     public const string MeProgressBatchUpdate = "api/me/progress/batch/update";
+
+    // Tags & Genres (all admin-only — MiscController.js gates every route on isAdminOrUp)
+    public const string Tags = "api/tags";
+    public const string TagRename = "api/tags/rename";
+    public static string TagByName(string tag) => $"api/tags/{EncodePathValue(tag)}";
+    public const string Genres = "api/genres";
+    public const string GenreRename = "api/genres/rename";
+    public static string GenreByName(string genre) => $"api/genres/{EncodePathValue(genre)}";
+
+    // ABS decodes the :tag / :genre param via
+    // Buffer.from(decodeURIComponent(param), 'base64'), so base64-encode the
+    // value then URI-escape it into the path segment.
+    private static string EncodePathValue(string value)
+        => Uri.EscapeDataString(Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(value)));
 }

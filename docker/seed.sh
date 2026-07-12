@@ -202,6 +202,21 @@ for i in $(seq 1 30); do
     sleep 1
 done
 
+# --- Seed tags & genres onto a couple of items (for tags/genres smoke tests) ---
+echo ""
+echo "Seeding tags and genres..."
+TAG_ITEM_IDS=$(curl -sf "$ABS_URL/api/libraries/$LIBRARY_ID/items?limit=2" -H "$AUTH" \
+    | python3 -c "import sys,json; [print(r['id']) for r in json.load(sys.stdin)['results']]")
+TAG_ITEM1=$(echo "$TAG_ITEM_IDS" | sed -n '1p')
+TAG_ITEM2=$(echo "$TAG_ITEM_IDS" | sed -n '2p')
+curl -sf -X PATCH "$ABS_URL/api/items/$TAG_ITEM1/media" \
+    -H "$AUTH" -H 'Content-Type: application/json' \
+    -d '{"tags":["Favorites"],"metadata":{"genres":["Fantasy"]}}' > /dev/null
+curl -sf -X PATCH "$ABS_URL/api/items/$TAG_ITEM2/media" \
+    -H "$AUTH" -H 'Content-Type: application/json' \
+    -d '{"tags":["Favorites","smoke-temp-tag"],"metadata":{"genres":["Science Fiction","smoke-temp-genre"]}}' > /dev/null
+echo "Tagged items: $TAG_ITEM1, $TAG_ITEM2"
+
 # --- Multi-ebook fixture (for items toggle-ebook-status smoke) ---
 echo ""
 echo "Creating multi-ebook fixture..."
