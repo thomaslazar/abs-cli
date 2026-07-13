@@ -82,6 +82,10 @@ public static class ApiEndpoints
     public const string GenreRename = "api/genres/rename";
     public static string GenreByName(string genre) => $"api/genres/{EncodePathValue(genre)}";
 
+    // Narrators (library-scoped; list is unrestricted, rename/delete need 'update')
+    public static string LibraryNarrators(string libraryId) => $"api/libraries/{libraryId}/narrators";
+    public static string LibraryNarratorByName(string libraryId, string name) => $"api/libraries/{libraryId}/narrators/{EncodePathValue(name)}";
+
     // ABS decodes the :tag / :genre param via
     // Buffer.from(decodeURIComponent(param), 'base64'), so base64-encode the
     // value then URI-escape it into the path segment.

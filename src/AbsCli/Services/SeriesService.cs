@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Web;
 using AbsCli.Api;
 using AbsCli.Models;
@@ -28,5 +29,15 @@ public class SeriesService
     public async Task<SeriesItem> GetAsync(string id)
     {
         return await _client.GetAsync(ApiEndpoints.SeriesById(id), AppJsonContext.Default.SeriesItem);
+    }
+
+    public async Task<SeriesItem> UpdateAsync(string id, Dictionary<string, string> body)
+    {
+        var json = JsonSerializer.Serialize(body, AppJsonContext.Default.DictionaryStringString);
+        return await _client.PatchAsync(
+            ApiEndpoints.SeriesById(id),
+            json,
+            AppJsonContext.Default.SeriesItem,
+            "'update' permission");
     }
 }

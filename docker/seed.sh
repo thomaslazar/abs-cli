@@ -211,10 +211,10 @@ TAG_ITEM1=$(echo "$TAG_ITEM_IDS" | sed -n '1p')
 TAG_ITEM2=$(echo "$TAG_ITEM_IDS" | sed -n '2p')
 curl -sf -X PATCH "$ABS_URL/api/items/$TAG_ITEM1/media" \
     -H "$AUTH" -H 'Content-Type: application/json' \
-    -d '{"tags":["Favorites"],"metadata":{"genres":["Fantasy"]}}' > /dev/null
+    -d '{"tags":["Favorites"],"metadata":{"genres":["Fantasy"],"narrators":["Rob Inglis"]}}' > /dev/null
 curl -sf -X PATCH "$ABS_URL/api/items/$TAG_ITEM2/media" \
     -H "$AUTH" -H 'Content-Type: application/json' \
-    -d '{"tags":["Favorites","smoke-temp-tag"],"metadata":{"genres":["Science Fiction","smoke-temp-genre"]}}' > /dev/null
+    -d '{"tags":["Favorites","smoke-temp-tag"],"metadata":{"genres":["Science Fiction","smoke-temp-genre"],"narrators":["Rob Inglis","smoke-temp-narrator"]}}' > /dev/null
 echo "Tagged items: $TAG_ITEM1, $TAG_ITEM2"
 
 # --- Multi-ebook fixture (for items toggle-ebook-status smoke) ---

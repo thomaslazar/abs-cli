@@ -229,6 +229,7 @@ abs-cli config set defaultLibrary <library-id>
 | `collections batch-remove --id <id> {--input <file> \| --stdin}` | Remove multiple books (tolerates missing) |
 | `series list` | List series (`--limit`, `--page`) |
 | `series get --id <id>` | Get a single series |
+| `series update --id <id> [--name <n>] [--description <d>\|""]` | Edit name and/or description (no merge-on-rename — see help) |
 | `authors list` | List authors (paginated: `--limit`, `--page`, `--sort`, `--desc`) |
 | `authors get --id <id>` | Get a single author |
 | `authors match --id <id>` | Apply Audnexus author data (destructive — writes asin / imagePath / description) |
@@ -238,6 +239,9 @@ abs-cli config set defaultLibrary <library-id>
 | `authors image set --id <id> --url <url>` | Apply an author image (URL only — ABS downloads) |
 | `authors image get --id <id> --output <path>` | Download the author image |
 | `authors image remove --id <id>` | Remove the author image |
+| `narrators list` | List narrators in a library |
+| `narrators rename <old-narrator> <new-narrator>` | Rename a narrator across a library (update; merges if new name exists) |
+| `narrators delete <narrator>` | Remove a narrator from a library (update — not delete) |
 | `tags list` | List all tags (admin; server-sorted) |
 | `tags rename <old-tag> <new-tag>` | Rename a tag across all items (admin; merges if new name exists) |
 | `tags delete <tag>` | Remove a tag from all items (admin) |

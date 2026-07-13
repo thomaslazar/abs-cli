@@ -33,4 +33,17 @@ public class ApiEndpointsTests
         Assert.Equal("api/genres", ApiEndpoints.Genres);
         Assert.Equal("api/genres/rename", ApiEndpoints.GenreRename);
     }
+
+    [Fact]
+    public void LibraryNarrators_BuildsListPath()
+    {
+        Assert.Equal("api/libraries/lib_1/narrators", ApiEndpoints.LibraryNarrators("lib_1"));
+    }
+
+    [Fact]
+    public void LibraryNarratorByName_Base64EncodesThenUriEscapes()
+    {
+        // "a" -> base64 "YQ==" -> URI-escaped "YQ%3D%3D"
+        Assert.Equal("api/libraries/lib_1/narrators/YQ%3D%3D", ApiEndpoints.LibraryNarratorByName("lib_1", "a"));
+    }
 }

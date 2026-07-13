@@ -7,6 +7,7 @@ namespace AbsCli.Commands;
 
 public static class SeriesCommand
 {
+    private static readonly NLog.Logger _logger = NLog.LogManager.GetCurrentClassLogger();
     public static Command Create()
     {
         var command = new Command("series", "Manage series");
@@ -20,6 +21,7 @@ public static class SeriesCommand
             "  abs-cli items list --filter \"series=<series-id>\" --sort sequence");
         command.Subcommands.Add(CreateListCommand());
         command.Subcommands.Add(CreateGetCommand());
+        command.Subcommands.Add(CreateUpdateCommand());
         return command;
     }
 
@@ -67,5 +69,66 @@ public static class SeriesCommand
             return 0;
         });
         return command;
+    }
+
+    private static Command CreateUpdateCommand()
+    {
+        var idOption = new Option<string>("--id") { Description = "Series ID", Required = true };
+        var nameOption = new Option<string?>("--name") { Description = "New name (does NOT merge into an existing same-named series — see Notes)" };
+        var descriptionOption = new Option<string?>("--description") { Description = "New description; empty string clears the field" };
+        var command = new Command("update", "Edit a series' name and/or description")
+        {
+            idOption,
+            nameOption,
+            descriptionOption
+        };
+        command.AddPermissionRequired("update");
+        command.AddHelpSection("Notes", HelpSectionPosition.Top,
+            "Unlike 'authors update', renaming to an existing series name does NOT",
+            "merge — ABS creates a second series with the duplicate name. Empty",
+            "--name is rejected; --description \"\" clears the field. At least one",
+            "of --name / --description is required.");
+        command.AddExamples(
+            "abs-cli series update --id \"se_abc\" --name \"The Stormlight Archive\"",
+            "abs-cli series update --id \"se_abc\" --description \"Epic fantasy\"");
+        command.AddResponseExample<SeriesItem>();
+        command.SetAction(async (parseResult, cancellationToken) =>
+        {
+            var id = parseResult.GetValue(idOption)!;
+            var name = parseResult.GetValue(nameOption);
+            var description = parseResult.GetValue(descriptionOption);
+            if (name is not null && string.IsNullOrEmpty(name))
+            {
+                _logger.Error("--name cannot be empty");
+                Environment.Exit(1);
+            }
+            var body = BuildUpdateBodyForTesting(name, description);
+            if (body.Count == 0)
+            {
+                _logger.Error("Specify at least one of --name, --description");
+                Environment.Exit(1);
+            }
+            var (client, _) = CommandHelper.BuildClient();
+            var service = new SeriesService(client);
+            var result = await service.UpdateAsync(id, body);
+            ConsoleOutput.WriteJson(result, AppJsonContext.Default.SeriesItem);
+            return 0;
+        });
+        return command;
+    }
+
+    /// <summary>
+    /// Build the PATCH body. name is included only when non-empty (empty is
+    /// rejected upstream); description is included whenever supplied, so an
+    /// empty string clears it server-side. Exposed internally for unit testing.
+    /// </summary>
+    internal static Dictionary<string, string> BuildUpdateBodyForTesting(string? name, string? description)
+    {
+        var body = new Dictionary<string, string>();
+        if (!string.IsNullOrEmpty(name))
+            body["name"] = name;
+        if (description is not null)
+            body["description"] = description;
+        return body;
     }
 }
