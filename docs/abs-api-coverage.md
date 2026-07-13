@@ -62,9 +62,9 @@ any) that implements it.
 | GET | `/api/libraries/:id/search` | Search within library | | `search` ✅ |
 | GET | `/api/libraries/:id/stats` | Library statistics | | — |
 | GET | `/api/libraries/:id/authors` | List authors | | `authors list` ✅ |
-| GET | `/api/libraries/:id/narrators` | List narrators | | — |
-| PATCH | `/api/libraries/:id/narrators/:narratorId` | Update narrator | update | — |
-| DELETE | `/api/libraries/:id/narrators/:narratorId` | Remove narrator | delete | — |
+| GET | `/api/libraries/:id/narrators` | List narrators | | `narrators list` ✅ |
+| PATCH | `/api/libraries/:id/narrators/:narratorId` | Update narrator | update | `narrators rename` ✅ |
+| DELETE | `/api/libraries/:id/narrators/:narratorId` | Remove narrator | update | `narrators delete` ✅ |
 | GET | `/api/libraries/:id/matchall` | Match all items to metadata | update | — |
 | POST | `/api/libraries/:id/scan` | Scan library | update | `libraries scan` ✅ |
 | GET | `/api/libraries/:id/recent-episodes` | Recent episodes | | — |
@@ -158,7 +158,7 @@ any) that implements it.
 | Method | Path | Description | Perm | CLI |
 |--------|------|-------------|------|-----|
 | GET | `/api/series/:id` | Get series | | `series get` ✅ |
-| PATCH | `/api/series/:id` | Update series | update | — |
+| PATCH | `/api/series/:id` | Update series | update | `series update` ✅ |
 
 ## Playlists
 
