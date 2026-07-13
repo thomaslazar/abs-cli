@@ -26,6 +26,34 @@ public class SeriesCommandTests
     }
 
     [Fact]
+    public void SeriesList_Help_DocumentsOptions()
+    {
+        var output = RenderHelp("series", "list");
+        Assert.Contains("--library", output);
+        Assert.Contains("--limit", output);
+        Assert.Contains("--page", output);
+    }
+
+    [Fact]
+    public void SeriesList_HasNoPermissionSection()
+    {
+        Assert.DoesNotContain("Permission required:", RenderHelp("series", "list"));
+    }
+
+    [Fact]
+    public void SeriesGet_Help_RequiresId()
+    {
+        var output = RenderHelp("series", "get");
+        Assert.Contains("--id", output);
+    }
+
+    [Fact]
+    public void SeriesGet_HasNoPermissionSection()
+    {
+        Assert.DoesNotContain("Permission required:", RenderHelp("series", "get"));
+    }
+
+    [Fact]
     public void SeriesUpdate_RequiresUpdatePermission()
     {
         var output = RenderHelp("series", "update");
