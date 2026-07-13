@@ -105,9 +105,8 @@ public class UploadCommandTests
     [Fact]
     public void Upload_Help_ShowsUploadPermissionAndOptions()
     {
-        var output = RenderHelp("upload");
-        Assert.Contains("Permission required:", output);
-        Assert.Contains("upload", output);
+        var output = RenderHelp("upload").Replace("\r\n", "\n");
+        Assert.Contains("Permission required:\n  upload", output);
         Assert.Contains("--files", output);
         Assert.Contains("--files-manifest", output);
     }

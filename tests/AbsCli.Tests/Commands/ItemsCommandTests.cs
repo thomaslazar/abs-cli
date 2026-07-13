@@ -55,17 +55,15 @@ public class ItemsCommandTests
     [Fact]
     public void ItemsUpdate_RequiresUpdatePermission()
     {
-        var output = RenderHelp("items", "update");
-        Assert.Contains("Permission required:", output);
-        Assert.Contains("update", output);
+        var output = RenderHelp("items", "update").Replace("\r\n", "\n");
+        Assert.Contains("Permission required:\n  update", output);
     }
 
     [Fact]
     public void ItemsScan_RequiresAdminPermission()
     {
-        var output = RenderHelp("items", "scan");
-        Assert.Contains("Permission required:", output);
-        Assert.Contains("admin", output);
+        var output = RenderHelp("items", "scan").Replace("\r\n", "\n");
+        Assert.Contains("Permission required:\n  admin", output);
     }
 
     [Fact]

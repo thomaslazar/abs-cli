@@ -28,9 +28,8 @@ public class LibrariesCommandTests
     [Fact]
     public void LibrariesScan_RequiresAdminPermission()
     {
-        var output = RenderHelp("libraries", "scan");
-        Assert.Contains("Permission required:", output);
-        Assert.Contains("admin", output);
+        var output = RenderHelp("libraries", "scan").Replace("\r\n", "\n");
+        Assert.Contains("Permission required:\n  admin", output);
     }
 
     [Fact]

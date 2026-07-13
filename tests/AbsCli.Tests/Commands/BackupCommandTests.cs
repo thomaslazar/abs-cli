@@ -34,9 +34,8 @@ public class BackupCommandTests
     [InlineData("upload")]
     public void BackupSubcommands_RequireAdmin(string sub)
     {
-        var output = RenderHelp("backup", sub);
-        Assert.Contains("Permission required:", output);
-        Assert.Contains("admin", output);
+        var output = RenderHelp("backup", sub).Replace("\r\n", "\n");
+        Assert.Contains("Permission required:\n  admin", output);
     }
 
     [Fact]
