@@ -379,6 +379,13 @@ assert_json_expr "series update sets description" "d['description']=='Smoke test
 assert_json_expr "series update returns same id" "d['id']=='$SERIES_ID'" "$output"
 $CLI series update --id "$SERIES_ID" --description "" 2>/dev/null > /dev/null
 
+# Update the series name (rename, then rename back to the original).
+ORIGINAL_SERIES_NAME=$(json_get "$($CLI series get --id "$SERIES_ID" 2>/dev/null)" "['name']")
+output=$($CLI series update --id "$SERIES_ID" --name "Smoke Renamed Series" 2>&1)
+assert_json_expr "series update sets name" "d['name']=='Smoke Renamed Series'" "$output"
+output=$($CLI series update --id "$SERIES_ID" --name "$ORIGINAL_SERIES_NAME" 2>&1)
+assert_json_expr "series update restored original name" "d['name']=='$ORIGINAL_SERIES_NAME'" "$output"
+
 # ============================================================
 echo ""
 echo "=== Authors Commands ==="
