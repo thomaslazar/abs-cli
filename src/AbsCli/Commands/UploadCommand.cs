@@ -87,33 +87,10 @@ public static class UploadCommand
             var files = parseResult.GetValue(filesOption) ?? Array.Empty<string>();
             var prefixSourceDir = parseResult.GetValue(prefixSourceDirOption);
             var manifestPath = parseResult.GetValue(manifestOption);
-            if (sequence != null && series == null)
+            var argError = ValidateUploadArgs(series, sequence, manifestPath, files.Length, prefixSourceDir);
+            if (argError != null)
             {
-                _logger.Error("--sequence requires --series.");
-                Environment.Exit(1);
-                return 1;
-            }
-            if (sequence != null && string.IsNullOrWhiteSpace(sequence))
-            {
-                _logger.Error("--sequence must be a non-empty string.");
-                Environment.Exit(1);
-                return 1;
-            }
-            if (manifestPath != null && files.Length > 0)
-            {
-                _logger.Error("--files and --files-manifest are mutually exclusive.");
-                Environment.Exit(1);
-                return 1;
-            }
-            if (manifestPath != null && prefixSourceDir)
-            {
-                _logger.Error("--prefix-source-dir and --files-manifest are mutually exclusive.");
-                Environment.Exit(1);
-                return 1;
-            }
-            if (manifestPath == null && files.Length == 0)
-            {
-                _logger.Error("Pass --files <path>... or --files-manifest <path|->.");
+                _logger.Error(argError);
                 Environment.Exit(1);
                 return 1;
             }
@@ -129,7 +106,12 @@ public static class UploadCommand
                     return 1;
                 }
             }
-            CheckForDuplicates(uploadList);
+            var dupError = DetectDuplicates(uploadList);
+            if (dupError != null)
+            {
+                _logger.Error(dupError);
+                Environment.Exit(1);
+            }
             var (client, config) = CommandHelper.BuildClient(libraryOverride: library);
             var libraryId = CommandHelper.RequireLibrary(config);
             var service = new UploadService(client);
@@ -208,31 +190,60 @@ public static class UploadCommand
             _logger.Error($"Manifest is not valid JSON: {ex.Message}");
             Environment.Exit(1);
         }
-        if (entries == null || entries.Count == 0)
+        var entryError = ValidateManifestEntries(entries);
+        if (entryError != null)
         {
-            _logger.Error("Manifest is empty or null. Provide a non-empty array of {src, as} entries.");
+            _logger.Error(entryError);
             Environment.Exit(1);
         }
         var result = new List<(string LocalPath, string UploadName)>(entries!.Count);
         foreach (var entry in entries)
         {
-            if (string.IsNullOrWhiteSpace(entry.Src) || string.IsNullOrWhiteSpace(entry.TargetName))
-            {
-                _logger.Error("Manifest entry missing 'src' or 'as'. Each entry must have both.");
-                Environment.Exit(1);
-            }
             result.Add((entry.Src, entry.TargetName));
         }
         return result;
     }
 
-    private static void CheckForDuplicates(IReadOnlyList<(string LocalPath, string UploadName)> uploadList)
+    /// <summary>
+    /// Validates the upload argument combination. Returns null when valid,
+    /// otherwise the error message. Branch order matches the historical inline
+    /// checks so the first-failing message is unchanged.
+    /// </summary>
+    internal static string? ValidateUploadArgs(string? series, string? sequence, string? manifestPath, int fileCount, bool prefixSourceDir)
+    {
+        if (sequence != null && series == null)
+            return "--sequence requires --series.";
+        if (sequence != null && string.IsNullOrWhiteSpace(sequence))
+            return "--sequence must be a non-empty string.";
+        if (manifestPath != null && fileCount > 0)
+            return "--files and --files-manifest are mutually exclusive.";
+        if (manifestPath != null && prefixSourceDir)
+            return "--prefix-source-dir and --files-manifest are mutually exclusive.";
+        if (manifestPath == null && fileCount == 0)
+            return "Pass --files <path>... or --files-manifest <path|->.";
+        return null;
+    }
+
+    internal static string? ValidateManifestEntries(List<UploadManifestEntry>? entries)
+    {
+        if (entries == null || entries.Count == 0)
+            return "Manifest is empty or null. Provide a non-empty array of {src, as} entries.";
+        foreach (var entry in entries)
+        {
+            if (string.IsNullOrWhiteSpace(entry.Src) || string.IsNullOrWhiteSpace(entry.TargetName))
+                return "Manifest entry missing 'src' or 'as'. Each entry must have both.";
+        }
+        return null;
+    }
+
+    internal static string? DetectDuplicates(IReadOnlyList<(string LocalPath, string UploadName)> uploadList)
     {
         var groups = uploadList
             .GroupBy(e => e.UploadName, StringComparer.OrdinalIgnoreCase)
             .Where(g => g.Count() > 1)
             .ToList();
-        if (groups.Count == 0) return;
+        if (groups.Count == 0)
+            return null;
         var lines = new List<string> { "Duplicate filenames in upload — ABS would silently overwrite:" };
         foreach (var group in groups)
         {
@@ -245,7 +256,6 @@ public static class UploadCommand
         lines.Add("");
         lines.Add("Pass --prefix-source-dir to prefix each upload filename with its parent");
         lines.Add("directory name, or --files-manifest <path> for explicit per-file naming.");
-        _logger.Error(string.Join("\n", lines));
-        Environment.Exit(1);
+        return string.Join("\n", lines);
     }
 }
