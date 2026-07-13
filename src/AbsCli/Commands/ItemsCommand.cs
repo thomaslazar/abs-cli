@@ -43,6 +43,7 @@ public static class ItemsCommand
         command.Subcommands.Add(CreateEncodeM4bCommand());
         command.Subcommands.Add(CreateChaptersCommand());
         command.Subcommands.Add(CreateProgressCommand());
+        command.Subcommands.Add(CreateFileCommand());
         command.Subcommands.Add(CreateEmbedMetadataCommand());
         command.Subcommands.Add(CreateBatchEmbedMetadataCommand());
         command.Subcommands.Add(CreateToggleEbookStatusCommand());
@@ -851,6 +852,102 @@ public static class ItemsCommand
             await service.RemoveAsync(lid);
             ConsoleOutput.WriteJson(new Dictionary<string, string> { ["success"] = "true" });
             return 0;
+        });
+        return command;
+    }
+
+    private static Command CreateFileCommand()
+    {
+        var command = new Command("file", "Manage individual files of a library item (download, delete, ffprobe)");
+        command.Subcommands.Add(CreateFileDownloadCommand());
+        command.Subcommands.Add(CreateFileDeleteCommand());
+        command.Subcommands.Add(CreateFileFfprobeCommand());
+        return command;
+    }
+
+    private static Command CreateFileDownloadCommand()
+    {
+        var idOption = new Option<string>("--id") { Description = "Library item ID", Required = true };
+        var inoOption = new Option<string>("--ino") { Description = "File inode (from items get --expanded → libraryFiles[].ino)", Required = true };
+        var outputOption = new Option<string>("--output") { Description = "Output file path, or '-' for binary to stdout", Required = true };
+        var command = new Command("download", "Download a single file of a library item") { idOption, inoOption, outputOption };
+        command.AddPermissionRequired("download");
+        command.AddExamples(
+            "abs-cli items file download --id \"li_abc\" --ino \"12345\" --output track01.mp3",
+            "abs-cli items file download --id \"li_abc\" --ino \"12345\" --output - > track01.mp3");
+        command.AddResponseExample<CoverFileSavedDescriptor>();
+        command.SetAction(async parseResult =>
+        {
+            var id = parseResult.GetValue(idOption)!;
+            var ino = parseResult.GetValue(inoOption)!;
+            var output = parseResult.GetValue(outputOption)!;
+            var (client, _) = CommandHelper.BuildClient();
+            var service = new ItemsService(client);
+            await using var stream = await service.DownloadFileStreamAsync(id, ino);
+            if (output == "-")
+            {
+                await using var stdout = Console.OpenStandardOutput();
+                await stream.CopyToAsync(stdout);
+                return;
+            }
+            long bytes;
+            await using (var fileStream = new FileStream(output, FileMode.Create, FileAccess.Write))
+            {
+                await stream.CopyToAsync(fileStream);
+                bytes = fileStream.Length;
+            }
+            var descriptor = new CoverFileSavedDescriptor { Path = output, Bytes = bytes };
+            ConsoleOutput.WriteJson(descriptor, AppJsonContext.Default.CoverFileSavedDescriptor);
+        });
+        return command;
+    }
+
+    private static Command CreateFileDeleteCommand()
+    {
+        var idOption = new Option<string>("--id") { Description = "Library item ID", Required = true };
+        var inoOption = new Option<string>("--ino") { Description = "File inode (from items get --expanded → libraryFiles[].ino)", Required = true };
+        var command = new Command("delete", "Delete a single file of a library item") { idOption, inoOption };
+        command.AddPermissionRequired("delete");
+        command.AddHelpSection("Notes", HelpSectionPosition.Top,
+            "DESTRUCTIVE: permanently deletes the file from disk (not just the DB",
+            "record). If it is the item's last media file, the item is marked",
+            "missing. No confirmation prompt.");
+        command.AddExamples(
+            "abs-cli items file delete --id \"li_abc\" --ino \"12345\"");
+        command.AddShapeSection("Response shape",
+            "{ \"success\": \"true\" }");
+        command.SetAction(async parseResult =>
+        {
+            var id = parseResult.GetValue(idOption)!;
+            var ino = parseResult.GetValue(inoOption)!;
+            var (client, _) = CommandHelper.BuildClient();
+            var service = new ItemsService(client);
+            await service.DeleteFileAsync(id, ino);
+            ConsoleOutput.WriteJson(new Dictionary<string, string> { ["success"] = "true" });
+        });
+        return command;
+    }
+
+    private static Command CreateFileFfprobeCommand()
+    {
+        var idOption = new Option<string>("--id") { Description = "Library item ID", Required = true };
+        var inoOption = new Option<string>("--ino") { Description = "Audio file inode (from items get --expanded → libraryFiles[].ino)", Required = true };
+        var command = new Command("ffprobe", "Print raw ffprobe data for an audio file") { idOption, inoOption };
+        command.AddPermissionRequired("admin");
+        command.AddHelpSection("Notes", HelpSectionPosition.Top,
+            "Admin only. Audio files only — a non-audio inode returns Not found",
+            "(exit 2). Output is the raw ffprobe JSON (streams, format, chapters),",
+            "passed through unmodified.");
+        command.AddExamples(
+            "abs-cli items file ffprobe --id \"li_abc\" --ino \"12345\"");
+        command.SetAction(async parseResult =>
+        {
+            var id = parseResult.GetValue(idOption)!;
+            var ino = parseResult.GetValue(inoOption)!;
+            var (client, _) = CommandHelper.BuildClient();
+            var service = new ItemsService(client);
+            var json = await service.FfprobeAsync(id, ino);
+            ConsoleOutput.WriteRawJson(json);
         });
         return command;
     }
