@@ -46,4 +46,22 @@ public class ApiEndpointsTests
         // "a" -> base64 "YQ==" -> URI-escaped "YQ%3D%3D"
         Assert.Equal("api/libraries/lib_1/narrators/YQ%3D%3D", ApiEndpoints.LibraryNarratorByName("lib_1", "a"));
     }
+
+    [Fact]
+    public void ItemFile_BuildsPath()
+    {
+        Assert.Equal("api/items/li_1/file/12345", ApiEndpoints.ItemFile("li_1", "12345"));
+    }
+
+    [Fact]
+    public void ItemFileDownload_BuildsPath()
+    {
+        Assert.Equal("api/items/li_1/file/12345/download", ApiEndpoints.ItemFileDownload("li_1", "12345"));
+    }
+
+    [Fact]
+    public void ItemFfprobe_BuildsPath()
+    {
+        Assert.Equal("api/items/li_1/ffprobe/12345", ApiEndpoints.ItemFfprobe("li_1", "12345"));
+    }
 }
