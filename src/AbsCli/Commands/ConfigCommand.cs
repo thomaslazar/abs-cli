@@ -56,23 +56,36 @@ public static class ConfigCommand
             var value = parseResult.GetValue(valueArg)!;
             var configManager = new ConfigManager();
             var config = configManager.Load();
-            switch (key)
+            var error = ApplyConfigSet(config, key, value);
+            if (error != null)
             {
-                case "server":
-                    config.Server = value;
-                    break;
-                case "defaultLibrary":
-                    config.DefaultLibrary = value;
-                    break;
-                default:
-                    _logger.Error($"Unknown config key: '{key}'. Valid keys: server, defaultLibrary");
-                    Environment.Exit(1);
-                    return 1;
+                _logger.Error(error);
+                Environment.Exit(1);
+                return 1;
             }
             configManager.Save(config);
             Console.Error.WriteLine($"Set {key} = {value}");
             return 0;
         });
         return command;
+    }
+
+    /// <summary>
+    /// Applies a config key/value onto <paramref name="config"/>. Returns null
+    /// on success, otherwise the error message for an unknown key.
+    /// </summary>
+    internal static string? ApplyConfigSet(AppConfig config, string key, string value)
+    {
+        switch (key)
+        {
+            case "server":
+                config.Server = value;
+                return null;
+            case "defaultLibrary":
+                config.DefaultLibrary = value;
+                return null;
+            default:
+                return $"Unknown config key: '{key}'. Valid keys: server, defaultLibrary";
+        }
     }
 }

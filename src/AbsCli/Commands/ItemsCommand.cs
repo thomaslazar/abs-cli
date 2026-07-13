@@ -10,6 +10,23 @@ namespace AbsCli.Commands;
 public static class ItemsCommand
 {
     private static readonly NLog.Logger _logger = NLog.LogManager.GetCurrentClassLogger();
+
+    /// <summary>
+    /// Resolves the update/batch input source. Returns null when valid,
+    /// otherwise the error message. <paramref name="inputIsExistingFile"/> is
+    /// the caller's <c>File.Exists(input)</c> result; batch verbs that never
+    /// pre-checked existence pass <c>true</c> so only the "neither provided"
+    /// branch applies to them.
+    /// </summary>
+    internal static string? ValidateInputSource(string? input, bool stdin, bool inputIsExistingFile)
+    {
+        if (stdin)
+            return null;
+        if (input != null)
+            return inputIsExistingFile ? null : $"--input must be a file path (got '{input}'). For inline JSON, pipe via --stdin.";
+        return "Provide --input <file> or --stdin";
+    }
+
     public static Command Create()
     {
         var command = new Command("items", "Manage library items");
@@ -158,27 +175,16 @@ public static class ItemsCommand
             var id = parseResult.GetValue(idOption)!;
             var input = parseResult.GetValue(inputOption);
             var stdin = parseResult.GetValue(stdinOption);
-            string jsonBody;
-            if (stdin)
+            var inputError = ValidateInputSource(input, stdin, input != null && File.Exists(input));
+            if (inputError != null)
             {
-                jsonBody = await Console.In.ReadToEndAsync(cancellationToken);
-            }
-            else if (input != null)
-            {
-                if (!File.Exists(input))
-                {
-                    _logger.Error($"--input must be a file path (got '{input}'). For inline JSON, pipe via --stdin.");
-                    Environment.Exit(1);
-                    return 1;
-                }
-                jsonBody = CommandHelper.ReadJsonInput(input);
-            }
-            else
-            {
-                _logger.Error("Provide --input <file> or --stdin");
+                _logger.Error(inputError);
                 Environment.Exit(1);
                 return 1;
             }
+            string jsonBody = stdin
+                ? await Console.In.ReadToEndAsync(cancellationToken)
+                : CommandHelper.ReadJsonInput(input!);
             var (client, _) = CommandHelper.BuildClient();
             var service = new ItemsService(client);
             var result = await service.UpdateMediaAsync(id, jsonBody);
@@ -202,15 +208,16 @@ public static class ItemsCommand
         {
             var input = parseResult.GetValue(inputOption);
             var stdin = parseResult.GetValue(stdinOption);
-            string jsonBody;
-            if (stdin) jsonBody = await Console.In.ReadToEndAsync();
-            else if (input != null) jsonBody = CommandHelper.ReadJsonInput(input);
-            else
+            var inputError = ValidateInputSource(input, stdin, inputIsExistingFile: true);
+            if (inputError != null)
             {
-                _logger.Error("Provide --input <file> or --stdin");
+                _logger.Error(inputError);
                 Environment.Exit(1);
                 return 1;
             }
+            string jsonBody = stdin
+                ? await Console.In.ReadToEndAsync()
+                : CommandHelper.ReadJsonInput(input!);
             var (client, _) = CommandHelper.BuildClient();
             var service = new ItemsService(client);
             var result = await service.BatchUpdateAsync(jsonBody);
@@ -234,15 +241,16 @@ public static class ItemsCommand
         {
             var input = parseResult.GetValue(inputOption);
             var stdin = parseResult.GetValue(stdinOption);
-            string jsonBody;
-            if (stdin) jsonBody = await Console.In.ReadToEndAsync();
-            else if (input != null) jsonBody = CommandHelper.ReadJsonInput(input);
-            else
+            var inputError = ValidateInputSource(input, stdin, inputIsExistingFile: true);
+            if (inputError != null)
             {
-                _logger.Error("Provide --input <file> or --stdin");
+                _logger.Error(inputError);
                 Environment.Exit(1);
                 return 1;
             }
+            string jsonBody = stdin
+                ? await Console.In.ReadToEndAsync()
+                : CommandHelper.ReadJsonInput(input!);
             var (client, _) = CommandHelper.BuildClient();
             var service = new ItemsService(client);
             var result = await service.BatchGetAsync(jsonBody);
