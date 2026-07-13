@@ -110,7 +110,7 @@ echo "=== Help Screens ==="
 # ============================================================
 
 # Parent commands and self-test don't need examples (they just list subcommands)
-for cmd in "" "config" "libraries" "items" "series" "authors" "tags" "genres" "backup" "metadata" "tasks" "self-test"; do
+for cmd in "" "config" "libraries" "items" "series" "authors" "tags" "genres" "narrators" "backup" "metadata" "tasks" "self-test"; do
     label="help: abs-cli $cmd --help"
     output=$($CLI $cmd --help 2>&1) || true
     if echo "$output" | grep -q "Description:\|Usage:"; then
@@ -126,6 +126,8 @@ for cmd in "login" "config get" "config set" \
            "items list" "items get" \
            "items update" "items batch-update" "items batch-get" "items scan" \
            "series list" "series get" \
+           "series update" \
+           "narrators list" "narrators rename" "narrators delete" \
            "authors list" "authors get" \
            "tags list" "tags rename" "tags delete" \
            "genres list" "genres rename" "genres delete" \
@@ -369,6 +371,14 @@ output=$($CLI series get --id "$FIRST_SERIES_ID" 2>/dev/null)
 assert_json_key "series get has id" "id" "$output"
 assert_json_key "series get has name" "name" "$output"
 
+# Update a series description (set, then clear). SERIES_ID is a shell global
+# so the Permission Errors section can reuse it for the 403 assertion.
+SERIES_ID=$(json_get "$($CLI series list 2>/dev/null)" "['results'][0]['id']")
+output=$($CLI series update --id "$SERIES_ID" --description "Smoke test series desc" 2>&1)
+assert_json_expr "series update sets description" "d['description']=='Smoke test series desc'" "$output"
+assert_json_expr "series update returns same id" "d['id']=='$SERIES_ID'" "$output"
+$CLI series update --id "$SERIES_ID" --description "" 2>/dev/null > /dev/null
+
 # ============================================================
 echo ""
 echo "=== Authors Commands ==="
@@ -579,6 +589,21 @@ output=$($CLI tags delete smoke-temp-tag 2>&1)
 assert_json_key "tags delete returns numItemsUpdated" "numItemsUpdated" "$output"
 output=$($CLI genres delete smoke-temp-genre 2>&1)
 assert_json_key "genres delete returns numItemsUpdated" "numItemsUpdated" "$output"
+
+# ============================================================
+echo ""
+echo "=== Narrators ==="
+# ============================================================
+output=$($CLI narrators list 2>&1)
+assert_json_key "narrators list returns JSON" "narrators" "$output"
+assert_json_expr "narrators list non-empty" "len(d['narrators'])>0" "$output"
+assert_json_expr "narrators list items have name+numBooks" "'name' in d['narrators'][0] and 'numBooks' in d['narrators'][0]" "$output"
+output=$($CLI narrators rename smoke-temp-narrator smoke-temp-narrator-renamed 2>&1)
+assert_json_key "narrators rename returns updated" "updated" "$output"
+output=$($CLI narrators rename smoke-temp-narrator-renamed smoke-temp-narrator 2>&1)
+assert_json_key "narrators rename back returns updated" "updated" "$output"
+output=$($CLI narrators delete smoke-temp-narrator 2>&1)
+assert_json_key "narrators delete returns updated" "updated" "$output"
 
 # ============================================================
 echo ""
@@ -842,6 +867,20 @@ else
     fail "backup list as testuser shows permission denied" "got: ${error_output:0:200}"
 fi
 
+error_output=$($CLI tags list 2>&1 || true)
+if echo "$error_output" | grep -qi "permission denied\|admin"; then
+    pass "tags list as testuser shows admin permission denied"
+else
+    fail "tags list as testuser shows admin permission denied" "got: ${error_output:0:200}"
+fi
+
+error_output=$($CLI genres list 2>&1 || true)
+if echo "$error_output" | grep -qi "permission denied\|admin"; then
+    pass "genres list as testuser shows admin permission denied"
+else
+    fail "genres list as testuser shows admin permission denied" "got: ${error_output:0:200}"
+fi
+
 abs_login root root
 
 # canUpdate denials: testuser AND uploaduser both have update=true in seed.sh,
@@ -881,6 +920,20 @@ if echo "$error_output" | grep -q "'update' permission"; then
     pass "items chapters set as readonlyuser hits 'update' permission denial"
 else
     fail "items chapters set as readonlyuser hits 'update' permission denial" "got: ${error_output:0:200}"
+fi
+
+error_output=$($CLI series update --id "$SERIES_ID" --description x 2>&1 || true)
+if echo "$error_output" | grep -q "'update' permission"; then
+    pass "series update as readonlyuser hits 'update' permission denial"
+else
+    fail "series update as readonlyuser hits 'update' permission denial" "got: ${error_output:0:200}"
+fi
+
+error_output=$($CLI narrators rename smoke-temp-narrator whatever 2>&1 || true)
+if echo "$error_output" | grep -q "'update' permission"; then
+    pass "narrators rename as readonlyuser hits 'update' permission denial"
+else
+    fail "narrators rename as readonlyuser hits 'update' permission denial" "got: ${error_output:0:200}"
 fi
 
 error_output=$($CLI cache purge-items 2>&1 || true)
