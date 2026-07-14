@@ -6,6 +6,7 @@ public static class ApiEndpoints
     public const string AuthRefresh = "auth/refresh";
 
     public const string Libraries = "api/libraries";
+    public const string LibrariesOrder = "api/libraries/order";
     public static string Library(string id) => $"api/libraries/{id}";
     public static string LibraryItems(string libraryId) => $"api/libraries/{libraryId}/items";
     public static string LibrarySeries(string libraryId) => $"api/libraries/{libraryId}/series";

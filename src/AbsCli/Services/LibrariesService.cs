@@ -1,3 +1,4 @@
+using System.Text.Json;
 using AbsCli.Api;
 using AbsCli.Models;
 
@@ -27,5 +28,27 @@ public class LibrariesService
         var url = ApiEndpoints.LibraryScan(libraryId);
         if (force) url += "?force=1";
         await _client.PostEmptyAsync(url, "'admin' access");
+    }
+
+    public async Task<Library> CreateAsync(LibraryCreateRequest body)
+    {
+        var json = JsonSerializer.Serialize(body, AppJsonContext.Default.LibraryCreateRequest);
+        return await _client.PostAsync(ApiEndpoints.Libraries, json, AppJsonContext.Default.Library, "admin permission");
+    }
+
+    public async Task<Library> UpdateAsync(string id, LibraryUpdateRequest body)
+    {
+        var json = JsonSerializer.Serialize(body, AppJsonContext.Default.LibraryUpdateRequest);
+        return await _client.PatchAsync(ApiEndpoints.Library(id), json, AppJsonContext.Default.Library, "admin permission");
+    }
+
+    public async Task<Library> DeleteAsync(string id)
+    {
+        return await _client.DeleteAsync(ApiEndpoints.Library(id), AppJsonContext.Default.Library, "admin permission");
+    }
+
+    public async Task<LibraryListResponse> ReorderAsync(string orderJson)
+    {
+        return await _client.PostAsync(ApiEndpoints.LibrariesOrder, orderJson, AppJsonContext.Default.LibraryListResponse, "admin permission");
     }
 }
