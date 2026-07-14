@@ -149,8 +149,7 @@ public static class LibrariesCommand
         { idOption, nameOption, mediaTypeOption, providerOption, iconOption, displayOrderOption };
         command.AddPermissionRequired("admin");
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
-            "Folders are NOT editable here. Empty --name is rejected. At least",
-            "one edit flag is required.");
+            "Empty --name is rejected. At least one edit flag is required.");
         command.AddExamples(
             "abs-cli libraries update --id \"lib_1\" --name \"Renamed\"",
             "abs-cli libraries update --id \"lib_1\" --display-order 2");
@@ -169,7 +168,7 @@ public static class LibrariesCommand
                 Environment.Exit(1);
                 return 1;
             }
-            var body = BuildUpdateBodyForTesting(name, mediaType, provider, icon, displayOrder);
+            var body = BuildUpdateBody(name, mediaType, provider, icon, displayOrder);
             if (body.Name == null && body.MediaType == null && body.Provider == null && body.Icon == null && body.DisplayOrder == null)
             {
                 _logger.Error("Specify at least one of --name, --media-type, --provider, --icon, --display-order");
@@ -187,9 +186,10 @@ public static class LibrariesCommand
 
     /// <summary>
     /// Build the PATCH body from the flags, coercing empty strings to null so
-    /// they are omitted. Exposed internally for unit testing.
+    /// they are omitted. The production body builder for `update`; exposed
+    /// <c>internal</c> so it can be unit-tested directly.
     /// </summary>
-    internal static LibraryUpdateRequest BuildUpdateBodyForTesting(string? name, string? mediaType, string? provider, string? icon, int? displayOrder)
+    internal static LibraryUpdateRequest BuildUpdateBody(string? name, string? mediaType, string? provider, string? icon, int? displayOrder)
     {
         return new LibraryUpdateRequest
         {
@@ -218,10 +218,8 @@ public static class LibrariesCommand
             "in it, all collections for the library, and removes it from playlists",
             "and playback sessions. Cannot be undone. Returns the deleted library.",
             "",
-            "Guarded: the target library is fetched and you must type its exact",
-            "name to confirm (the name is shown in the prompt). There is no --yes",
-            "bypass, so an agent cannot delete a library without deliberately",
-            "supplying the name on stdin. Non-matching input aborts (exit 1).");
+            "Guarded: you must type the library's exact name to confirm (the",
+            "name is shown in the prompt). Non-matching input aborts (exit 1).");
         command.AddExamples(
             "abs-cli libraries delete --id \"lib_1\"");
         command.AddResponseExample<Library>();

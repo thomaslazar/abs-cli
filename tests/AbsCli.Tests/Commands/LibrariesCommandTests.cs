@@ -78,7 +78,7 @@ public class LibrariesCommandTests
     [Fact]
     public void BuildUpdateBody_OmitsUnsetIncludesSet()
     {
-        var body = LibrariesCommand.BuildUpdateBodyForTesting("New", null, null, null, 2);
+        var body = LibrariesCommand.BuildUpdateBody("New", null, null, null, 2);
         Assert.Equal("New", body.Name);
         Assert.Null(body.MediaType);
         Assert.Equal(2, body.DisplayOrder);
