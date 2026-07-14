@@ -17,6 +17,9 @@ public static class ApiEndpoints
     public static string ItemCover(string id) => $"api/items/{id}/cover";
     public static string ItemChapters(string id) => $"api/items/{id}/chapters";
     public static string ItemEbookFileStatus(string id, string fileIno) => $"api/items/{id}/ebook/{fileIno}/status";
+    public static string ItemFile(string id, string ino) => $"api/items/{id}/file/{ino}";
+    public static string ItemFileDownload(string id, string ino) => $"api/items/{id}/file/{ino}/download";
+    public static string ItemFfprobe(string id, string ino) => $"api/items/{id}/ffprobe/{ino}";
     public const string ItemsBatchUpdate = "api/items/batch/update";
     public const string ItemsBatchGet = "api/items/batch/get";
     public const string ItemsBatchDelete = "api/items/batch/delete";

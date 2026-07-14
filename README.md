@@ -203,6 +203,9 @@ abs-cli config set defaultLibrary <library-id>
 | `items cover set --id <id> [--url \| --file \| --server-path]` | Apply a cover image |
 | `items cover get --id <id> --output <path>` | Download the cover image |
 | `items cover remove --id <id>` | Remove the cover |
+| `items file download --id <id> --ino <ino> --output <path\|->` | Download a single file of an item (requires download) |
+| `items file delete --id <id> --ino <ino>` | Delete a single file from disk (requires delete — destructive) |
+| `items file ffprobe --id <id> --ino <ino>` | Print raw ffprobe data for an audio file (admin) |
 | `items chapters lookup --asin <asin> [--region <r>]` | Look up chapter timings on Audnexus by ASIN |
 | `items chapters set --id <id> {--input <file> \| --stdin}` | Write chapters onto an item (DB + sidecar; does NOT touch audio file) |
 | `items toggle-ebook-status --id <id> --ino <ino>` | Toggle which ebook file is primary on a multi-format item |

@@ -110,4 +110,19 @@ public class ItemsService
             jsonBody: "",
             permissionHint: "'update' permission");
     }
+
+    public async Task<Stream> DownloadFileStreamAsync(string id, string ino)
+    {
+        return await _client.GetStreamAsync(ApiEndpoints.ItemFileDownload(id, ino), "'download' permission");
+    }
+
+    public async Task DeleteFileAsync(string id, string ino)
+    {
+        await _client.DeleteAsync(ApiEndpoints.ItemFile(id, ino), "'delete' permission");
+    }
+
+    public async Task<string> FfprobeAsync(string id, string ino)
+    {
+        return await _client.GetAsync(ApiEndpoints.ItemFfprobe(id, ino), "admin permission");
+    }
 }

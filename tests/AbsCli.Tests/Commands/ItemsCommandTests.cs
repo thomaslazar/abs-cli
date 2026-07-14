@@ -71,4 +71,43 @@ public class ItemsCommandTests
     {
         Assert.DoesNotContain("Permission required:", RenderHelp("items", "list"));
     }
+
+    private static List<string> FileSubVerbs()
+    {
+        var items = ItemsCommand.Create();
+        var file = items.Subcommands.First(c => c.Name == "file");
+        return file.Subcommands.Select(c => c.Name).ToList();
+    }
+
+    [Fact]
+    public void ItemsFile_HasDownloadDeleteFfprobe()
+    {
+        Assert.Equal(new[] { "download", "delete", "ffprobe" }, FileSubVerbs());
+    }
+
+    [Fact]
+    public void ItemsFileDownload_RequiresDownloadPermissionAndOptions()
+    {
+        var output = RenderHelp("items", "file", "download").Replace("\r\n", "\n");
+        Assert.Contains("Permission required:\n  download", output);
+        Assert.Contains("--id", output);
+        Assert.Contains("--ino", output);
+        Assert.Contains("--output", output);
+    }
+
+    [Fact]
+    public void ItemsFileDelete_RequiresDeletePermission_AndWarnsOnDiskDeletion()
+    {
+        var output = RenderHelp("items", "file", "delete").Replace("\r\n", "\n");
+        Assert.Contains("Permission required:\n  delete", output);
+        Assert.Contains("disk", output.ToLowerInvariant());
+    }
+
+    [Fact]
+    public void ItemsFileFfprobe_RequiresAdmin_AndDocumentsAudioOnly()
+    {
+        var output = RenderHelp("items", "file", "ffprobe").Replace("\r\n", "\n");
+        Assert.Contains("Permission required:\n  admin", output);
+        Assert.Contains("audio", output.ToLowerInvariant());
+    }
 }

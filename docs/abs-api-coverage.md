@@ -92,10 +92,10 @@ any) that implements it.
 | POST | `/api/items/:id/scan` | Scan item | update | `items scan` ✅ |
 | GET | `/api/items/:id/metadata-object` | Get metadata object | | — |
 | POST | `/api/items/:id/chapters` | Update chapters | update | `items chapters set` ✅ |
-| GET | `/api/items/:id/ffprobe/:fileid` | FFprobe data for file | | — |
+| GET | `/api/items/:id/ffprobe/:fileid` | FFprobe data for file | admin | `items file ffprobe` ✅ |
 | GET | `/api/items/:id/file/:fileid` | Get library file | | — |
-| DELETE | `/api/items/:id/file/:fileid` | Delete library file | delete | — |
-| GET | `/api/items/:id/file/:fileid/download` | Download library file | download | — |
+| DELETE | `/api/items/:id/file/:fileid` | Delete library file | delete | `items file delete` ✅ |
+| GET | `/api/items/:id/file/:fileid/download` | Download library file | download | `items file download` ✅ |
 | GET | `/api/items/:id/ebook/:fileid?` | Get ebook file | | — |
 | PATCH | `/api/items/:id/ebook/:fileid/status` | Toggle ebook primary/supplementary | update | `items toggle-ebook-status` ✅ |
 | POST | `/api/items/batch/delete` | Batch delete | delete | `items batch-delete` ✅ |

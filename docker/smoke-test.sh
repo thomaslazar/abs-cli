@@ -125,6 +125,7 @@ for cmd in "login" "config get" "config set" \
            "libraries list" "libraries get" "libraries scan" \
            "items list" "items get" \
            "items update" "items batch-update" "items batch-get" "items scan" \
+           "items file download" "items file delete" "items file ffprobe" \
            "series list" "series get" \
            "series update" \
            "narrators list" "narrators rename" "narrators delete" \
@@ -2004,6 +2005,86 @@ if echo "$output" | grep -q "'update' permission"; then
 else
     fail "toggle-ebook-status: readonlyuser hits 'update' permission denial" "unexpected: ${output:0:200}"
 fi
+
+# ============================================================
+echo ""
+echo "=== Item File Management ==="
+# ============================================================
+
+# Pick a seeded audiobook and one of its audio-file inodes.
+AUDIO_ITEM_ID=$($CLI items list --library "$LIB_ID" --limit 100 2>/dev/null \
+    | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+for r in d['results']:
+    if r.get('mediaType') == 'book' and r.get('media',{}).get('metadata',{}).get('title','') != 'Multi Ebook Test':
+        print(r['id']); break
+" 2>/dev/null)
+AUDIO_INO=$($CLI items get --id "$AUDIO_ITEM_ID" --expanded 2>/dev/null \
+    | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+audio = [lf for lf in d.get('libraryFiles',[]) if lf.get('fileType')=='audio']
+print(audio[0]['ino'] if audio else '')
+" 2>/dev/null)
+
+if [ -n "$AUDIO_ITEM_ID" ] && [ -n "$AUDIO_INO" ]; then
+    pass "items file: located audiobook + audio inode ($AUDIO_ITEM_ID / $AUDIO_INO)"
+else
+    fail "items file: located audiobook + audio inode" "item=$AUDIO_ITEM_ID ino=$AUDIO_INO"
+fi
+
+# download to a temp file, assert non-empty
+DL_TMP=$(mktemp)
+$CLI items file download --id "$AUDIO_ITEM_ID" --ino "$AUDIO_INO" --output "$DL_TMP" 2>/dev/null > /dev/null
+if [ -s "$DL_TMP" ]; then pass "items file download: wrote non-empty file"; else fail "items file download: wrote non-empty file" "empty/missing"; fi
+rm -f "$DL_TMP"
+
+# ffprobe the same audio file, assert streams + format
+output=$($CLI items file ffprobe --id "$AUDIO_ITEM_ID" --ino "$AUDIO_INO" 2>&1)
+assert_json_key "items file ffprobe returns streams" "streams" "$output"
+assert_json_key "items file ffprobe returns format" "format" "$output"
+
+# delete a throwaway: the supplementary ebook file of the multi-ebook fixture.
+FIX_ITEM_ID=$($CLI items list --library "$LIB_ID" --limit 100 2>/dev/null \
+    | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+for r in d['results']:
+    if r.get('media',{}).get('metadata',{}).get('title','')=='Multi Ebook Test':
+        print(r['id']); break
+" 2>/dev/null)
+SUPP_INO=$($CLI items get --id "$FIX_ITEM_ID" --expanded 2>/dev/null \
+    | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+supp = [lf for lf in d.get('libraryFiles',[]) if lf.get('fileType')=='ebook' and lf.get('isSupplementary') is True]
+print(supp[0]['ino'] if supp else '')
+" 2>/dev/null)
+output=$($CLI items file delete --id "$FIX_ITEM_ID" --ino "$SUPP_INO" 2>&1)
+assert_json_expr "items file delete returns success" "d.get('success')=='true'" "$output"
+
+# 403 coverage. These MUST run after AUDIO_ITEM_ID/AUDIO_INO are resolved
+# above: the ABS LibraryItemController.middleware loads the item by :id and
+# returns 404 before reaching the delete/admin permission checks, so an empty
+# id would surface "not found" instead of the permission denial. The earlier
+# Permission Errors / Item Delete groups run before this section, hence the
+# checks live here (each toggles its own login, then restores root).
+abs_login readonlyuser readonlypass
+error_output=$($CLI items file delete --id "$AUDIO_ITEM_ID" --ino "$AUDIO_INO" 2>&1 || true)
+if echo "$error_output" | grep -q "'delete' permission"; then
+    pass "items file delete as readonlyuser hits 'delete' permission denial"
+else
+    fail "items file delete as readonlyuser hits 'delete' permission denial" "got: ${error_output:0:200}"
+fi
+abs_login testuser testpass
+error_output=$($CLI items file ffprobe --id "$AUDIO_ITEM_ID" --ino "$AUDIO_INO" 2>&1 || true)
+if echo "$error_output" | grep -qi "permission denied\|admin"; then
+    pass "items file ffprobe as testuser shows admin permission denied"
+else
+    fail "items file ffprobe as testuser shows admin permission denied" "got: ${error_output:0:200}"
+fi
+abs_login root root
 
 # ============================================================
 echo ""
