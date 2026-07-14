@@ -194,6 +194,10 @@ abs-cli config set defaultLibrary <library-id>
 | `libraries list` | List all libraries |
 | `libraries get --id <id>` | Get a single library |
 | `libraries scan [--force]` | Trigger a library scan (admin, async) |
+| `libraries create --name <n> --folder <path>... [--media-type] [--provider] [--icon]` | Create a library (admin; folders are server-side, created if missing) |
+| `libraries update --id <id> [--name] [--media-type] [--provider] [--icon] [--display-order]` | Edit library fields (admin; folders not editable) |
+| `libraries delete --id <id>` | Delete a library and ALL its contents (admin; destructive cascade) |
+| `libraries reorder {--input <file> \| --stdin}` | Reorder libraries by display order (admin) |
 | `items list` | List items (`--filter`, `--sort`, `--limit`, `--page`, `--desc`) |
 | `items get --id <id> [--expanded] [--include progress,rssfeed,share,downloads]` | Get a single item (`--expanded` returns `libraryFiles[]`, `lastScan`, `scanVersion`; `--include` auto-implies `--expanded`) |
 | `items update --id <id> {--input <file> \| --stdin}` | Update item metadata (JSON body from file or stdin; inline JSON no longer accepted) |

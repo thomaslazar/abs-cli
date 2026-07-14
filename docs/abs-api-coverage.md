@@ -44,12 +44,12 @@ any) that implements it.
 
 | Method | Path | Description | Perm | CLI |
 |--------|------|-------------|------|-----|
-| POST | `/api/libraries` | Create library | ? | — |
+| POST | `/api/libraries` | Create library | admin | `libraries create` ✅ |
 | GET | `/api/libraries` | List libraries | | `libraries list` ✅ |
 | GET | `/api/libraries/:id` | Get library | | `libraries get` ✅ |
-| PATCH | `/api/libraries/:id` | Update library | update | — |
-| DELETE | `/api/libraries/:id` | Delete library | delete | — |
-| POST | `/api/libraries/order` | Reorder libraries | ? | — |
+| PATCH | `/api/libraries/:id` | Update library | admin | `libraries update` ✅ |
+| DELETE | `/api/libraries/:id` | Delete library | admin | `libraries delete` ✅ |
+| POST | `/api/libraries/order` | Reorder libraries | admin | `libraries reorder` ✅ |
 | GET | `/api/libraries/:id/items` | List items in library | | `items list` ✅ |
 | DELETE | `/api/libraries/:id/issues` | Remove items with issues | delete | — |
 | GET | `/api/libraries/:id/episode-downloads` | Podcast download queue | | — |
