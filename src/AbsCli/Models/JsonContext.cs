@@ -77,6 +77,9 @@ namespace AbsCli.Models;
 [JsonSerializable(typeof(ProgressUpdateRequest))]
 [JsonSerializable(typeof(Me))]
 [JsonSerializable(typeof(UserPermissions))]
+[JsonSerializable(typeof(LibraryFolderRequest))]
+[JsonSerializable(typeof(LibraryCreateRequest))]
+[JsonSerializable(typeof(LibraryUpdateRequest))]
 [JsonSourceGenerationOptions(WriteIndented = true)]
 public partial class AppJsonContext : JsonSerializerContext;
 
