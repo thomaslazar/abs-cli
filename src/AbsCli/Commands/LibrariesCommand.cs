@@ -201,6 +201,13 @@ public static class LibrariesCommand
         };
     }
 
+    /// <summary>
+    /// True when the typed confirmation (trimmed) exactly matches the library
+    /// name. Case-sensitive; null/empty never matches. Exposed for testing.
+    /// </summary>
+    internal static bool ConfirmationMatches(string? input, string libraryName)
+        => input?.Trim() == libraryName;
+
     private static Command CreateDeleteCommand()
     {
         var idOption = new Option<string>("--id") { Description = "Library ID", Required = true };
@@ -209,8 +216,12 @@ public static class LibrariesCommand
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
             "DESTRUCTIVE CASCADE: permanently deletes the library AND every item",
             "in it, all collections for the library, and removes it from playlists",
-            "and playback sessions. No confirmation prompt. Returns the deleted",
-            "library.");
+            "and playback sessions. Cannot be undone. Returns the deleted library.",
+            "",
+            "Guarded: the target library is fetched and you must type its exact",
+            "name to confirm (the name is shown in the prompt). There is no --yes",
+            "bypass, so an agent cannot delete a library without deliberately",
+            "supplying the name on stdin. Non-matching input aborts (exit 1).");
         command.AddExamples(
             "abs-cli libraries delete --id \"lib_1\"");
         command.AddResponseExample<Library>();
@@ -219,6 +230,20 @@ public static class LibrariesCommand
             var id = parseResult.GetValue(idOption)!;
             var (client, _) = CommandHelper.BuildClient();
             var service = new LibrariesService(client);
+            // Fetch first so the confirmation prompt can show what will be
+            // destroyed (a deliberate pre-fetch — the safety gate needs the name).
+            var library = await service.GetAsync(id);
+            Console.Error.WriteLine(
+                $"WARNING: this permanently deletes library \"{library.Name}\" ({library.Id}) and ALL its " +
+                "contents (items, collections, playlist/session references). This cannot be undone.");
+            Console.Error.Write("Type the library name to confirm: ");
+            var confirmation = Console.In.ReadLine();
+            if (!ConfirmationMatches(confirmation, library.Name))
+            {
+                _logger.Error("Confirmation did not match the library name. Aborted.");
+                Environment.Exit(1);
+                return 1;
+            }
             var result = await service.DeleteAsync(id);
             ConsoleOutput.WriteJson(result, AppJsonContext.Default.Library);
             return 0;

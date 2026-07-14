@@ -41,8 +41,9 @@ Chosen to introduce no new patterns. Precedents surveyed:
 - Response: `Library`.
 
 ### `libraries delete` (DELETE /api/libraries/:id)
-- `--id` (required). **No confirmation prompt** (consistent with every other delete). `--help` warns loudly about the destructive cascade.
+- `--id` (required). **Confirmation-gated** (unlike every other delete — the blast radius is far larger). The command first `GET`s the library (a deliberate pre-fetch), prints a warning showing the library's name + id + cascade, and requires the operator to type the library's **exact name** on stdin to proceed. Non-matching input aborts (exit 1). **No `--yes` bypass** — a flag is not a real gate against an agent, whereas requiring the typed name is; in a non-interactive context nothing is typed, so it aborts.
 - Response: the deleted `Library`.
+- `ConfirmationMatches(input, name)` (trimmed, case-sensitive, null-safe) is extracted for unit testing.
 
 ### `libraries reorder` (POST /api/libraries/order)
 - `--input <file>` / `--stdin` for the JSON array `[{ "id": "...", "newOrder": N }]` (mirrors `collections reorder`); the raw body is passed straight through.
@@ -66,7 +67,6 @@ Chosen to introduce no new patterns. Precedents surveyed:
 ## Out of scope (YAGNI)
 - Library `settings` object (create/update).
 - Folder edits via update (ABS doesn't support).
-- Delete confirmation prompt.
 
 ## Notes
 - `DELETE` returns the deleted library JSON (not an empty 200), so the command prints the `Library`.

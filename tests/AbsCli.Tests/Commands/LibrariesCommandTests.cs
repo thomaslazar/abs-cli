@@ -51,6 +51,19 @@ public class LibrariesCommandTests
         var output = RenderHelp("libraries", "delete").Replace("\r\n", "\n");
         Assert.Contains("Permission required:\n  admin", output);
         Assert.Contains("cascade", output.ToLowerInvariant());
+        Assert.Contains("confirm", output.ToLowerInvariant());
+    }
+
+    [Theory]
+    [InlineData("My Library", "My Library", true)]
+    [InlineData("  My Library  ", "My Library", true)]
+    [InlineData("my library", "My Library", false)]
+    [InlineData("Wrong", "My Library", false)]
+    [InlineData("", "My Library", false)]
+    [InlineData(null, "My Library", false)]
+    public void ConfirmationMatches_RequiresExactTrimmedName(string? input, string name, bool expected)
+    {
+        Assert.Equal(expected, LibrariesCommand.ConfirmationMatches(input, name));
     }
 
     [Fact]

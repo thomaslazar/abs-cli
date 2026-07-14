@@ -225,9 +225,19 @@ assert_json_expr "libraries update changed name" "d['name']=='Smoke CRUD Renamed
 output=$(echo "[{\"id\":\"$NEW_LIB_ID\",\"newOrder\":99}]" | $CLI libraries reorder --stdin 2>&1)
 assert_json_key "libraries reorder returns libraries" "libraries" "$output"
 
-# delete it (returns the deleted library)
-output=$($CLI libraries delete --id "$NEW_LIB_ID" 2>&1)
-assert_json_expr "libraries delete returns deleted id" "d['id']=='$NEW_LIB_ID'" "$output"
+# delete is gated: wrong confirmation name must abort (library survives)
+echo "Not The Name" | $CLI libraries delete --id "$NEW_LIB_ID" > /dev/null 2>&1 || true
+output=$($CLI libraries list 2>&1)
+if echo "$output" | python3 -c "import sys,json; d=json.load(sys.stdin); sys.exit(0 if '$NEW_LIB_ID' in [l['id'] for l in d['libraries']] else 1)"; then
+    pass "libraries delete: wrong confirmation name aborts (library survives)"
+else
+    fail "libraries delete: wrong confirmation name aborts" "library was deleted despite bad confirmation"
+fi
+
+# delete it for real by piping the exact (current) name; returns the deleted library
+# capture stdout only — the confirmation prompt goes to stderr
+output=$(echo "Smoke CRUD Renamed" | $CLI libraries delete --id "$NEW_LIB_ID" 2>/dev/null)
+assert_json_expr "libraries delete (confirmed) returns deleted id" "d['id']=='$NEW_LIB_ID'" "$output"
 
 # confirm it's gone from the list
 output=$($CLI libraries list 2>&1)
