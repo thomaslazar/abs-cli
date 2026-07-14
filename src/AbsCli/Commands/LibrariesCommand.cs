@@ -7,12 +7,18 @@ namespace AbsCli.Commands;
 
 public static class LibrariesCommand
 {
+    private static readonly NLog.Logger _logger = NLog.LogManager.GetCurrentClassLogger();
+
     public static Command Create()
     {
         var command = new Command("libraries", "Manage libraries");
         command.Subcommands.Add(CreateListCommand());
         command.Subcommands.Add(CreateGetCommand());
         command.Subcommands.Add(CreateScanCommand());
+        command.Subcommands.Add(CreateCreateCommand());
+        command.Subcommands.Add(CreateUpdateCommand());
+        command.Subcommands.Add(CreateDeleteCommand());
+        command.Subcommands.Add(CreateReorderCommand());
         return command;
     }
 
@@ -78,6 +84,184 @@ public static class LibrariesCommand
             var libraryId = CommandHelper.RequireLibrary(config);
             var service = new LibrariesService(client);
             await service.ScanAsync(libraryId, force);
+            return 0;
+        });
+        return command;
+    }
+
+    private static Command CreateCreateCommand()
+    {
+        var nameOption = new Option<string>("--name") { Description = "Library name", Required = true };
+        var folderOption = new Option<string[]>("--folder") { Description = "Server-side folder path (repeatable; created if missing)", AllowMultipleArgumentsPerToken = true };
+        var mediaTypeOption = new Option<string?>("--media-type") { Description = "book | podcast (default book)" };
+        var providerOption = new Option<string?>("--provider") { Description = "Metadata provider (default google)" };
+        var iconOption = new Option<string?>("--icon") { Description = "Library icon (default database)" };
+        var command = new Command("create", "Create a new library")
+        { nameOption, folderOption, mediaTypeOption, providerOption, iconOption };
+        command.AddPermissionRequired("admin");
+        command.AddHelpSection("Notes", HelpSectionPosition.Top,
+            "Folder paths are SERVER-SIDE and are created on the server if missing.",
+            "At least one --folder is required. Library settings are not",
+            "configurable here.");
+        command.AddExamples(
+            "abs-cli libraries create --name \"Audiobooks\" --folder /audiobooks",
+            "abs-cli libraries create --name \"Pods\" --folder /pods --media-type podcast");
+        command.AddResponseExample<Library>();
+        command.SetAction(async (parseResult, cancellationToken) =>
+        {
+            var name = parseResult.GetValue(nameOption)!;
+            var folders = parseResult.GetValue(folderOption) ?? Array.Empty<string>();
+            var mediaType = parseResult.GetValue(mediaTypeOption);
+            var provider = parseResult.GetValue(providerOption);
+            var icon = parseResult.GetValue(iconOption);
+            if (folders.Length == 0)
+            {
+                _logger.Error("At least one --folder is required.");
+                Environment.Exit(1);
+                return 1;
+            }
+            var body = new LibraryCreateRequest
+            {
+                Name = name,
+                Folders = folders.Select(f => new LibraryFolderRequest { FullPath = f }).ToList(),
+                MediaType = string.IsNullOrEmpty(mediaType) ? null : mediaType,
+                Provider = string.IsNullOrEmpty(provider) ? null : provider,
+                Icon = string.IsNullOrEmpty(icon) ? null : icon
+            };
+            var (client, _) = CommandHelper.BuildClient();
+            var service = new LibrariesService(client);
+            var result = await service.CreateAsync(body);
+            ConsoleOutput.WriteJson(result, AppJsonContext.Default.Library);
+            return 0;
+        });
+        return command;
+    }
+
+    private static Command CreateUpdateCommand()
+    {
+        var idOption = new Option<string>("--id") { Description = "Library ID", Required = true };
+        var nameOption = new Option<string?>("--name") { Description = "New name" };
+        var mediaTypeOption = new Option<string?>("--media-type") { Description = "New media type (book | podcast)" };
+        var providerOption = new Option<string?>("--provider") { Description = "New metadata provider" };
+        var iconOption = new Option<string?>("--icon") { Description = "New icon" };
+        var displayOrderOption = new Option<int?>("--display-order") { Description = "New display order (number)" };
+        var command = new Command("update", "Edit a library's name, media type, provider, icon, or display order")
+        { idOption, nameOption, mediaTypeOption, providerOption, iconOption, displayOrderOption };
+        command.AddPermissionRequired("admin");
+        command.AddHelpSection("Notes", HelpSectionPosition.Top,
+            "Folders are NOT editable here. Empty --name is rejected. At least",
+            "one edit flag is required.");
+        command.AddExamples(
+            "abs-cli libraries update --id \"lib_1\" --name \"Renamed\"",
+            "abs-cli libraries update --id \"lib_1\" --display-order 2");
+        command.AddResponseExample<Library>();
+        command.SetAction(async (parseResult, cancellationToken) =>
+        {
+            var id = parseResult.GetValue(idOption)!;
+            var name = parseResult.GetValue(nameOption);
+            var mediaType = parseResult.GetValue(mediaTypeOption);
+            var provider = parseResult.GetValue(providerOption);
+            var icon = parseResult.GetValue(iconOption);
+            var displayOrder = parseResult.GetValue(displayOrderOption);
+            if (name is not null && string.IsNullOrEmpty(name))
+            {
+                _logger.Error("--name cannot be empty");
+                Environment.Exit(1);
+                return 1;
+            }
+            var body = BuildUpdateBodyForTesting(name, mediaType, provider, icon, displayOrder);
+            if (body.Name == null && body.MediaType == null && body.Provider == null && body.Icon == null && body.DisplayOrder == null)
+            {
+                _logger.Error("Specify at least one of --name, --media-type, --provider, --icon, --display-order");
+                Environment.Exit(1);
+                return 1;
+            }
+            var (client, _) = CommandHelper.BuildClient();
+            var service = new LibrariesService(client);
+            var result = await service.UpdateAsync(id, body);
+            ConsoleOutput.WriteJson(result, AppJsonContext.Default.Library);
+            return 0;
+        });
+        return command;
+    }
+
+    /// <summary>
+    /// Build the PATCH body from the flags, coercing empty strings to null so
+    /// they are omitted. Exposed internally for unit testing.
+    /// </summary>
+    internal static LibraryUpdateRequest BuildUpdateBodyForTesting(string? name, string? mediaType, string? provider, string? icon, int? displayOrder)
+    {
+        return new LibraryUpdateRequest
+        {
+            Name = string.IsNullOrEmpty(name) ? null : name,
+            MediaType = string.IsNullOrEmpty(mediaType) ? null : mediaType,
+            Provider = string.IsNullOrEmpty(provider) ? null : provider,
+            Icon = string.IsNullOrEmpty(icon) ? null : icon,
+            DisplayOrder = displayOrder
+        };
+    }
+
+    private static Command CreateDeleteCommand()
+    {
+        var idOption = new Option<string>("--id") { Description = "Library ID", Required = true };
+        var command = new Command("delete", "Delete a library and ALL its contents") { idOption };
+        command.AddPermissionRequired("admin");
+        command.AddHelpSection("Notes", HelpSectionPosition.Top,
+            "DESTRUCTIVE CASCADE: permanently deletes the library AND every item",
+            "in it, all collections for the library, and removes it from playlists",
+            "and playback sessions. No confirmation prompt. Returns the deleted",
+            "library.");
+        command.AddExamples(
+            "abs-cli libraries delete --id \"lib_1\"");
+        command.AddResponseExample<Library>();
+        command.SetAction(async (parseResult, cancellationToken) =>
+        {
+            var id = parseResult.GetValue(idOption)!;
+            var (client, _) = CommandHelper.BuildClient();
+            var service = new LibrariesService(client);
+            var result = await service.DeleteAsync(id);
+            ConsoleOutput.WriteJson(result, AppJsonContext.Default.Library);
+            return 0;
+        });
+        return command;
+    }
+
+    private static Command CreateReorderCommand()
+    {
+        var inputOption = new Option<string?>("--input") { Description = "JSON file with an array of {id, newOrder}" };
+        var stdinOption = new Option<bool>("--stdin") { Description = "Read the reorder JSON array from stdin" };
+        var command = new Command("reorder", "Reorder libraries by display order")
+        { inputOption, stdinOption };
+        command.AddPermissionRequired("admin");
+        command.AddHelpSection("Notes", HelpSectionPosition.Top,
+            "Body is a JSON array of objects: [{\"id\":\"lib_1\",\"newOrder\":1}, ...].");
+        command.AddExamples(
+            "abs-cli libraries reorder --input order.json",
+            "echo '[{\"id\":\"lib_1\",\"newOrder\":1}]' | abs-cli libraries reorder --stdin");
+        command.AddResponseExample<LibraryListResponse>();
+        command.SetAction(async (parseResult, cancellationToken) =>
+        {
+            var input = parseResult.GetValue(inputOption);
+            var stdin = parseResult.GetValue(stdinOption);
+            if (stdin && input != null)
+            {
+                _logger.Error("Provide --input or --stdin, not both.");
+                Environment.Exit(1);
+                return 1;
+            }
+            string orderJson;
+            if (stdin) orderJson = await Console.In.ReadToEndAsync(cancellationToken);
+            else if (input != null) orderJson = CommandHelper.ReadJsonInput(input);
+            else
+            {
+                _logger.Error("Provide --input <file> or --stdin.");
+                Environment.Exit(1);
+                return 1;
+            }
+            var (client, _) = CommandHelper.BuildClient();
+            var service = new LibrariesService(client);
+            var result = await service.ReorderAsync(orderJson);
+            ConsoleOutput.WriteJson(result, AppJsonContext.Default.LibraryListResponse);
             return 0;
         });
         return command;
