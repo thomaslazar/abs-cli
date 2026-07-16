@@ -72,6 +72,16 @@ public static class ApiEndpoints
     public static string CollectionBatchRemove(string id) => $"api/collections/{id}/batch/remove";
     public static string LibraryCollections(string libraryId) => $"api/libraries/{libraryId}/collections";
 
+    // Playlists
+    public const string Playlists = "api/playlists";
+    public static string Playlist(string id) => $"api/playlists/{id}";
+    public static string LibraryPlaylists(string libraryId) => $"api/libraries/{libraryId}/playlists";
+    public static string PlaylistItem(string id) => $"api/playlists/{id}/item";
+    public static string PlaylistItemById(string id, string libraryItemId) => $"api/playlists/{id}/item/{libraryItemId}";
+    public static string PlaylistBatchAdd(string id) => $"api/playlists/{id}/batch/add";
+    public static string PlaylistBatchRemove(string id) => $"api/playlists/{id}/batch/remove";
+    public static string PlaylistFromCollection(string collectionId) => $"api/playlists/collection/{collectionId}";
+
     // Me + Progress
     public const string Me = "api/me";
     public static string MeProgress(string libraryItemId) => $"api/me/progress/{libraryItemId}";

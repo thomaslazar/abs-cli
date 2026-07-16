@@ -70,4 +70,17 @@ public class ApiEndpointsTests
     {
         Assert.Equal("api/libraries/order", ApiEndpoints.LibrariesOrder);
     }
+
+    [Fact]
+    public void Playlist_Endpoints_AreCorrect()
+    {
+        Assert.Equal("api/playlists", ApiEndpoints.Playlists);
+        Assert.Equal("api/playlists/pl_1", ApiEndpoints.Playlist("pl_1"));
+        Assert.Equal("api/libraries/lib_1/playlists", ApiEndpoints.LibraryPlaylists("lib_1"));
+        Assert.Equal("api/playlists/pl_1/item", ApiEndpoints.PlaylistItem("pl_1"));
+        Assert.Equal("api/playlists/pl_1/item/li_2", ApiEndpoints.PlaylistItemById("pl_1", "li_2"));
+        Assert.Equal("api/playlists/pl_1/batch/add", ApiEndpoints.PlaylistBatchAdd("pl_1"));
+        Assert.Equal("api/playlists/pl_1/batch/remove", ApiEndpoints.PlaylistBatchRemove("pl_1"));
+        Assert.Equal("api/playlists/collection/col_9", ApiEndpoints.PlaylistFromCollection("col_9"));
+    }
 }
