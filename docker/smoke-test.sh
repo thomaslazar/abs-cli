@@ -1212,6 +1212,129 @@ COLLECTION_ID=""
 
 # ============================================================
 echo ""
+echo "=== Playlists ==="
+# ============================================================
+
+playlists_cleanup() {
+    if [ -n "${PLAYLIST_ID:-}" ]; then
+        $CLI playlists delete --id "$PLAYLIST_ID" >/dev/null 2>&1 || true
+        PLAYLIST_ID=""
+    fi
+    if [ -n "${PL_FROM_COLLECTION_ID:-}" ]; then
+        $CLI playlists delete --id "$PL_FROM_COLLECTION_ID" >/dev/null 2>&1 || true
+        PL_FROM_COLLECTION_ID=""
+    fi
+    if [ -n "${PL_COLLECTION_ID:-}" ]; then
+        $CLI collections delete --id "$PL_COLLECTION_ID" >/dev/null 2>&1 || true
+        PL_COLLECTION_ID=""
+    fi
+}
+trap playlists_cleanup EXIT
+
+# LID1/LID2/LID3 were grabbed for the Collections block above and are reused here.
+
+# 1. list — paginated envelope shape (per-library; --library falls back to defaultLibrary)
+output=$($CLI playlists list 2>/dev/null)
+assert_json_key "playlists list has results" "results" "$output"
+assert_json_key "playlists list has total" "total" "$output"
+
+# 2. create empty — books are optional; ABS allows an empty playlist
+output=$($CLI playlists create --name "smoke empty" 2>/dev/null)
+EMPTY_PID=$(json_get "$output" ".get('id','')")
+if [ -n "$EMPTY_PID" ]; then
+    pass "playlists create (no items) returns an id"
+else
+    fail "playlists create (no items) returns an id" "no id in response"
+fi
+assert_json_expr "empty create has 0 items" "len(d['items'])==0" "$output"
+$CLI playlists delete --id "$EMPTY_PID" >/dev/null 2>&1 || true
+
+# 3. create with two books via --stdin
+output=$(echo "{\"books\":[\"$LID1\",\"$LID2\"]}" \
+    | $CLI playlists create --name "smoke test" --stdin 2>/dev/null)
+PLAYLIST_ID=$(json_get "$output" ".get('id','')")
+if [ -n "$PLAYLIST_ID" ]; then
+    pass "playlists create returns an id"
+else
+    fail "playlists create returns an id" "no id in response"
+fi
+assert_json_expr "create has 2 items" "len(d['items'])==2" "$output"
+assert_json_expr "create persisted name" "d['name']=='smoke test'" "$output"
+
+# 4. get
+output=$($CLI playlists get --id "$PLAYLIST_ID" 2>/dev/null)
+assert_json_expr "get returns 2 items" "len(d['items'])==2" "$output"
+
+# 5. update name + description
+output=$($CLI playlists update --id "$PLAYLIST_ID" --name "renamed" --description "desc" 2>/dev/null)
+assert_json_expr "update applies name" "d['name']=='renamed'" "$output"
+assert_json_expr "update applies description" "d['description']=='desc'" "$output"
+
+# 6. add a third book
+output=$($CLI playlists add --id "$PLAYLIST_ID" --book "$LID3" 2>/dev/null)
+assert_json_expr "add yields 3 items" "len(d['items'])==3" "$output"
+
+# 7. reorder (put LID3 first) — pass the FULL ordered membership
+output=$(echo "{\"books\":[\"$LID3\",\"$LID2\",\"$LID1\"]}" \
+    | $CLI playlists reorder --id "$PLAYLIST_ID" --stdin 2>/dev/null)
+FIRST_ID=$(json_get "$output" ".get('items',[{}])[0].get('libraryItemId','')")
+if [ "$FIRST_ID" = "$LID3" ]; then
+    pass "reorder put LID3 first"
+else
+    fail "reorder put LID3 first" "got first id: $FIRST_ID"
+fi
+
+# 8. batch-add silently skips a book already in the playlist (stays 3)
+output=$(echo "{\"books\":[\"$LID1\"]}" \
+    | $CLI playlists batch-add --id "$PLAYLIST_ID" --stdin 2>/dev/null)
+assert_json_expr "batch-add skips existing books" "len(d['items'])==3" "$output"
+
+# 9. batch-remove two of the three
+output=$(echo "{\"books\":[\"$LID2\",\"$LID3\"]}" \
+    | $CLI playlists batch-remove --id "$PLAYLIST_ID" --stdin 2>/dev/null)
+assert_json_expr "batch-remove drops to 1 item" "len(d['items'])==1" "$output"
+
+# 10. remove the LAST item → playlist auto-deletes; a subsequent get 404s
+$CLI playlists remove --id "$PLAYLIST_ID" --book "$LID1" >/dev/null 2>&1
+output=$($CLI playlists get --id "$PLAYLIST_ID" 2>&1 || true)
+if echo "$output" | grep -qi "not found"; then
+    pass "removing last item auto-deletes the playlist (get → 404)"
+else
+    fail "removing last item auto-deletes the playlist (get → 404)" "got: ${output:0:200}"
+fi
+PLAYLIST_ID=""
+
+# 11. create-from-collection — snapshot a collection's books into a new playlist
+output=$(echo "{\"books\":[\"$LID1\",\"$LID2\"]}" \
+    | $CLI collections create --name "pl source" --stdin 2>/dev/null)
+PL_COLLECTION_ID=$(json_get "$output" ".get('id','')")
+output=$($CLI playlists create-from-collection --collection "$PL_COLLECTION_ID" 2>/dev/null)
+PL_FROM_COLLECTION_ID=$(json_get "$output" ".get('id','')")
+assert_json_expr "create-from-collection copies the name" "d['name']=='pl source'" "$output"
+assert_json_expr "create-from-collection copies 2 books" "len(d['items'])==2" "$output"
+$CLI playlists delete --id "$PL_FROM_COLLECTION_ID" >/dev/null 2>&1 || true
+PL_FROM_COLLECTION_ID=""
+$CLI collections delete --id "$PL_COLLECTION_ID" >/dev/null 2>&1 || true
+PL_COLLECTION_ID=""
+
+# 12. user-owned model: readonlyuser (no `update` perm) CAN create/manage its own
+# playlist — unlike collections, playlists require no permission flag.
+abs_login readonlyuser readonlypass
+output=$($CLI playlists create --name "readonly owns this" 2>&1 || true)
+RO_PID=$(json_get "$output" ".get('id','')" 2>/dev/null || echo "")
+if [ -n "$RO_PID" ]; then
+    pass "playlists create: readonlyuser succeeds (no permission required)"
+    $CLI playlists delete --id "$RO_PID" >/dev/null 2>&1 || true
+else
+    fail "playlists create: readonlyuser succeeds (no permission required)" "got: ${output:0:200}"
+fi
+abs_login root root
+
+trap - EXIT
+PLAYLIST_ID=""
+
+# ============================================================
+echo ""
 echo "=== Scan Commands ==="
 # ============================================================
 
