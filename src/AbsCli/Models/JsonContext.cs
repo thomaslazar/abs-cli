@@ -73,6 +73,8 @@ namespace AbsCli.Models;
 [JsonSerializable(typeof(CollectionCreateRequest))]
 [JsonSerializable(typeof(CollectionBooksRequest))]
 [JsonSerializable(typeof(CollectionBookRequest))]
+[JsonSerializable(typeof(Playlist))]
+[JsonSerializable(typeof(PlaylistItem))]
 [JsonSerializable(typeof(MediaProgress))]
 [JsonSerializable(typeof(ProgressUpdateRequest))]
 [JsonSerializable(typeof(Me))]
