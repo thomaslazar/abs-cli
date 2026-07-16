@@ -403,7 +403,11 @@ public static class PlaylistsCommand
         }
     }
 
-    /// <summary>Mirrors <c>CollectionsCommand.BuildUpdateBody</c>.</summary>
+    /// <summary>
+    /// Builds the PATCH body. Unlike <c>CollectionsCommand.BuildUpdateBody</c>,
+    /// an empty description is passed through (ABS ignores it) rather than
+    /// clearing the field — playlists have no clear-description semantics.
+    /// </summary>
     internal static Dictionary<string, string> BuildUpdateBody(string? name, string? description)
     {
         var body = new Dictionary<string, string>();
