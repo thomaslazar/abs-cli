@@ -114,7 +114,7 @@ public class AuthorsCommandTests
     [InlineData("Foo", "", "", "{\"name\": \"Foo\",\"description\": null,\"asin\": null}")]
     public void AuthorsUpdate_BuildBody_TriState(string? name, string? description, string? asin, string expected)
     {
-        var body = AuthorsCommand.BuildUpdateBodyForTesting(name, description, asin);
+        var body = AuthorsCommand.BuildUpdateBody(name, description, asin);
         var json = System.Text.Json.JsonSerializer.Serialize(
             body, AbsCli.Models.AppJsonContext.Default.DictionaryStringString);
         var expectedFragments = expected.Trim('{', '}').Split(',')

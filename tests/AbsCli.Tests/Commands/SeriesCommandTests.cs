@@ -71,7 +71,7 @@ public class SeriesCommandTests
     [Fact]
     public void BuildUpdateBody_OmitsUnsetKeys()
     {
-        var body = SeriesCommand.BuildUpdateBodyForTesting("New Name", null);
+        var body = SeriesCommand.BuildUpdateBody("New Name", null);
         Assert.True(body.ContainsKey("name"));
         Assert.False(body.ContainsKey("description"));
         Assert.Equal("New Name", body["name"]);
@@ -80,7 +80,7 @@ public class SeriesCommandTests
     [Fact]
     public void BuildUpdateBody_IncludesEmptyDescription()
     {
-        var body = SeriesCommand.BuildUpdateBodyForTesting(null, "");
+        var body = SeriesCommand.BuildUpdateBody(null, "");
         Assert.True(body.ContainsKey("description"));
         Assert.Equal("", body["description"]);
         Assert.False(body.ContainsKey("name"));

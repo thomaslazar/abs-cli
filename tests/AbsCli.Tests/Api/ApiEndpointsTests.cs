@@ -64,4 +64,10 @@ public class ApiEndpointsTests
     {
         Assert.Equal("api/items/li_1/ffprobe/12345", ApiEndpoints.ItemFfprobe("li_1", "12345"));
     }
+
+    [Fact]
+    public void LibrariesOrder_IsStable()
+    {
+        Assert.Equal("api/libraries/order", ApiEndpoints.LibrariesOrder);
+    }
 }

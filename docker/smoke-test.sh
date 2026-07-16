@@ -123,6 +123,7 @@ done
 # Leaf commands must have at least 2 examples (for AI agent usability)
 for cmd in "login" "config get" "config set" \
            "libraries list" "libraries get" "libraries scan" \
+           "libraries create" "libraries update" "libraries delete" "libraries reorder" \
            "items list" "items get" \
            "items update" "items batch-update" "items batch-get" "items scan" \
            "items file download" "items file delete" "items file ffprobe" \
@@ -204,6 +205,43 @@ output=$($CLI libraries get --id "$LIB_ID" 2>/dev/null)
 assert_json_key "libraries get has name" "name" "$output"
 assert_json_expr "libraries get correct id" "d['id']=='$LIB_ID'" "$output"
 assert_json_expr "libraries get name is Test Library" "d['name']=='Test Library'" "$output"
+
+# ============================================================
+echo ""
+echo "=== Library CRUD (admin) ==="
+# ============================================================
+
+# create a throwaway library (server creates /tmp/smoke-crud-lib)
+output=$($CLI libraries create --name "Smoke CRUD Lib" --folder /tmp/smoke-crud-lib --media-type book 2>&1)
+assert_json_key "libraries create returns id" "id" "$output"
+NEW_LIB_ID=$(json_get "$output" "['id']")
+assert_json_expr "libraries create set name" "d['name']=='Smoke CRUD Lib'" "$output"
+
+# update its name
+output=$($CLI libraries update --id "$NEW_LIB_ID" --name "Smoke CRUD Renamed" 2>&1)
+assert_json_expr "libraries update changed name" "d['name']=='Smoke CRUD Renamed'" "$output"
+
+# reorder (send the new lib to a high display order)
+output=$(echo "[{\"id\":\"$NEW_LIB_ID\",\"newOrder\":99}]" | $CLI libraries reorder --stdin 2>&1)
+assert_json_key "libraries reorder returns libraries" "libraries" "$output"
+
+# delete is gated: wrong confirmation name must abort (library survives)
+echo "Not The Name" | $CLI libraries delete --id "$NEW_LIB_ID" > /dev/null 2>&1 || true
+output=$($CLI libraries list 2>&1)
+if echo "$output" | python3 -c "import sys,json; d=json.load(sys.stdin); sys.exit(0 if '$NEW_LIB_ID' in [l['id'] for l in d['libraries']] else 1)"; then
+    pass "libraries delete: wrong confirmation name aborts (library survives)"
+else
+    fail "libraries delete: wrong confirmation name aborts" "library was deleted despite bad confirmation"
+fi
+
+# delete it for real by piping the exact (current) name; returns the deleted library
+# capture stdout only — the confirmation prompt goes to stderr
+output=$(echo "Smoke CRUD Renamed" | $CLI libraries delete --id "$NEW_LIB_ID" 2>/dev/null)
+assert_json_expr "libraries delete (confirmed) returns deleted id" "d['id']=='$NEW_LIB_ID'" "$output"
+
+# confirm it's gone from the list
+output=$($CLI libraries list 2>&1)
+assert_json_expr "libraries list no longer has the deleted lib" "'$NEW_LIB_ID' not in [l['id'] for l in d['libraries']]" "$output"
 
 # ============================================================
 echo ""
@@ -873,6 +911,13 @@ if echo "$error_output" | grep -qi "permission denied\|admin"; then
     pass "backup list as testuser shows permission denied"
 else
     fail "backup list as testuser shows permission denied" "got: ${error_output:0:200}"
+fi
+
+error_output=$($CLI libraries create --name "Nope" --folder /tmp/nope 2>&1 || true)
+if echo "$error_output" | grep -qi "permission denied\|admin"; then
+    pass "libraries create as testuser shows admin permission denied"
+else
+    fail "libraries create as testuser shows admin permission denied" "got: ${error_output:0:200}"
 fi
 
 error_output=$($CLI tags list 2>&1 || true)

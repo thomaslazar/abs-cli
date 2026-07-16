@@ -116,6 +116,9 @@ internal static class Program
             typeof(TagRenameRequest),
             typeof(GenreRenameRequest),
             typeof(NarratorRenameRequest),
+            typeof(LibraryFolderRequest),
+            typeof(LibraryCreateRequest),
+            typeof(LibraryUpdateRequest),
         };
 
         // JsonSerializableAttribute.Type is not a public property in .NET 8 —

@@ -191,7 +191,7 @@ public static class AuthorsCommand
                 _logger.Error("--name cannot be empty");
                 Environment.Exit(1);
             }
-            var body = BuildUpdateBodyForTesting(name, description, asin);
+            var body = BuildUpdateBody(name, description, asin);
             if (body.Count == 0)
             {
                 _logger.Error("Specify at least one of --name, --description, --asin");
@@ -211,7 +211,7 @@ public static class AuthorsCommand
     /// absent (omit from JSON), empty string = clear (send JSON null),
     /// non-empty = set value. Exposed internally for unit testing.
     /// </summary>
-    internal static Dictionary<string, string> BuildUpdateBodyForTesting(string? name, string? description, string? asin)
+    internal static Dictionary<string, string> BuildUpdateBody(string? name, string? description, string? asin)
     {
         var body = new Dictionary<string, string>();
         if (!string.IsNullOrEmpty(name))

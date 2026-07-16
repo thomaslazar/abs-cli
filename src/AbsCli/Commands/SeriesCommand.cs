@@ -102,7 +102,7 @@ public static class SeriesCommand
                 _logger.Error("--name cannot be empty");
                 Environment.Exit(1);
             }
-            var body = BuildUpdateBodyForTesting(name, description);
+            var body = BuildUpdateBody(name, description);
             if (body.Count == 0)
             {
                 _logger.Error("Specify at least one of --name, --description");
@@ -122,7 +122,7 @@ public static class SeriesCommand
     /// rejected upstream); description is included whenever supplied, so an
     /// empty string clears it server-side. Exposed internally for unit testing.
     /// </summary>
-    internal static Dictionary<string, string> BuildUpdateBodyForTesting(string? name, string? description)
+    internal static Dictionary<string, string> BuildUpdateBody(string? name, string? description)
     {
         var body = new Dictionary<string, string>();
         if (!string.IsNullOrEmpty(name))
