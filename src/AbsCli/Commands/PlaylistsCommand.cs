@@ -187,8 +187,9 @@ public static class PlaylistsCommand
         { idOption, inputOption, stdinOption };
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
             "Reorders existing items only — does not add or remove. Pass the",
-            "FULL current membership in the desired order; ABS rejects a",
-            "length mismatch with 400.",
+            "FULL current membership in the desired order; a non-empty list",
+            "whose length differs from the playlist is rejected with 400 (an",
+            "empty list is a no-op).",
             "",
             "Example for a 3-item playlist: `{\"books\":[\"li_c\",\"li_a\",\"li_b\"]}`",
             "moves li_c to position 1.");
@@ -239,7 +240,9 @@ public static class PlaylistsCommand
         { idOption, bookOption };
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
             "The book must be in the SAME library as the playlist (400",
-            "otherwise). Podcast episodes are not supported.");
+            "otherwise), and not already in it (400 on duplicate — use",
+            "`batch-add` for idempotent inserts). Podcast episodes are not",
+            "supported.");
         command.AddExamples("abs-cli playlists add --id \"pl_abc\" --book \"li_xyz\"");
         command.AddResponseExample<Playlist>();
         command.SetAction(async (parseResult, cancellationToken) =>
@@ -262,8 +265,8 @@ public static class PlaylistsCommand
         var command = new Command("remove", "Remove a single book from a playlist")
         { idOption, bookOption };
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
-            "Removing the last item deletes the playlist. The response is the",
-            "playlist state prior to deletion.");
+            "Removing the last item deletes the playlist; the response is the",
+            "now-empty playlist as it was just before the record was destroyed.");
         command.AddExamples("abs-cli playlists remove --id \"pl_abc\" --book \"li_xyz\"");
         command.AddResponseExample<Playlist>();
         command.SetAction(async (parseResult, cancellationToken) =>
