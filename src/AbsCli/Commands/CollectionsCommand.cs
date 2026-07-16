@@ -182,7 +182,7 @@ public static class CollectionsCommand
                 Environment.Exit(1);
                 return 1;
             }
-            var body = BuildUpdateBodyForTesting(name, description);
+            var body = BuildUpdateBody(name, description);
             if (body.Count == 0)
             {
                 _logger.Error("Specify at least one of --name, --description");
@@ -383,9 +383,9 @@ public static class CollectionsCommand
     /// Build the PATCH body honouring tri-state semantics: null = field
     /// absent (omit from JSON), empty string = clear (send JSON null),
     /// non-empty = set value. Exposed internally for unit testing.
-    /// Mirrors <c>AuthorsCommand.BuildUpdateBodyForTesting</c>.
+    /// Mirrors <c>AuthorsCommand.BuildUpdateBody</c>.
     /// </summary>
-    internal static Dictionary<string, string> BuildUpdateBodyForTesting(string? name, string? description)
+    internal static Dictionary<string, string> BuildUpdateBody(string? name, string? description)
     {
         var body = new Dictionary<string, string>();
         if (!string.IsNullOrEmpty(name))

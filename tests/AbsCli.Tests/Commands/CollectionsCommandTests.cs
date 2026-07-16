@@ -98,7 +98,7 @@ public class CollectionsCommandTests
     [Fact]
     public void CollectionsUpdate_BuildBody_OmitsNullKeys()
     {
-        var body = CollectionsCommand.BuildUpdateBodyForTesting(name: "X", description: null);
+        var body = CollectionsCommand.BuildUpdateBody(name: "X", description: null);
         Assert.Single(body);
         Assert.Equal("X", body["name"]);
     }
@@ -106,7 +106,7 @@ public class CollectionsCommandTests
     [Fact]
     public void CollectionsUpdate_BuildBody_ClearsOnEmptyString()
     {
-        var body = CollectionsCommand.BuildUpdateBodyForTesting(name: null, description: "");
+        var body = CollectionsCommand.BuildUpdateBody(name: null, description: "");
         Assert.Single(body);
         Assert.Null(body["description"]); // null = JSON null on the wire
     }
@@ -114,7 +114,7 @@ public class CollectionsCommandTests
     [Fact]
     public void CollectionsUpdate_BuildBody_SetsBothWhenProvided()
     {
-        var body = CollectionsCommand.BuildUpdateBodyForTesting(name: "n", description: "d");
+        var body = CollectionsCommand.BuildUpdateBody(name: "n", description: "d");
         Assert.Equal(2, body.Count);
         Assert.Equal("n", body["name"]);
         Assert.Equal("d", body["description"]);
