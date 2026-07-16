@@ -48,4 +48,48 @@ public class PlaylistsServiceTests
         Assert.Equal("li_a", back.Items[0].LibraryItem!.Id);
         Assert.Null(back.Items[0].EpisodeId);
     }
+
+    [Fact]
+    public void PlaylistCreateRequest_RoundTrip_AndOmitsNullDescription()
+    {
+        var obj = new PlaylistCreateRequest
+        {
+            LibraryId = "lib_1",
+            Name = "Roadtrip",
+            Description = null,
+            Items = new List<PlaylistItemRef>
+            {
+                new() { LibraryItemId = "li_a" },
+                new() { LibraryItemId = "li_b" }
+            }
+        };
+        var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.PlaylistCreateRequest);
+        Assert.DoesNotContain("description", json);
+        Assert.Contains("\"libraryItemId\": \"li_a\"", json);
+        var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.PlaylistCreateRequest)!;
+        Assert.Equal("lib_1", back.LibraryId);
+        Assert.Equal(2, back.Items.Count);
+    }
+
+    [Fact]
+    public void PlaylistItemsRequest_RoundTrip()
+    {
+        var obj = new PlaylistItemsRequest
+        {
+            Items = new List<PlaylistItemRef> { new() { LibraryItemId = "li_a" } }
+        };
+        var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.PlaylistItemsRequest);
+        var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.PlaylistItemsRequest)!;
+        Assert.Single(back.Items);
+        Assert.Equal("li_a", back.Items[0].LibraryItemId);
+    }
+
+    [Fact]
+    public void PlaylistItemRef_RoundTrip()
+    {
+        var obj = new PlaylistItemRef { LibraryItemId = "li_z" };
+        var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.PlaylistItemRef);
+        var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.PlaylistItemRef)!;
+        Assert.Equal("li_z", back.LibraryItemId);
+    }
 }
