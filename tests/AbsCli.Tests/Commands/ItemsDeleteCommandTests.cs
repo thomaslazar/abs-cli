@@ -48,11 +48,10 @@ public class ItemsDeleteCommandTests
     }
 
     [Fact]
-    public void ItemsUpdate_Help_DocumentsStdinAndDropsInlineJson()
+    public void ItemsUpdate_Help_DocumentsInputAndStdin()
     {
         var output = RenderHelp("items", "update");
         Assert.Contains("--input", output);
         Assert.Contains("--stdin", output);
-        Assert.Contains("Inline JSON", output);
     }
 }

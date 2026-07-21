@@ -27,6 +27,7 @@ rootCommand.Subcommands.Add(TagsCommand.Create());
 rootCommand.Subcommands.Add(GenresCommand.Create());
 rootCommand.Subcommands.Add(NarratorsCommand.Create());
 rootCommand.Subcommands.Add(CollectionsCommand.Create());
+rootCommand.Subcommands.Add(PlaylistsCommand.Create());
 rootCommand.Subcommands.Add(MeCommand.Create());
 rootCommand.Subcommands.Add(SearchCommand.Create());
 rootCommand.Subcommands.Add(BackupCommand.Create());

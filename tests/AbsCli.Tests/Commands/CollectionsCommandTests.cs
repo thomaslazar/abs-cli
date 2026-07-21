@@ -57,26 +57,19 @@ public class CollectionsCommandTests
     }
 
     [Fact]
-    public void CollectionsUpdate_Help_DocumentsEditOnlyAndPointsToReorder()
-    {
-        var output = RenderHelp("collections", "update");
-        Assert.Contains("Edits metadata only", output);
-        Assert.Contains("reorder", output);
-    }
-
-    [Fact]
     public void CollectionsUpdate_Help_DocumentsTriStateDescription()
     {
+        // The tri-state semantics live in the flag descriptions (rendered
+        // in help), not a separate Notes block.
         var output = RenderHelp("collections", "update");
-        Assert.Contains("Empty string for --description clears", output);
+        Assert.Contains("empty string clears the field", output);
     }
 
     [Fact]
-    public void CollectionsReorder_Help_SaysReorderOnly()
+    public void CollectionsReorder_Help_DocumentsFullMembership()
     {
         var output = RenderHelp("collections", "reorder");
-        Assert.Contains("Reorders existing members only", output);
-        Assert.Contains("does not add or remove", output);
+        Assert.Contains("FULL current membership", output);
     }
 
     [Fact]

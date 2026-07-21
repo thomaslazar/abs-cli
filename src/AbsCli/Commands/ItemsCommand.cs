@@ -118,11 +118,9 @@ public static class ItemsCommand
         var includeOption = new Option<string?>("--include") { Description = "Comma-separated include flags (progress, rssfeed, share, downloads). Auto-implies --expanded." };
         var command = new Command("get", "Get a single library item by ID") { idOption, expandedOption, includeOption };
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
-            "--include automatically implies --expanded (server's include",
-            "parser only fires under expanded=1). Values: progress (your",
-            "media progress for this item), rssfeed (open RSS feed if any),",
-            "share (admin and book-only; silently skipped otherwise),",
-            "downloads (podcast-only; silently skipped for books).");
+            "--include forces --expanded (the server's include parser only",
+            "fires under expanded=1). share is admin + book-only; downloads",
+            "is podcast-only — each is silently skipped when it does not apply.");
         command.AddExamples(
             "abs-cli items get --id \"li_abc123\"",
             "abs-cli items get --id \"li_abc123\" --expanded",
@@ -162,10 +160,6 @@ public static class ItemsCommand
         var stdinOption = new Option<bool>("--stdin") { Description = "Read the update body from stdin" };
         var command = new Command("update", "Update a single item's metadata") { idOption, inputOption, stdinOption };
         command.AddPermissionRequired("update");
-        command.AddHelpSection("Notes", HelpSectionPosition.Top,
-            "Reads the update body from a JSON file (--input <file>) or stdin",
-            "(--stdin). Inline JSON strings are no longer accepted — pipe via",
-            "--stdin instead.");
         command.AddExamples(
             "abs-cli items update --id \"li_abc123\" --input payload.json",
             "echo '{\"metadata\":{\"title\":\"New Title\"}}' | abs-cli items update --id \"li_abc123\" --stdin");
@@ -299,10 +293,9 @@ public static class ItemsCommand
             { inputOption, stdinOption, hardOption };
         command.AddPermissionRequired("delete");
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
-            "--hard applies to every id in the batch (server has no per-item",
-            "granularity). Access is all-or-nothing: if you lack access to any",
-            "item in the batch, the whole request is refused. Soft vs hard",
-            "semantics identical to `items delete`.");
+            "Access is all-or-nothing: if you lack access to any item in the",
+            "batch, the whole request is refused. Soft vs hard semantics",
+            "identical to `items delete`.");
         command.AddExamples(
             "abs-cli items batch-delete --input ids.json",
             "echo '{\"libraryItemIds\":[\"li_a\",\"li_b\"]}' | abs-cli items batch-delete --stdin --hard");
@@ -339,9 +332,7 @@ public static class ItemsCommand
             { inputOption, stdinOption };
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
             "Server returns 200 even when individual entries fail (errors",
-            "only logged server-side). No per-entry feedback. Recommend",
-            "pre-validating client-side or following up with `items",
-            "progress get` for entries that matter.");
+            "only logged server-side). No per-entry feedback.");
         command.AddExamples(
             "abs-cli items batch-update-progress --input updates.json",
             "echo '[{\"libraryItemId\":\"li_a\",\"isFinished\":true}]' | abs-cli items batch-update-progress --stdin");
@@ -730,8 +721,7 @@ public static class ItemsCommand
         var libraryItemOption = new Option<string>("--library-item") { Description = "Library item ID", Required = true };
         var command = new Command("get", "Read your progress on a library item") { libraryItemOption };
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
-            "Single record covers both audio and ebook state. 404 if no",
-            "progress recorded yet. Books only.");
+            "404 if no progress recorded yet.");
         command.AddExamples(
             "abs-cli items progress get --library-item \"li_abc\"");
         command.AddResponseExample<MediaProgress>();
@@ -762,11 +752,8 @@ public static class ItemsCommand
             ebookLocationOption, ebookProgressOption, hideFromContinueOption, finishedAtOption
         };
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
-            "Booleans take explicit true|false (omit to leave unchanged). At",
-            "least one body flag is required. --finished-at is only honored",
-            "when paired with --is-finished true (use case: backdating a",
-            "completion timestamp). Echoes the post-update progress via a",
-            "follow-up GET.");
+            "At least one body flag is required. Echoes the post-update",
+            "progress via a follow-up GET.");
         command.AddExamples(
             "abs-cli items progress set --library-item \"li_abc\" --is-finished true",
             "abs-cli items progress set --library-item \"li_abc\" --current-time 1234.5",
@@ -836,10 +823,8 @@ public static class ItemsCommand
         var libraryItemOption = new Option<string>("--library-item") { Description = "Library item ID", Required = true };
         var command = new Command("remove", "Clear all progress for a library item") { libraryItemOption };
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
-            "Removes both audio and ebook progress in one shot — server has",
-            "no per-half delete. To reset only one half, use `items progress",
-            "set` with cleared values for the half you want zeroed (e.g.",
-            "--ebook-location \"\" --ebook-progress 0).");
+            "Clears both audio and ebook progress — server has no per-half",
+            "delete.");
         command.AddExamples(
             "abs-cli items progress remove --library-item \"li_abc\"");
         command.AddShapeSection("Response shape",
@@ -935,9 +920,7 @@ public static class ItemsCommand
         var command = new Command("ffprobe", "Print raw ffprobe data for an audio file") { idOption, inoOption };
         command.AddPermissionRequired("admin");
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
-            "Admin only. Audio files only — a non-audio inode returns Not found",
-            "(exit 2). Output is the raw ffprobe JSON (streams, format, chapters),",
-            "passed through unmodified.");
+            "Audio files only — a non-audio inode returns Not found (exit 2).");
         command.AddExamples(
             "abs-cli items file ffprobe --id \"li_abc\" --ino \"12345\"");
         command.SetAction(async parseResult =>
@@ -968,9 +951,7 @@ public static class ItemsCommand
             "abs-cli items embed-metadata --id \"li_abc123\" --wait",
             "abs-cli items embed-metadata --id \"li_abc123\" --force-embed-chapters --no-backup");
         command.AddHelpSection("Caveats",
-            "Admin only.",
-            "In-place destructive rewrite — --backup defaults on; pass --no-backup only when you mean it.",
-            "Multi-file books: chapters embedded only with --force-embed-chapters.",
+            "In-place destructive rewrite.",
             "--wait exits 0 when ABS stops processing; this does NOT guarantee success.",
             "ABS internally queues at MAX_CONCURRENT_TASKS; --wait may sit in queue first.");
         command.AddResponseExample<EmbedMetadataReceipt>();
@@ -1021,12 +1002,10 @@ public static class ItemsCommand
             "abs-cli items batch-embed-metadata --input ids.json --wait",
             "echo '{\"libraryItemIds\":[\"li_a\",\"li_b\"]}' | abs-cli items batch-embed-metadata --stdin");
         command.AddHelpSection("Caveats",
-            "Admin only.",
             "Body must be {\"libraryItemIds\":[...]}.",
             "Batch validates ALL items upfront — any one bad ID aborts the whole batch.",
             "Same options applied uniformly across every item — no per-item override.",
-            "In-place destructive rewrite — --backup defaults on; pass --no-backup only when you mean it.",
-            "Multi-file books: chapters embedded only with --force-embed-chapters.",
+            "In-place destructive rewrite.",
             "--wait exits 0 when ABS stops processing; this does NOT guarantee success.",
             "ABS internally queues at MAX_CONCURRENT_TASKS.");
         command.AddResponseExample<BatchEmbedMetadataReceipt>();

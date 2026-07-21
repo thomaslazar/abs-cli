@@ -234,6 +234,17 @@ abs-cli config set defaultLibrary <library-id>
 | `collections remove --id <id> --book <lid>` | Remove a single book from a collection |
 | `collections batch-add --id <id> {--input <file> \| --stdin}` | Add multiple books (silently skips duplicates) |
 | `collections batch-remove --id <id> {--input <file> \| --stdin}` | Remove multiple books (tolerates missing) |
+| `playlists list [--library <id>] [--limit] [--page]` | List your playlists in a library (paginated; per-library) |
+| `playlists get --id <id>` | Get a single playlist (expanded) |
+| `playlists create [--library <id>] --name <n> [--description <d>] [{--input <file> \| --stdin}]` | Create a playlist (books optional — empty allowed) |
+| `playlists update --id <id> [--name <n>] [--description <d>]` | Edit name and/or description (description cannot be cleared) |
+| `playlists reorder --id <id> {--input <file> \| --stdin}` | Reorder existing items (full ordered list; does NOT add/remove) |
+| `playlists delete --id <id>` | Delete a playlist |
+| `playlists add --id <id> --book <lid>` | Add a single book (must be in the playlist's library) |
+| `playlists remove --id <id> --book <lid>` | Remove a single book (emptying deletes the playlist) |
+| `playlists batch-add --id <id> {--input <file> \| --stdin}` | Add multiple books (silently skips duplicates) |
+| `playlists batch-remove --id <id> {--input <file> \| --stdin}` | Remove multiple books (emptying deletes the playlist) |
+| `playlists create-from-collection --collection <id>` | Snapshot a collection into a new playlist (books only) |
 | `series list` | List series (`--limit`, `--page`) |
 | `series get --id <id>` | Get a single series |
 | `series update --id <id> [--name <n>] [--description <d>\|""]` | Edit name and/or description (no merge-on-rename — see help) |

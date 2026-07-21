@@ -72,8 +72,7 @@ public static class TagsCommand
         };
         command.AddPermissionRequired("admin");
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
-            "Removes the tag from all items and returns numItemsUpdated. No",
-            "confirmation prompt.");
+            "No confirmation prompt.");
         command.AddExamples("abs-cli tags delete scifi");
         command.AddResponseExample<TagDeleteResponse>();
         command.SetAction(async (parseResult, cancellationToken) =>

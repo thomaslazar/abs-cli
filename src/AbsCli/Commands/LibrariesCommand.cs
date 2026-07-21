@@ -100,9 +100,7 @@ public static class LibrariesCommand
         { nameOption, folderOption, mediaTypeOption, providerOption, iconOption };
         command.AddPermissionRequired("admin");
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
-            "Folder paths are SERVER-SIDE and are created on the server if missing.",
-            "At least one --folder is required. Library settings are not",
-            "configurable here.");
+            "At least one --folder is required.");
         command.AddExamples(
             "abs-cli libraries create --name \"Audiobooks\" --folder /audiobooks",
             "abs-cli libraries create --name \"Pods\" --folder /pods --media-type podcast");

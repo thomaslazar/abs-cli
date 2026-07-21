@@ -44,7 +44,6 @@ public class ItemsEmbedMetadataCommandTests
     {
         var output = RenderHelp("items", "embed-metadata");
         Assert.Contains("Caveats", output);
-        Assert.Contains("Admin only", output);
         Assert.Contains("destructive", output);
         Assert.Contains("does NOT guarantee success", output);
         Assert.Contains("MAX_CONCURRENT_TASKS", output);
@@ -74,7 +73,6 @@ public class ItemsEmbedMetadataCommandTests
     {
         var output = RenderHelp("items", "batch-embed-metadata");
         Assert.Contains("Caveats", output);
-        Assert.Contains("Admin only", output);
         Assert.Contains("libraryItemIds", output);
         Assert.Contains("Batch validates ALL items upfront", output);
         Assert.Contains("uniformly", output);

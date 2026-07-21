@@ -14,11 +14,7 @@ public static class SeriesCommand
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
             "Series are derived from book metadata. The scanner removes orphaned",
             "series on its next run. To remove a series, retag the books that",
-            "reference it.",
-            "",
-            "'series list' and 'series get' return series entities only. To list",
-            "books in a series:",
-            "  abs-cli items list --filter \"series=<series-id>\" --sort sequence");
+            "reference it.");
         command.Subcommands.Add(CreateListCommand());
         command.Subcommands.Add(CreateGetCommand());
         command.Subcommands.Add(CreateUpdateCommand());
@@ -74,7 +70,7 @@ public static class SeriesCommand
     private static Command CreateUpdateCommand()
     {
         var idOption = new Option<string>("--id") { Description = "Series ID", Required = true };
-        var nameOption = new Option<string?>("--name") { Description = "New name (does NOT merge into an existing same-named series — see Notes)" };
+        var nameOption = new Option<string?>("--name") { Description = "New name" };
         var descriptionOption = new Option<string?>("--description") { Description = "New description; empty string clears the field" };
         var command = new Command("update", "Edit a series' name and/or description")
         {
@@ -84,10 +80,9 @@ public static class SeriesCommand
         };
         command.AddPermissionRequired("update");
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
-            "Unlike 'authors update', renaming to an existing series name does NOT",
-            "merge — ABS creates a second series with the duplicate name. Empty",
-            "--name is rejected; --description \"\" clears the field. At least one",
-            "of --name / --description is required.");
+            "Renaming to an existing series name does NOT merge — ABS creates a",
+            "second series with the duplicate name. Empty --name is rejected;",
+            "at least one of --name / --description is required.");
         command.AddExamples(
             "abs-cli series update --id \"se_abc\" --name \"The Stormlight Archive\"",
             "abs-cli series update --id \"se_abc\" --description \"Epic fantasy\"");
