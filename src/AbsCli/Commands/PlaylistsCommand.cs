@@ -14,12 +14,8 @@ public static class PlaylistsCommand
     {
         var command = new Command("playlists", "Manage playlists (your personal ordered lists of book library items)");
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
-            "Playlists are per-user, library-scoped ordered lists of book",
-            "library items. They are private to you — unlike collections,",
-            "which are shared. `update` edits metadata, `reorder` shuffles",
-            "order, `add` / `remove` / `batch-*` change membership,",
-            "`create-from-collection` snapshots a collection into a new playlist.",
-            "Podcast episodes are not supported.");
+            "Per-user, library-scoped ordered lists of book library items,",
+            "private to you. Books only; podcast episodes are not supported.");
         command.Subcommands.Add(CreateListCommand());
         command.Subcommands.Add(CreateGetCommand());
         command.Subcommands.Add(CreateCreateCommand());
@@ -42,9 +38,8 @@ public static class PlaylistsCommand
         var command = new Command("list", "List your playlists in a library")
         { libraryOption, limitOption, pageOption };
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
-            "Lists only YOUR playlists in the given library. --library falls",
-            "back to the configured defaultLibrary. Uses the per-library",
-            "endpoint; there is no cross-library listing.");
+            "Lists only your own playlists. --library falls back to the",
+            "configured defaultLibrary.");
         command.AddExamples(
             "abs-cli playlists list --library \"lib_1\"",
             "abs-cli playlists list --library \"lib_1\" --limit 20 --page 0");
@@ -92,10 +87,8 @@ public static class PlaylistsCommand
         { libraryOption, nameOption, descriptionOption, inputOption, stdinOption };
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
             "Books are optional — omit --input/--stdin to create an",
-            "empty playlist (ABS allows this). --library falls back to the",
-            "configured defaultLibrary. Items must be books in that library;",
-            "podcast episodes are not supported. Input shape:",
-            "`{\"books\":[\"lid\",...]}`.");
+            "empty playlist. --library falls back to the configured",
+            "defaultLibrary. Input shape: `{\"books\":[\"lid\",...]}`.");
         command.AddExamples(
             "abs-cli playlists create --library \"lib_1\" --name \"Roadtrip\"",
             "abs-cli playlists create --library \"lib_1\" --name \"Roadtrip\" --input books.json");
@@ -143,10 +136,8 @@ public static class PlaylistsCommand
         var command = new Command("update", "Edit a playlist's name and/or description")
         { idOption, nameOption, descriptionOption };
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
-            "Edits metadata only. Use `reorder` to change item order; use",
-            "`add` / `remove` / `batch-*` to change membership. Empty --name",
-            "is rejected. Unlike collections, an empty --description does NOT",
-            "clear the field — ABS ignores it. Library and owner cannot change.");
+            "Empty --name is rejected. An empty --description does not clear",
+            "the field — ABS ignores it, so a description cannot be removed.");
         command.AddExamples(
             "abs-cli playlists update --id \"pl_abc\" --name \"Renamed\"",
             "abs-cli playlists update --id \"pl_abc\" --description \"New notes\"");
@@ -186,10 +177,9 @@ public static class PlaylistsCommand
         var command = new Command("reorder", "Reorder existing items in a playlist")
         { idOption, inputOption, stdinOption };
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
-            "Reorders existing items only — does not add or remove. Pass the",
-            "FULL current membership in the desired order; a non-empty list",
-            "whose length differs from the playlist is rejected with 400 (an",
-            "empty list is a no-op).",
+            "Pass the FULL current membership in the desired order; a",
+            "non-empty list whose length differs from the playlist's is",
+            "rejected with 400 (an empty list is a no-op).",
             "",
             "Example for a 3-item playlist: `{\"books\":[\"li_c\",\"li_a\",\"li_b\"]}`",
             "moves li_c to position 1.");
@@ -216,8 +206,7 @@ public static class PlaylistsCommand
         var idOption = new Option<string>("--id") { Description = "Playlist ID", Required = true };
         var command = new Command("delete", "Delete a playlist") { idOption };
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
-            "Hard delete of the playlist record and its membership rows. No",
-            "confirmation prompt — playlists are yours and cheap to recreate.");
+            "Hard delete. No confirmation prompt.");
         command.AddExamples("abs-cli playlists delete --id \"pl_abc\"");
         command.AddShapeSection("Response shape", "{ \"success\": \"true\" }");
         command.SetAction(async (parseResult, cancellationToken) =>
@@ -239,10 +228,8 @@ public static class PlaylistsCommand
         var command = new Command("add", "Add a single book to a playlist")
         { idOption, bookOption };
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
-            "The book must be in the SAME library as the playlist (400",
-            "otherwise), and not already in it (400 on duplicate — use",
-            "`batch-add` for idempotent inserts). Podcast episodes are not",
-            "supported.");
+            "The book must be in the same library as the playlist, and not",
+            "already in it (both 400).");
         command.AddExamples("abs-cli playlists add --id \"pl_abc\" --book \"li_xyz\"");
         command.AddResponseExample<Playlist>();
         command.SetAction(async (parseResult, cancellationToken) =>
@@ -265,8 +252,7 @@ public static class PlaylistsCommand
         var command = new Command("remove", "Remove a single book from a playlist")
         { idOption, bookOption };
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
-            "Removing the last item deletes the playlist; the response is the",
-            "now-empty playlist as it was just before the record was destroyed.");
+            "Removing the last item deletes the playlist.");
         command.AddExamples("abs-cli playlists remove --id \"pl_abc\" --book \"li_xyz\"");
         command.AddResponseExample<Playlist>();
         command.SetAction(async (parseResult, cancellationToken) =>
@@ -344,10 +330,9 @@ public static class PlaylistsCommand
         var command = new Command("create-from-collection", "Create a playlist from a collection")
         { collectionOption };
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
-            "Takes a snapshot: copies the collection's name, description, and",
-            "all its books (in collection order) into a NEW playlist you own.",
-            "Books only. 400 if the collection has no books. No live link —",
-            "later changes to the collection do not propagate.");
+            "Copies the collection's name, description, and books into a new",
+            "playlist. A one-time snapshot — later changes to the collection",
+            "do not propagate. 400 if the collection has no books.");
         command.AddExamples("abs-cli playlists create-from-collection --collection \"col_abc\"");
         command.AddResponseExample<Playlist>();
         command.SetAction(async (parseResult, cancellationToken) =>

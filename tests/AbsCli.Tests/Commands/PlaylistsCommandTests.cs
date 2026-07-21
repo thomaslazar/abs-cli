@@ -54,11 +54,10 @@ public class PlaylistsCommandTests
     }
 
     [Fact]
-    public void PlaylistsReorder_Help_SaysReorderOnly()
+    public void PlaylistsReorder_Help_DocumentsFullMembership()
     {
         var output = RenderHelp("playlists", "reorder");
-        Assert.Contains("Reorders existing items only", output);
-        Assert.Contains("does not add or remove", output);
+        Assert.Contains("FULL current membership", output);
     }
 
     [Fact]
