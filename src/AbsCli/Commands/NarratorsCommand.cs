@@ -83,9 +83,7 @@ public static class NarratorsCommand
         };
         command.AddPermissionRequired("update");
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
-            "Requires the 'update' permission (NOT 'delete'). Removes the narrator",
-            "from all items and returns the count of items updated. No confirmation",
-            "prompt.");
+            "No confirmation prompt.");
         command.AddExamples("abs-cli narrators delete \"Rob Inglis\"");
         command.AddResponseExample<NarratorUpdateResponse>();
         command.SetAction(async (parseResult, cancellationToken) =>

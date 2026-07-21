@@ -134,7 +134,7 @@ public static class AuthorsCommand
         var nameOption = new Option<string>("--name") { Description = "Author name to search Audnexus", Required = true };
         var command = new Command("lookup", "Read-only Audnexus probe by author name") { nameOption };
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
-            "Read-only Audnexus probe; does not touch ABS state.",
+            "Does not touch ABS state.",
             "",
             "Returns a single best-guess match. If the result looks wrong, look up",
             "the specific author by ASIN via 'authors match'.",

@@ -16,9 +16,7 @@ public static class CollectionsCommand
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
             "Collections are flat, manually-curated, library-scoped ordered lists",
             "of book library items. ABS has no smart-collection / saved-filter",
-            "concept — membership is yours to maintain. See `collections create",
-            "--help` for sharp edges; `update` edits metadata, `reorder` shuffles",
-            "order, `add` / `remove` / `batch-*` change membership.");
+            "concept — membership is yours to maintain.");
         command.Subcommands.Add(CreateListCommand());
         command.Subcommands.Add(CreateGetCommand());
         command.Subcommands.Add(CreateCreateCommand());
@@ -99,7 +97,6 @@ public static class CollectionsCommand
         { libraryOption, nameOption, descriptionOption, inputOption, stdinOption };
         command.AddPermissionRequired("update");
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
-            "ABS requires at least one book; cannot create empty.",
             "HTML in --name is stripped silently server-side.");
         command.AddExamples(
             "abs-cli collections create --library \"lib_1\" --name \"Light Novels\" --input books.json",
@@ -160,13 +157,6 @@ public static class CollectionsCommand
         var command = new Command("update", "Edit a collection's name and/or description")
         { idOption, nameOption, descriptionOption };
         command.AddPermissionRequired("update");
-        command.AddHelpSection("Notes", HelpSectionPosition.Top,
-            "Edits metadata only. Use `reorder` to change book order; use `add`",
-            "/ `remove` / `batch-add` / `batch-remove` to change membership.",
-            "",
-            "Empty string for --description clears the field; omit to leave",
-            "unchanged. Empty --name is rejected. Same convention as `authors",
-            "update`.");
         command.AddExamples(
             "abs-cli collections update --id \"col_abc\" --name \"Renamed\"",
             "abs-cli collections update --id \"col_abc\" --description \"\"");
@@ -207,12 +197,8 @@ public static class CollectionsCommand
         { idOption, inputOption, stdinOption };
         command.AddPermissionRequired("update");
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
-            "Reorders existing members only — does not add or remove. Pass",
-            "the FULL current membership in the desired order; partial lists",
-            "shuffle missing members to undefined positions.",
-            "",
-            "Example for a 3-book collection: input `{\"books\":[\"li_c\",\"li_a\",\"li_b\"]}`",
-            "moves li_c to position 1.");
+            "Pass the FULL current membership in the desired order; partial",
+            "lists shuffle missing members to undefined positions.");
         command.AddExamples(
             "abs-cli collections reorder --id \"col_abc\" --input order.json",
             "echo '{\"books\":[\"li_c\",\"li_a\",\"li_b\"]}' | abs-cli collections reorder --id \"col_abc\" --stdin");
@@ -242,8 +228,7 @@ public static class CollectionsCommand
         var command = new Command("delete", "Delete a collection") { idOption };
         command.AddPermissionRequired("delete");
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
-            "Hard delete. The collection record and its membership rows go",
-            "away immediately.");
+            "Hard delete — no undo.");
         command.AddExamples(
             "abs-cli collections delete --id \"col_abc\"");
         command.AddShapeSection("Response shape",
@@ -268,9 +253,8 @@ public static class CollectionsCommand
         { idOption, bookOption };
         command.AddPermissionRequired("update");
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
-            "Errors with 400 if the book is already in the collection. Use",
-            "`batch-add` (or check first) for idempotent inserts. Books from a",
-            "different library are rejected.");
+            "Errors with 400 if the book is already in the collection, or",
+            "if it is from a different library.");
         command.AddExamples(
             "abs-cli collections add --id \"col_abc\" --book \"li_xyz\"");
         command.AddResponseExample<Collection>();
@@ -319,9 +303,8 @@ public static class CollectionsCommand
         { idOption, inputOption, stdinOption };
         command.AddPermissionRequired("update");
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
-            "Silently skips books already in the collection, unlike `add`",
-            "which 400s on duplicates. Books from a different library are",
-            "rejected.");
+            "Silently skips books already in the collection. Books from a",
+            "different library are rejected.");
         command.AddExamples(
             "abs-cli collections batch-add --id \"col_abc\" --input books.json",
             "echo '{\"books\":[\"li_a\",\"li_b\"]}' | abs-cli collections batch-add --id \"col_abc\" --stdin");
@@ -354,8 +337,7 @@ public static class CollectionsCommand
         { idOption, inputOption, stdinOption };
         command.AddPermissionRequired("update");
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
-            "Tolerates books not in the collection (no-op for those). Unlike",
-            "single `remove` which 404s on missing entries.");
+            "Tolerates books not in the collection (no-op for those).");
         command.AddExamples(
             "abs-cli collections batch-remove --id \"col_abc\" --input books.json",
             "echo '{\"books\":[\"li_a\",\"li_b\"]}' | abs-cli collections batch-remove --id \"col_abc\" --stdin");

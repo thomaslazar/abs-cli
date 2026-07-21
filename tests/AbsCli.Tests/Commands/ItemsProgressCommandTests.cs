@@ -27,11 +27,11 @@ public class ItemsProgressCommandTests
     }
 
     [Fact]
-    public void ProgressGet_Help_DocumentsLibraryItemAndBooksOnly()
+    public void ProgressGet_Help_DocumentsLibraryItemAndNotFound()
     {
         var output = RenderHelp("items", "progress", "get");
         Assert.Contains("--library-item", output);
-        Assert.Contains("Books only", output);
+        Assert.Contains("404 if no progress recorded", output);
     }
 
     [Fact]
@@ -61,7 +61,7 @@ public class ItemsProgressCommandTests
     {
         var output = RenderHelp("items", "progress", "remove");
         Assert.Contains("both audio and ebook", output);
-        Assert.Contains("To reset only one half", output);
+        Assert.Contains("no per-half", output);
     }
 
     [Fact]
@@ -77,7 +77,7 @@ public class ItemsProgressCommandTests
     {
         var output = RenderHelp("items", "get");
         Assert.Contains("--include", output);
-        Assert.Contains("automatically implies --expanded", output);
+        Assert.Contains("forces --expanded", output);
     }
 
     [Fact]

@@ -20,7 +20,7 @@ public static class GenresCommand
 
     private static Command CreateListCommand()
     {
-        var command = new Command("list", "List all genres (unsorted — server discovery order, unlike tags)");
+        var command = new Command("list", "List all genres (unsorted — server discovery order)");
         command.AddPermissionRequired("admin");
         command.AddExamples("abs-cli genres list");
         command.AddResponseExample<GenreListResponse>();
@@ -72,8 +72,7 @@ public static class GenresCommand
         };
         command.AddPermissionRequired("admin");
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
-            "Removes the genre from all items and returns numItemsUpdated. No",
-            "confirmation prompt.");
+            "No confirmation prompt.");
         command.AddExamples("abs-cli genres delete scifi");
         command.AddResponseExample<GenreDeleteResponse>();
         command.SetAction(async (parseResult, cancellationToken) =>
