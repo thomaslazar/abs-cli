@@ -3,6 +3,37 @@
 All notable changes to abs-cli are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## v1.0.0 — 2026-07-22
+
+First stable release. abs-cli now covers a major set of Audiobookshelf
+management operations for book libraries, with consistent `--help`,
+permission tagging, and AOT-compiled single-file binaries for six platforms.
+
+### Highlights
+- **Playlists** — full lifecycle: list, get, create (empty allowed), update, reorder, delete, add/remove, batch add/remove, and snapshot `create-from-collection`.
+- **Libraries** — create, update, reorder, and a delete guarded by a typed-name confirmation (its cascade removes all contents).
+- **Tags, genres & narrators** — list, rename (merge-aware), and delete across a library.
+- **Series** — edit name and description.
+- **Item files** — per-file `download`, `delete`, and raw `ffprobe`.
+- Project conventions consolidated into `CLAUDE.md`; help text tightened to non-obvious caveats only.
+
+### Features
+- feat: playlists command — list/get/create/update/reorder/delete/add/remove/batch-add/batch-remove/create-from-collection
+- feat: libraries create, update, delete (typed-name gate), and reorder
+- feat: tags command — list/rename/delete
+- feat: genres command — list/rename/delete
+- feat: narrators command — list/rename/delete
+- feat: series update
+- feat: items file subgroup — download/delete/ffprobe
+
+### Fixes
+- fix: correct permission checks for `items file ffprobe`, `libraries reorder`, `narrators delete`, and GET endpoints in the coverage map (landed with their feature commits)
+
+### Docs & internal
+- docs: consolidate project conventions into `CLAUDE.md`; trim help-text over-explanation across commands
+- test: smoke coverage + 403/permission assertions for all new commands
+- chore: install ponytail and answer-first skills in the devcontainer
+
 ## 0.6.1 — 2026-06-17
 
 ### Highlights
