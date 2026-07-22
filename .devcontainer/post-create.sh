@@ -37,3 +37,7 @@ jq '. + {statusLine: {type: "command", command: "/home/vscode/.claude/statusline
 # Structured development workflow (brainstorming, planning, TDD, debugging, code review).
 claude plugin marketplace add obra/superpowers 2>/dev/null || true
 claude plugin install superpowers@superpowers-dev 2>/dev/null || true
+
+# --- Ponytail: general code-simplicity discipline (YAGNI, reuse, minimal diff) ---
+claude plugin marketplace add DietrichGebert/ponytail 2>/dev/null || true
+claude plugin install ponytail@ponytail 2>/dev/null || true
