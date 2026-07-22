@@ -41,3 +41,7 @@ claude plugin install superpowers@superpowers-dev 2>/dev/null || true
 # --- Ponytail: general code-simplicity discipline (YAGNI, reuse, minimal diff) ---
 claude plugin marketplace add DietrichGebert/ponytail 2>/dev/null || true
 claude plugin install ponytail@ponytail 2>/dev/null || true
+
+# --- answer-first: output-style skill (lead with the answer, cut preamble) ---
+claude plugin marketplace add thomaslazar/answer-first 2>/dev/null || true
+claude plugin install answer-first@razal-skills 2>/dev/null || true
