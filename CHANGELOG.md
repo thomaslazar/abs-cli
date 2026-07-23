@@ -3,6 +3,17 @@
 All notable changes to abs-cli are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## v1.0.1 — 2026-07-23
+
+Patch release. Fixes a crash reading media progress against libraries that
+contain legacy numeric `ebookLocation` values.
+
+### Highlights
+- `me` (and other commands that read `mediaProgress[]`) no longer crash when Audiobookshelf returns a numeric `ebookLocation`. ABS declares the field as a string, but SQLite type affinity lets older numeric values come back as bare numbers; the CLI now tolerates them and surfaces the value as a string (#65).
+
+### Fixes
+- fix: tolerate numeric ebookLocation in mediaProgress (#65)
+
 ## v1.0.0 — 2026-07-22
 
 First stable release. abs-cli now covers a major set of Audiobookshelf
