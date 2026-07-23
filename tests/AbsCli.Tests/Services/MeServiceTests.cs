@@ -57,6 +57,52 @@ public class MeServiceTests
     }
 
     [Fact]
+    public void MediaProgress_Deserializes_NumericEbookLocation()
+    {
+        // ABS declares ebookLocation as STRING but SQLite type affinity lets
+        // legacy numeric values leak through as bare JSON numbers (issue #65).
+        // The model must tolerate them, surfacing the raw number as a string.
+        var json = """
+        {"id":"mp_3","userId":"u_1","libraryItemId":"li_y","mediaItemId":"b_y",
+         "mediaItemType":"book","duration":0,"progress":0,"currentTime":0,
+         "isFinished":false,"hideFromContinueListening":false,
+         "ebookLocation":24,"ebookProgress":0,
+         "lastUpdate":0,"startedAt":0,"finishedAt":null}
+        """;
+        var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.MediaProgress)!;
+        Assert.Equal("24", back.EbookLocation);
+    }
+
+    [Fact]
+    public void MediaProgress_Deserializes_StringEbookLocation_Unchanged()
+    {
+        // The common case — a locator/CFI string — must still pass through verbatim.
+        var json = """
+        {"id":"mp_4","userId":"u_1","libraryItemId":"li_z","mediaItemId":"b_z",
+         "mediaItemType":"book","duration":0,"progress":0,"currentTime":0,
+         "isFinished":false,"hideFromContinueListening":false,
+         "ebookLocation":"{\"href\":\"x.jpeg\"}","ebookProgress":0,
+         "lastUpdate":0,"startedAt":0,"finishedAt":null}
+        """;
+        var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.MediaProgress)!;
+        Assert.Equal("{\"href\":\"x.jpeg\"}", back.EbookLocation);
+    }
+
+    [Fact]
+    public void MediaProgress_Deserializes_NullEbookLocation()
+    {
+        var json = """
+        {"id":"mp_5","userId":"u_1","libraryItemId":"li_n","mediaItemId":"b_n",
+         "mediaItemType":"book","duration":0,"progress":0,"currentTime":0,
+         "isFinished":false,"hideFromContinueListening":false,
+         "ebookLocation":null,"ebookProgress":0,
+         "lastUpdate":0,"startedAt":0,"finishedAt":null}
+        """;
+        var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.MediaProgress)!;
+        Assert.Null(back.EbookLocation);
+    }
+
+    [Fact]
     public void ProgressUpdateRequest_OmitsUnsetFields()
     {
         // Only is-finished set; CurrentTime/EbookLocation/etc. should be absent from JSON.

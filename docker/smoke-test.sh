@@ -1072,6 +1072,30 @@ else
     fail "progress get after remove surfaces 404" "got: ${output:0:200}"
 fi
 
+# 8b. Regression (issue #65): a numeric ebookLocation must not crash `me`.
+# ABS types ebookLocation as STRING but stores/echoes bare numbers written to
+# it (SQLite type affinity). The CLI only ever SENDS strings, so the numeric
+# shape is injected here via the raw API to exercise the tolerant read path.
+ABS_TOKEN=$(curl -fsS -X POST "$ABS_URL/login" -H 'Content-Type: application/json' \
+    -d '{"username":"root","password":"root"}' 2>/dev/null \
+    | python3 -c "import sys,json; u=json.load(sys.stdin).get('user',{}); print(u.get('accessToken') or u.get('token') or '')")
+if [ -z "$ABS_TOKEN" ]; then
+    fail "issue #65: obtained API token for raw numeric-ebookLocation PATCH" "login returned no token"
+else
+    curl -fsS -X PATCH "$ABS_URL/api/me/progress/$PROGRESS_LID" \
+        -H "Authorization: Bearer $ABS_TOKEN" -H 'Content-Type: application/json' \
+        -d '{"ebookLocation": 24, "ebookProgress": 0.1}' >/dev/null 2>&1
+    if output=$($CLI me 2>/dev/null); then
+        assert_json_key "issue #65: me survives numeric ebookLocation" "username" "$output"
+    else
+        fail "issue #65: me survives numeric ebookLocation" "me exited non-zero (deserialize crash)"
+    fi
+    output=$($CLI items progress get --library-item "$PROGRESS_LID" 2>/dev/null)
+    assert_json_expr "issue #65: numeric ebookLocation surfaced as string" \
+        "d.get('ebookLocation')=='24'" "$output"
+    $CLI items progress remove --library-item "$PROGRESS_LID" >/dev/null 2>&1 || true
+fi
+
 # 9. progress set with no body flags → exit 1
 output=$($CLI items progress set --library-item "$PROGRESS_LID" 2>&1 || true)
 if echo "$output" | grep -qi "Specify at least one"; then

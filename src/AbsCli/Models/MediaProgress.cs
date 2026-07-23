@@ -45,6 +45,7 @@ public class MediaProgress
     public bool HideFromContinueListening { get; set; }
 
     [JsonPropertyName("ebookLocation")]
+    [JsonConverter(typeof(TolerantStringConverter))]
     public string? EbookLocation { get; set; }
 
     [JsonPropertyName("ebookProgress")]
