@@ -30,7 +30,7 @@ public class ItemsGetExpandedCommandTests
     public void ItemsGet_Help_ShowsBothResponseShapes()
     {
         var output = RenderHelp("items", "get");
-        // Default (minified) — has `numFiles`, no `libraryFiles`.
+        // Default (minified) — no `libraryFiles`.
         Assert.Contains("Response shape:", output);
         Assert.Contains("\"numFiles\"", output);
         // Expanded — has `libraryFiles`, `lastScan`, `scanVersion`.

@@ -55,16 +55,25 @@ Login route is in `server/Auth.js`:
 
 ## Server-side notes
 
-- **v2.35 refresh-token grace period.** ABS 2.35 added 60 seconds of
-  server-side grace on the previous refresh token after a successful
-  rotation (new `lastRefreshToken` / `lastRefreshTokenExpiresAt` columns on
-  the session row; `rotateTokensForSession` keeps the old token usable for
-  one minute, and `POST /auth/refresh` accepts either the current or the
-  prior refresh token within the grace window). This guards against a race
-  between two concurrent refresh callers each issuing a fresh token. abs-cli
-  is single-process and never issues concurrent refreshes, so the grace
-  period is transparent — no CLI behavior change. Request and response
-  shapes are unchanged.
+- **Refresh-token grace period.** ABS 2.35 added 60 seconds of server-side
+  grace on the previous refresh token after a successful rotation (new
+  `lastRefreshToken` / `lastRefreshTokenExpiresAt` columns on the session
+  row, written by `rotateTokensForSession`; `POST /auth/refresh` accepts
+  either the current or the prior refresh token within the window). This
+  guards against a race between two concurrent refresh callers each issuing
+  a fresh token. ABS 2.36 widened the window to 10 minutes and made it
+  configurable (`TokenManager.RefreshTokenGracePeriod`,
+  `REFRESH_TOKEN_GRACE_PERIOD` env var). abs-cli is single-process and never
+  issues concurrent refreshes, so the grace period is transparent — no CLI
+  behavior change. Request and response shapes are unchanged.
+
+- **v2.36 bearer-token type check.** A refresh token is rejected when
+  presented as a `Bearer` credential
+  (`TokenManager.isBearerAccessTokenPayload` gates both the passport JWT
+  strategy and socket auth, rejecting payloads with `type === 'refresh'`).
+  abs-cli sends only its access token as `Bearer` and presents the refresh
+  token exclusively via the `X-Refresh-Token` header on
+  `POST /auth/refresh` — no change needed.
 
 - **Diagnostic logging.** Run any command with `--debug` (or set
   `ABS_DEBUG=1`) to emit token-refresh decisions to stderr. See

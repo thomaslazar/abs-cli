@@ -295,7 +295,7 @@ Errors and warnings go to stderr by default with a timestamp + level prefix:
 
 ```
 2026-05-19T14:23:45.123Z ERROR Permission denied. This operation requires 'update' permission.
-2026-05-19T14:23:45.123Z WARN  ABS server version 2.36.0 has not been tested with this version of abs-cli.
+2026-05-19T14:23:45.123Z WARN  ABS server version 2.37.0 has not been tested with this version of abs-cli.
 ```
 
 Add `--debug` to any command (or set `ABS_DEBUG=1` in the environment) to also emit one stderr line per HTTP call (method + full URL + status code, plus the response body on non-2xx), token-refresh decisions, and version-check decisions.
@@ -358,7 +358,7 @@ See [docs/](docs/) for architecture, authentication, build targets, and more.
 
 ## Compatibility
 
-Tested against Audiobookshelf **2.33.1 — 2.35.1**. The CLI warns on login if the server version is outside the tested range. See [docs/abs-compatibility.md](docs/abs-compatibility.md) for the full compatibility matrix and policy.
+Tested against Audiobookshelf **2.33.1 — 2.36.0**. The CLI warns on login if the server version is outside the tested range. See [docs/abs-compatibility.md](docs/abs-compatibility.md) for the full compatibility matrix and policy.
 
 ## License
 
