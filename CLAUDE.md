@@ -27,6 +27,7 @@ test: add metadata update assertion to smoke tests
 - Run `docker/smoke-test.sh` against the local docker-compose dev stack before opening any PR. Unit tests and `self-test` are not enough — many regressions only surface in the live HTTP path.
 - The compose stack lives at `docker/docker-compose.yml`; bring it up with `cd docker && docker compose up -d`. Resolve the container IP via `docker inspect docker-audiobookshelf-1 -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}'` and run the smoke as `ABS_URL=http://<container-ip>:80 bash docker/smoke-test.sh` — the `host.docker.internal` default does not work from inside the dev container.
 - Seed first if the stack is freshly created: `ABS_URL=http://<container-ip>:80 bash docker/seed.sh`.
+- **`smoke-test.sh` is not idempotent — every run needs a freshly seeded stack.** It creates and deletes library items, so a second run against the same stack fails on item-count assertions and the multi-ebook fixture's primary/supplementary state. Those failures are artifacts of the dirty stack, not regressions. To re-run (e.g. after a late code change): `docker compose down -v && docker compose up -d`, wait for `/healthcheck`, re-run `seed.sh`, then smoke.
 - Only mark "smoke test passed" in a PR description after actually running it. Do not copy the checkbox forward unverified.
 
 ## Post-PR verification
