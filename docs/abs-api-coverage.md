@@ -5,29 +5,29 @@ any) that implements it.
 
 - **Reference:** ABS server source at `temp/audiobookshelf/server/routers/`
   (routes) and `server/controllers/` (handlers). Tested range:
-  `2.33.1 – 2.35.1` (`AbsApiClient.cs`).
+  `2.33.1 – 2.36.0` (`AbsApiClient.cs`).
 - **Permission** column uses ABS's tokens (`admin` / `update` / `upload` /
   `download` / `delete`); blank = any authenticated user. `?` = not visible at
   the router layer.
 - ✅ = covered by a CLI command · — = not implemented · 🔒 = internal-only
-  (no user-facing verb).
+  (no user-facing verb); 🔒 rows never count as covered.
 
 ## Coverage summary
 
 | Resource | Covered / Total |
 |----------|-----------------|
-| Libraries | 4 / 27 |
-| Items | 13 / 26 |
-| Me (current user) | 5 / 18 |
+| Libraries | 16 / 28 |
+| Items | 16 / 26 |
+| Me (current user) | 5 / 23 |
 | Collections | 9 / 9 |
 | Authors | 7 / 7 |
-| Series | 1 / 2 |
+| Series | 2 / 2 |
 | Backup | 6 / 7 |
-| Search | 4 / 6 |
+| Search | 5 / 6 |
 | Cache | 2 / 2 |
 | Tools | 4 / 4 |
-| Misc | 3 / 16 |
-| Playlists | 0 / 10 |
+| Misc | 8 / 16 |
+| Playlists | 9 / 10 |
 | Podcasts | 0 / 13 |
 | Users | 0 / 9 |
 | Sessions | 0 / 9 |
@@ -39,6 +39,7 @@ any) that implements it.
 | Shares | 0 / 2 |
 | Stats | 0 / 2 |
 | Filesystem | 0 / 2 |
+| Auth (non-`/api`) | 1 / 2 |
 
 ## Libraries
 
@@ -56,7 +57,7 @@ any) that implements it.
 | GET | `/api/libraries/:id/series` | List series | | `series list` ✅ |
 | GET | `/api/libraries/:id/series/:seriesId` | Get series (library-scoped) | | — |
 | GET | `/api/libraries/:id/collections` | List collections | | `collections list` ✅ |
-| GET | `/api/libraries/:id/playlists` | List playlists | | — |
+| GET | `/api/libraries/:id/playlists` | List playlists | | `playlists list` ✅ |
 | GET | `/api/libraries/:id/personalized` | Personalized shelves | | — |
 | GET | `/api/libraries/:id/filterdata` | Valid filter values | | — |
 | GET | `/api/libraries/:id/search` | Search within library | | `search` ✅ |
@@ -109,14 +110,19 @@ any) that implements it.
 | Method | Path | Description | Perm | CLI |
 |--------|------|-------------|------|-----|
 | GET | `/api/me` | Current user profile | | `me` ✅ |
+| GET | `/api/me/sessions` | My auth sessions (paginated) | | — |
+| DELETE | `/api/me/sessions/:id` | Revoke one of my auth sessions | | — |
 | GET | `/api/me/listening-sessions` | My listening sessions | | — |
 | GET | `/api/me/item/listening-sessions/:id/:episodeId?` | Item listening sessions | | — |
 | GET | `/api/me/listening-stats` | My listening stats | | — |
+| GET | `/api/me/progress` | All my media progress | | — |
 | GET | `/api/me/progress/:id/remove-from-continue-listening` | Remove from continue listening | update | — |
 | GET | `/api/me/progress/:id/:episodeId?` | Get media progress | | `items progress get` ✅ |
 | PATCH | `/api/me/progress/batch/update` | Batch update progress | update | `items batch-update-progress` ✅ |
 | PATCH | `/api/me/progress/:libraryItemId/:episodeId?` | Set/create media progress | update | `items progress set` ✅ |
 | DELETE | `/api/me/progress/:id` | Delete media progress | delete | `items progress remove` ✅ |
+| GET | `/api/me/bookmarks` | All my bookmarks | | — |
+| GET | `/api/me/bookmarks/:libraryItemId` | My bookmarks for one item | | — |
 | POST | `/api/me/item/:id/bookmark` | Create bookmark | update | — |
 | PATCH | `/api/me/item/:id/bookmark` | Update bookmark | update | — |
 | DELETE | `/api/me/item/:id/bookmark/:time` | Delete bookmark | delete | — |
@@ -164,16 +170,16 @@ any) that implements it.
 
 | Method | Path | Description | Perm | CLI |
 |--------|------|-------------|------|-----|
-| POST | `/api/playlists` | Create playlist | | — |
+| POST | `/api/playlists` | Create playlist | | `playlists create` ✅ |
 | GET | `/api/playlists` | List my playlists | | — |
-| GET | `/api/playlists/:id` | Get playlist | | — |
-| PATCH | `/api/playlists/:id` | Update playlist | update | — |
-| DELETE | `/api/playlists/:id` | Delete playlist | delete | — |
-| POST | `/api/playlists/:id/item` | Add item | update | — |
-| DELETE | `/api/playlists/:id/item/:itemId/:episodeId?` | Remove item | update | — |
-| POST | `/api/playlists/:id/batch/add` | Batch add | update | — |
-| POST | `/api/playlists/:id/batch/remove` | Batch remove | update | — |
-| POST | `/api/playlists/collection/:collectionId` | Create from collection | | — |
+| GET | `/api/playlists/:id` | Get playlist | | `playlists get` ✅ |
+| PATCH | `/api/playlists/:id` | Update / reorder | update | `playlists update` / `reorder` ✅ |
+| DELETE | `/api/playlists/:id` | Delete playlist | delete | `playlists delete` ✅ |
+| POST | `/api/playlists/:id/item` | Add item | update | `playlists add` ✅ |
+| DELETE | `/api/playlists/:id/item/:itemId/:episodeId?` | Remove item | update | `playlists remove` ✅ |
+| POST | `/api/playlists/:id/batch/add` | Batch add | update | `playlists batch-add` ✅ |
+| POST | `/api/playlists/:id/batch/remove` | Batch remove | update | `playlists batch-remove` ✅ |
+| POST | `/api/playlists/collection/:collectionId` | Create from collection | | `playlists create-from-collection` ✅ |
 
 ## Podcasts
 
@@ -343,12 +349,12 @@ streaming routes are intentionally omitted — out of scope for a management CLI
 | PATCH | `/api/settings` | Update server settings | admin | — |
 | PATCH | `/api/sorting-prefixes` | Update sorting prefixes | admin | — |
 | POST | `/api/authorize` | Authorize user | | 🔒 (login) |
-| GET | `/api/tags` | List tags | admin | — |
-| POST | `/api/tags/rename` | Rename tag | admin | — |
-| DELETE | `/api/tags/:tag` | Delete tag | admin | — |
-| GET | `/api/genres` | List genres | admin | — |
-| POST | `/api/genres/rename` | Rename genre | admin | — |
-| DELETE | `/api/genres/:genre` | Delete genre | admin | — |
+| GET | `/api/tags` | List tags | admin | `tags list` ✅ |
+| POST | `/api/tags/rename` | Rename tag | admin | `tags rename` ✅ |
+| DELETE | `/api/tags/:tag` | Delete tag | admin | `tags delete` ✅ |
+| GET | `/api/genres` | List genres | admin | `genres list` ✅ |
+| POST | `/api/genres/rename` | Rename genre | admin | `genres rename` ✅ |
+| DELETE | `/api/genres/:genre` | Delete genre | admin | `genres delete` ✅ |
 | POST | `/api/validate-cron` | Validate cron expression | admin | — |
 | GET | `/api/auth-settings` | Get auth settings | | — |
 | PATCH | `/api/auth-settings` | Update auth settings | admin | — |
