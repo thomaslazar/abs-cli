@@ -3,6 +3,31 @@
 All notable changes to abs-cli are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## v1.0.2 — 2026-07-30
+
+Patch release. Adds Audiobookshelf 2.36.0 to the tested range and stops
+`items get --expanded` from discarding the `numFiles` field 2.36.0 introduced.
+
+### Highlights
+
+- **Audiobookshelf 2.36.0 support.** The tested range is now `2.33.1 — 2.36.0`, so
+  logging into a 2.36.0 server no longer prints an "untested version" warning.
+  Nothing was dropped from the supported range.
+- **`items get --expanded` no longer loses a field on 2.36.0 servers.** ABS 2.36.0
+  started including `numFiles` in expanded item responses; abs-cli was silently
+  discarding it. It now surfaces, and is omitted rather than reported as `0` when
+  talking to older servers that don't send it.
+- **`docs/abs-api-coverage.md` is accurate again.** Sixteen endpoint rows still
+  claimed "not implemented" for commands that already shipped — the tags, genres,
+  and playlists verbs — and six of the coverage counts were stale.
+- No breaking changes; no command, flag, or output shape was removed.
+
+### Changes
+
+- chore: bump version to 1.0.2
+- chore: raise MaxTestedVersion to 2.36.0
+- docs: note smoke-test.sh needs a fresh seed per run
+
 ## v1.0.1 — 2026-07-23
 
 Patch release. Fixes a crash reading media progress against libraries that
