@@ -90,10 +90,29 @@ jobs:
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '10.0.x'
+      # Stamps non-release builds so --version and the User-Agent say which build
+      # this is. Releases pass nothing, keeping the version bare.
+      - name: Compute build id
+        id: build
+        shell: bash
+        env:
+          EVENT: ${{ github.event_name }}
+          PR: ${{ github.event.number }}
+          PR_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "$EVENT" = pull_request ]; then
+            echo "id=pr-$PR.$(echo "$PR_SHA" | cut -c1-7)" >> "$GITHUB_OUTPUT"
+          else
+            echo "id=" >> "$GITHUB_OUTPUT"
+          fi
       - name: Publish
-        run: >
-          dotnet publish src/AbsCli/AbsCli.csproj
-          -c Release -r ${{ matrix.rid }} --self-contained true /p:PublishAot=true
+        shell: bash
+        env:
+          BUILD_ID: ${{ steps.build.outputs.id }}
+        run: |
+          dotnet publish src/AbsCli/AbsCli.csproj \
+            -c Release -r ${{ matrix.rid }} --self-contained true -p:PublishAot=true \
+            ${BUILD_ID:+-p:BuildId=$BUILD_ID}
       - name: Run self-test (AOT integrity check)
         shell: bash
         run: |

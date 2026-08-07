@@ -888,6 +888,22 @@ public static class SelfTestCommand
             });
 
             Console.Error.WriteLine();
+            Console.Error.WriteLine("=== Build stamp ===");
+
+            Check("Informational version resolves", () =>
+            {
+                // --version and the User-Agent read an assembly-level attribute, which
+                // trimming can strip: it compiles fine and goes empty only in a
+                // published binary.
+                var version = AbsApiClient.ClientVersion;
+                var assemblyVersion = typeof(AbsApiClient).Assembly.GetName().Version?.ToString(3);
+                Assert(!string.IsNullOrWhiteSpace(version) && version != "0.0.0",
+                    "informational version did not resolve");
+                Assert(assemblyVersion == null || version.StartsWith(assemblyVersion, StringComparison.Ordinal),
+                    $"informational version '{version}' does not start with assembly version '{assemblyVersion}'");
+            });
+
+            Console.Error.WriteLine();
             Console.Error.WriteLine("=== Embedded resources ===");
 
             Check("CHANGELOG.md embedded and parseable", () =>
