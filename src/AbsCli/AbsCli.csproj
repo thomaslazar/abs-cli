@@ -10,7 +10,11 @@
     <PublishAot>true</PublishAot>
     <InvariantGlobalization>true</InvariantGlobalization>
     <Version>1.0.2</Version>
+    <!-- The SDK's source-link integration would otherwise append the git SHA to
+         every build. CI passes -p:BuildId=pr-1.a1b2c3d for non-release builds;
+         releases and local builds pass nothing and stay bare. -->
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <InformationalVersion Condition="'$(BuildId)' != ''">$(Version)+$(BuildId)</InformationalVersion>
   </PropertyGroup>
 
   <ItemGroup>

@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
@@ -29,7 +30,7 @@ public class AbsApiClient
             // longer timeouts. Setting this to Infinite disables the global cap.
             Timeout = Timeout.InfiniteTimeSpan
         };
-        _http.DefaultRequestHeaders.UserAgent.ParseAdd($"abs-cli/{AssemblyVersion}");
+        _http.DefaultRequestHeaders.UserAgent.ParseAdd($"abs-cli/{ClientVersion}");
 
         if (config.AccessToken != null)
             _http.DefaultRequestHeaders.Authorization =
@@ -235,8 +236,15 @@ public class AbsApiClient
     private static readonly string MinSupportedVersion = "2.33.1";
     private static readonly string MaxTestedVersion = "2.36.0";
 
-    private static readonly string AssemblyVersion =
-        typeof(AbsApiClient).Assembly.GetName().Version?.ToString(3) ?? "0.0.0";
+    // The informational version carries CI's build stamp ("1.0.2+pr-1.a1b2c3d") so
+    // --version and server logs identify which build this is. It lives in an
+    // assembly-level attribute, which Native AOT can trim — self-test asserts it
+    // still resolves.
+    internal static readonly string ClientVersion =
+        typeof(AbsApiClient).Assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+        ?? typeof(AbsApiClient).Assembly.GetName().Version?.ToString(3)
+        ?? "0.0.0";
 
     public static void CheckServerVersion(string? version)
     {
