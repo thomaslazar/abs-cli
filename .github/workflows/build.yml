@@ -111,7 +111,7 @@ jobs:
           BUILD_ID: ${{ steps.build.outputs.id }}
         run: |
           dotnet publish src/AbsCli/AbsCli.csproj \
-            -c Release -r ${{ matrix.rid }} --self-contained true /p:PublishAot=true \
+            -c Release -r ${{ matrix.rid }} --self-contained true -p:PublishAot=true \
             ${BUILD_ID:+-p:BuildId=$BUILD_ID}
       - name: Run self-test (AOT integrity check)
         shell: bash
