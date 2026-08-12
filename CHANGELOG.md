@@ -3,6 +3,40 @@
 All notable changes to abs-cli are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## v1.0.3 — 2026-08-12
+
+Patch release. Fixes two robustness bugs found by an audit from `grimoire-cli`,
+which uses this repo as its reference implementation, and makes the `ABS_*`
+environment variables discoverable from `--help` (#71).
+
+### Highlights
+
+- **A prerelease or `v`-prefixed server version no longer fails `login`.** The
+  compatibility check parsed every dotted segment as an integer, so `2.36.0-beta`
+  or `v2.36.0` threw where it should have warned. It also threw *after* the
+  credentials were written, leaving you logged in but staring at a cryptic error
+  and a non-zero exit. Segments now contribute only their leading digits.
+- **Token expiry is read correctly for non-ASCII usernames.** JWT payloads are
+  base64url, but the decoder padded without mapping `-` and `_` back, so those
+  tokens silently lost their expiry — proactive refresh stopped happening and the
+  CLI fell back to refreshing reactively on a 401.
+- **`ABS_SERVER`, `ABS_TOKEN` and `ABS_LIBRARY` now appear in `--help`**, with
+  their precedence against flags and the config file. They were documented only in
+  the README, which is not where an agent driving the CLI looks.
+- **`docs/input-output.md` no longer claims every command writes JSON to stdout.**
+  Binary `--output -` streams, side-effect-only commands, and `self-test` are now
+  called out explicitly.
+- No breaking changes; no command, flag, or output shape was removed.
+
+### Changes
+
+- chore: bump version to 1.0.3
+- chore: give the dev compose stack a dedicated network
+- docs: surface ABS_* env vars in root help, fix output claims
+- feat: stamp PR builds with a build id in --version
+- fix: tolerate non-numeric versions and base64url token payloads
+- fix: use -p: not /p: in the publish step
+
 ## v1.0.2 — 2026-07-30
 
 Patch release. Adds Audiobookshelf 2.36.0 to the tested range and stops
