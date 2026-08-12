@@ -39,6 +39,21 @@ public class ConfigManager
         File.WriteAllText(_configPath, json);
     }
 
+    /// <summary>
+    /// Persist the version-check state by rewriting only the on-disk config.
+    /// Deliberately re-reads from disk instead of taking a resolved
+    /// <see cref="AppConfig"/>: <see cref="Resolve"/> merges environment
+    /// variables into memory, so saving that would write an ABS_TOKEN the
+    /// operator kept out of the file.
+    /// </summary>
+    public void UpdateVersionCheck(string? serverVersion, DateTimeOffset checkedAt)
+    {
+        var onDisk = Load();
+        onDisk.LastServerVersion = serverVersion;
+        onDisk.LastVersionCheck = checkedAt;
+        Save(onDisk);
+    }
+
     public AppConfig Resolve(
         string? flagServer = null,
         string? flagToken = null,
@@ -59,7 +74,9 @@ public class ConfigManager
             RefreshToken = fileConfig.RefreshToken,
             DefaultLibrary = flagLibrary
                 ?? envLookup("ABS_LIBRARY")
-                ?? fileConfig.DefaultLibrary
+                ?? fileConfig.DefaultLibrary,
+            LastVersionCheck = fileConfig.LastVersionCheck,
+            LastServerVersion = fileConfig.LastServerVersion
         };
     }
 }

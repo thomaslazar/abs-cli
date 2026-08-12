@@ -15,4 +15,12 @@ public class AppConfig
 
     [JsonPropertyName("defaultLibrary")]
     public string? DefaultLibrary { get; set; }
+
+    // Written by the runtime version check, not by `config set`. See
+    // docs/specs/2026-08-12-server-version-check-cadence-design.md.
+    [JsonPropertyName("lastVersionCheck")]
+    public DateTimeOffset? LastVersionCheck { get; set; }
+
+    [JsonPropertyName("lastServerVersion")]
+    public string? LastServerVersion { get; set; }
 }

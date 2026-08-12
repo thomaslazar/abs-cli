@@ -9,9 +9,15 @@ Location: `~/.abs-cli/config.json`
   "server": "https://audiobookshelf.example.com",
   "accessToken": "eyJhbG...",
   "refreshToken": "eyJhbG...",
-  "defaultLibrary": "f59e4771-a301-4dc0-a521-bbfa2d256c00"
+  "defaultLibrary": "f59e4771-a301-4dc0-a521-bbfa2d256c00",
+  "lastVersionCheck": "2026-08-12T10:00:00Z",
+  "lastServerVersion": "2.36.0"
 }
 ```
+
+`lastVersionCheck` and `lastServerVersion` are CLI-managed state for the runtime
+version check (see `docs/abs-compatibility.md`). They are not settable via
+`config set`.
 
 ## Precedence Order
 

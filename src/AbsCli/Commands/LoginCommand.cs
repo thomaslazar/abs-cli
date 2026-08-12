@@ -81,7 +81,13 @@ public static class LoginCommand
                 _logger.Error("Username and password are required.");
                 Environment.Exit(1);
             }
-            var tempConfig = new AppConfig { Server = server };
+            var fileConfig = configManager.Load();
+            var tempConfig = new AppConfig
+            {
+                Server = server,
+                LastVersionCheck = fileConfig.LastVersionCheck,
+                LastServerVersion = fileConfig.LastServerVersion
+            };
             var client = new AbsApiClient(tempConfig, configManager);
             try
             {
@@ -98,7 +104,7 @@ public static class LoginCommand
                 if (config.DefaultLibrary == null && loginResponse.UserDefaultLibraryId != null)
                     config.DefaultLibrary = loginResponse.UserDefaultLibraryId;
                 configManager.Save(config);
-                AbsApiClient.CheckServerVersion(loginResponse.ServerSettings?.Version);
+                client.RecordServerVersion(loginResponse.ServerSettings?.Version);
                 var version = loginResponse.ServerSettings?.Version ?? "unknown";
                 Console.Error.WriteLine($"Logged in as {loginResponse.User.Username} to {server} (ABS {version})");
                 if (config.DefaultLibrary != null)

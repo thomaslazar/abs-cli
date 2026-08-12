@@ -4,6 +4,8 @@ public static class ApiEndpoints
 {
     public const string Login = "login";
     public const string AuthRefresh = "auth/refresh";
+    // Unauthenticated, and outside /api — used by the runtime version check.
+    public const string Status = "status";
 
     public const string Libraries = "api/libraries";
     public const string LibrariesOrder = "api/libraries/order";

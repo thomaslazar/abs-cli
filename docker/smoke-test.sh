@@ -2303,6 +2303,55 @@ fi
 json_first_line=$(ABS_DEBUG=1 $CLI --log-json libraries list 2>&1 >/dev/null | head -1)
 assert_json_expr "ABS_DEBUG=1 --log-json libraries list emits JSON with timestamp/level/message" "'timestamp' in d and 'level' in d and 'message' in d" "$json_first_line"
 
+echo ""
+echo "=== Runtime Version Check ==="
+
+VC_HOME=$(mktemp -d)
+VC_CONFIG="$VC_HOME/.abs-cli/config.json"
+
+# Login records the version it already has, without probing.
+HOME="$VC_HOME" $CLI login --server "$ABS_URL" --username root --password-stdin <<<"root" >/dev/null 2>&1
+if python3 -c "import json,sys; d=json.load(open('$VC_CONFIG')); sys.exit(0 if d.get('lastServerVersion') and d.get('lastVersionCheck') else 1)" 2>/dev/null; then
+    pass "version check: login records version and timestamp"
+else
+    fail "version check: login records version and timestamp" "lastServerVersion/lastVersionCheck missing from $VC_CONFIG"
+fi
+
+# Immediately afterwards the check is inside the window, so no probe.
+vc_fresh=$(HOME="$VC_HOME" ABS_DEBUG=1 $CLI libraries list 2>&1 >/dev/null || true)
+if echo "$vc_fresh" | grep -q "inside the 24h window"; then
+    pass "version check: skipped inside the 24h window"
+else
+    fail "version check: skipped inside the 24h window" "expected the skip debug line"
+fi
+if echo "$vc_fresh" | grep -q "probing /status"; then
+    fail "version check: no probe inside the window" "probed despite a fresh timestamp"
+else
+    pass "version check: no probe inside the window"
+fi
+
+# Backdate the timestamp two days: the next command must probe.
+python3 -c "
+import json
+p = '$VC_CONFIG'
+d = json.load(open(p))
+d['lastVersionCheck'] = '2026-01-01T00:00:00+00:00'
+json.dump(d, open(p, 'w'))
+"
+vc_stale=$(HOME="$VC_HOME" ABS_DEBUG=1 $CLI libraries list 2>&1 >/dev/null || true)
+if echo "$vc_stale" | grep -q "probing /status"; then
+    pass "version check: probes once the window lapses"
+else
+    fail "version check: probes once the window lapses" "expected 'probing /status' in debug output"
+fi
+if python3 -c "import json,sys; d=json.load(open('$VC_CONFIG')); sys.exit(0 if not d['lastVersionCheck'].startswith('2026-01-01') else 1)" 2>/dev/null; then
+    pass "version check: timestamp advances after a probe"
+else
+    fail "version check: timestamp advances after a probe" "lastVersionCheck still backdated"
+fi
+
+rm -rf "$VC_HOME"
+
 # ============================================================
 echo ""
 echo "========================================"
