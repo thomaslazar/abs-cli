@@ -14,6 +14,7 @@ public class AbsApiClient
     private readonly HttpClient _http;
     private readonly ConfigManager _configManager;
     private AppConfig _config;
+    private bool _versionCheckDone;
 
     public static readonly TimeSpan DefaultRequestTimeout = TimeSpan.FromSeconds(100);
 
@@ -60,7 +61,7 @@ public class AbsApiClient
 
     public async Task<string> GetAsync(string endpoint, string? permissionHint = null, string? notFoundHint = null, TimeSpan? timeout = null)
     {
-        await EnsureValidTokenAsync();
+        await PreflightAsync();
         using var cts = new CancellationTokenSource(timeout ?? DefaultRequestTimeout);
         var response = await _http.GetAsync(endpoint, cts.Token);
         await EnsureSuccessOrHandleAuthAsync(response, HttpMethod.Get, endpoint, permissionHint, notFoundHint);
@@ -76,7 +77,7 @@ public class AbsApiClient
 
     public async Task<string> PatchAsync(string endpoint, string jsonBody, string? permissionHint = null, string? notFoundHint = null, TimeSpan? timeout = null)
     {
-        await EnsureValidTokenAsync();
+        await PreflightAsync();
         using var cts = new CancellationTokenSource(timeout ?? DefaultRequestTimeout);
         var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
         var response = await _http.PatchAsync(endpoint, content, cts.Token);
@@ -93,7 +94,7 @@ public class AbsApiClient
 
     public async Task<string> PostAsync(string endpoint, string jsonBody, string? permissionHint = null, string? notFoundHint = null, TimeSpan? timeout = null)
     {
-        await EnsureValidTokenAsync();
+        await PreflightAsync();
         using var cts = new CancellationTokenSource(timeout ?? DefaultRequestTimeout);
         var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
         var response = await _http.PostAsync(endpoint, content, cts.Token);
@@ -110,7 +111,7 @@ public class AbsApiClient
 
     public async Task<string> DeleteAsync(string endpoint, string? permissionHint = null, string? notFoundHint = null, TimeSpan? timeout = null)
     {
-        await EnsureValidTokenAsync();
+        await PreflightAsync();
         using var cts = new CancellationTokenSource(timeout ?? DefaultRequestTimeout);
         var response = await _http.DeleteAsync(endpoint, cts.Token);
         await EnsureSuccessOrHandleAuthAsync(response, HttpMethod.Delete, endpoint, permissionHint, notFoundHint);
@@ -127,7 +128,7 @@ public class AbsApiClient
     public async Task PostMultipartAsync(string endpoint, MultipartFormDataContent content,
         string? permissionHint = null, string? notFoundHint = null, TimeSpan? timeout = null)
     {
-        await EnsureValidTokenAsync();
+        await PreflightAsync();
         using var cts = new CancellationTokenSource(timeout ?? DefaultRequestTimeout);
         var response = await _http.PostAsync(endpoint, content, cts.Token);
         await EnsureSuccessOrHandleAuthAsync(response, HttpMethod.Post, endpoint, permissionHint, notFoundHint);
@@ -136,7 +137,7 @@ public class AbsApiClient
     public async Task<T> PostMultipartAsync<T>(string endpoint, MultipartFormDataContent content,
         JsonTypeInfo<T> typeInfo, string? permissionHint = null, string? notFoundHint = null, TimeSpan? timeout = null)
     {
-        await EnsureValidTokenAsync();
+        await PreflightAsync();
         using var cts = new CancellationTokenSource(timeout ?? DefaultRequestTimeout);
         var response = await _http.PostAsync(endpoint, content, cts.Token);
         await EnsureSuccessOrHandleAuthAsync(response, HttpMethod.Post, endpoint, permissionHint, notFoundHint);
@@ -147,7 +148,7 @@ public class AbsApiClient
 
     public async Task DownloadFileAsync(string endpoint, string outputPath, string? permissionHint = null, string? notFoundHint = null, TimeSpan? timeout = null)
     {
-        await EnsureValidTokenAsync();
+        await PreflightAsync();
         using var cts = new CancellationTokenSource(timeout ?? DefaultRequestTimeout);
         var response = await _http.GetAsync(endpoint, HttpCompletionOption.ResponseHeadersRead, cts.Token);
         await EnsureSuccessOrHandleAuthAsync(response, HttpMethod.Get, endpoint, permissionHint, notFoundHint);
@@ -163,7 +164,7 @@ public class AbsApiClient
     /// </summary>
     public async Task<Stream> GetStreamAsync(string endpoint, string? permissionHint = null, string? notFoundHint = null, TimeSpan? timeout = null)
     {
-        await EnsureValidTokenAsync();
+        await PreflightAsync();
         using var cts = new CancellationTokenSource(timeout ?? DefaultRequestTimeout);
         var response = await _http.GetAsync(endpoint, HttpCompletionOption.ResponseHeadersRead, cts.Token);
         await EnsureSuccessOrHandleAuthAsync(response, HttpMethod.Get, endpoint, permissionHint, notFoundHint);
@@ -172,7 +173,7 @@ public class AbsApiClient
 
     public async Task<string> PostEmptyAsync(string endpoint, string? permissionHint = null, string? notFoundHint = null, TimeSpan? timeout = null)
     {
-        await EnsureValidTokenAsync();
+        await PreflightAsync();
         using var cts = new CancellationTokenSource(timeout ?? DefaultRequestTimeout);
         var response = await _http.PostAsync(endpoint, null, cts.Token);
         await EnsureSuccessOrHandleAuthAsync(response, HttpMethod.Post, endpoint, permissionHint, notFoundHint);
@@ -184,6 +185,90 @@ public class AbsApiClient
         var json = await PostEmptyAsync(endpoint, permissionHint, notFoundHint, timeout);
         return JsonSerializer.Deserialize(json, typeInfo)
             ?? throw new InvalidOperationException($"Failed to deserialize response from {endpoint}");
+    }
+
+    /// <summary>
+    /// Runs before every request. The token check runs every time — a long
+    /// command can cross a token expiry mid-run — while the version check is
+    /// once per process.
+    /// </summary>
+    private async Task PreflightAsync()
+    {
+        await EnsureValidTokenAsync();
+        await EnsureVersionCheckedAsync();
+    }
+
+    private async Task EnsureVersionCheckedAsync()
+    {
+        if (_versionCheckDone) return;
+        _versionCheckDone = true;
+        if (!ShouldCheckVersion(_config.LastVersionCheck, DateTimeOffset.UtcNow))
+        {
+            _logger.Debug($"server version checked at {_config.LastVersionCheck:u}, inside the {VersionCheckInterval.TotalHours}h window");
+            return;
+        }
+        // Distinct line so tests can tell a probe apart from login recording the
+        // version it already had.
+        _logger.Debug("version check due, probing /status");
+        var observed = await ProbeServerVersionAsync();
+        if (observed != null)
+            RecordServerVersion(observed);
+    }
+
+    /// <summary>
+    /// Reads the version from the unauthenticated /status endpoint. Returns null
+    /// on any failure: this is a diagnostic and must never be the thing that
+    /// fails the command the caller actually asked for. A failure deliberately
+    /// leaves the stored timestamp alone so the next invocation retries.
+    /// </summary>
+    private async Task<string?> ProbeServerVersionAsync()
+    {
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+            var response = await _http.GetAsync(ApiEndpoints.Status, cts.Token);
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.Debug($"version probe returned {(int)response.StatusCode}, skipping");
+                return null;
+            }
+            var json = await response.Content.ReadAsStringAsync(cts.Token);
+            var status = JsonSerializer.Deserialize(json, AppJsonContext.Default.ServerStatus);
+            if (string.IsNullOrEmpty(status?.ServerVersion))
+            {
+                _logger.Debug("version probe returned no serverVersion, skipping");
+                return null;
+            }
+            return status.ServerVersion;
+        }
+        catch (Exception ex)
+        {
+            _logger.Debug($"version probe failed: {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Warn (once per check) and persist. Shared by the probe and by the login
+    /// path, which gets the version for free in its response.
+    /// </summary>
+    internal void RecordServerVersion(string? observed)
+    {
+        if (string.IsNullOrEmpty(observed)) return;
+        var warning = VersionWarning(observed, _config.LastServerVersion);
+        if (warning != null)
+            _logger.Warn(warning);
+        else
+            _logger.Debug($"server version {observed} (in tested range {MinSupportedVersion}-{MaxTestedVersion})");
+        try
+        {
+            _configManager.UpdateVersionCheck(observed, DateTimeOffset.UtcNow);
+        }
+        catch (Exception ex)
+        {
+            // An unwritable config just means we check again next time.
+            _logger.Debug($"could not persist version check state: {ex.Message}");
+        }
     }
 
     private async Task EnsureValidTokenAsync()

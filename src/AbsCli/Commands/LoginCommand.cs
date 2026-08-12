@@ -98,6 +98,7 @@ public static class LoginCommand
                 if (config.DefaultLibrary == null && loginResponse.UserDefaultLibraryId != null)
                     config.DefaultLibrary = loginResponse.UserDefaultLibraryId;
                 configManager.Save(config);
+                client.RecordServerVersion(loginResponse.ServerSettings?.Version);
                 var version = loginResponse.ServerSettings?.Version ?? "unknown";
                 Console.Error.WriteLine($"Logged in as {loginResponse.User.Username} to {server} (ABS {version})");
                 if (config.DefaultLibrary != null)
