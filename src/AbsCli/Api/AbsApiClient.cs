@@ -257,24 +257,27 @@ public class AbsApiClient
         ?? typeof(AbsApiClient).Assembly.GetName().Version?.ToString(3)
         ?? "0.0.0";
 
-    public static void CheckServerVersion(string? version)
+    /// <summary>
+    /// The warning to show for an observed server version, or null when it sits
+    /// inside the tested range. Pure so the wording is unit-testable; the caller
+    /// decides whether to log it. <paramref name="previous"/> is the last version
+    /// this install saw, used to name the change when the server has moved.
+    /// </summary>
+    internal static string? VersionWarning(string observed, string? previous)
     {
-        if (string.IsNullOrEmpty(version)) return;
+        var moved = previous != null && previous != observed
+            ? $"This server moved from ABS {previous} to {observed} since the last check. "
+            : "";
 
-        if (CompareVersions(version, MinSupportedVersion) < 0)
+        if (CompareVersions(observed, MinSupportedVersion) < 0)
         {
-            _logger.Warn(
-                $"ABS server version {version} is older than the minimum supported version ({MinSupportedVersion}). Some features may not work.");
+            return $"{moved}ABS server version {observed} is older than the minimum supported version ({MinSupportedVersion}). Some features may not work.";
         }
-        else if (CompareVersions(version, MaxTestedVersion) > 0)
+        if (CompareVersions(observed, MaxTestedVersion) > 0)
         {
-            _logger.Warn(
-                $"ABS server version {version} has not been tested with this version of abs-cli. Proceed with caution.");
+            return $"{moved}abs-cli {ClientVersion} was tested up to ABS {MaxTestedVersion}; this server is {observed}. Check for a newer abs-cli.";
         }
-        else
-        {
-            _logger.Debug($"server version {version} (in tested range {MinSupportedVersion}-{MaxTestedVersion})");
-        }
+        return null;
     }
 
     /// <summary>

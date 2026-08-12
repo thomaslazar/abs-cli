@@ -511,9 +511,9 @@ public static class SelfTestCommand
 
             Check("Non-numeric version does not throw", () =>
             {
-                AbsApiClient.CheckServerVersion("2.36.0-beta");
-                AbsApiClient.CheckServerVersion("v2.36.0");
-                AbsApiClient.CheckServerVersion("nightly");
+                AbsApiClient.VersionWarning("2.36.0-beta", null);
+                AbsApiClient.VersionWarning("v2.36.0", null);
+                AbsApiClient.VersionWarning("nightly", null);
             });
 
             Console.Error.WriteLine("");

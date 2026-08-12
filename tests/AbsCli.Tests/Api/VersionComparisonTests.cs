@@ -2,8 +2,9 @@ using AbsCli.Api;
 
 namespace AbsCli.Tests.Api;
 
-// CheckServerVersion logs, so this class shares the NLog collection to keep its
-// output from landing in a log-asserting test's MemoryTarget.
+// Kept in the NLog collection: this class exercises version comparison, and any
+// future test here that makes production code log must not run in parallel with
+// the log-asserting tests. See PR #74.
 [Collection("NLog")]
 public class VersionComparisonTests
 {
@@ -28,12 +29,5 @@ public class VersionComparisonTests
     public void CompareVersions_TreatsNonNumericSegmentsAsZero(string a, string b, int expected)
     {
         Assert.Equal(expected, Math.Sign(AbsApiClient.CompareVersions(a, b)));
-    }
-
-    [Fact]
-    public void CheckServerVersion_DoesNotThrow_OnNonNumericVersion()
-    {
-        AbsApiClient.CheckServerVersion("2.36.0-beta");
-        AbsApiClient.CheckServerVersion("nightly");
     }
 }
