@@ -30,6 +30,8 @@ public static class ConfigCommand
                 ["accessToken"] = config.AccessToken != null ? "***" : "(not set)",
                 ["refreshToken"] = config.RefreshToken != null ? "***" : "(not set)",
                 ["defaultLibrary"] = config.DefaultLibrary ?? "(not set)",
+                ["lastVersionCheck"] = config.LastVersionCheck?.ToString("u") ?? "(never)",
+                ["lastServerVersion"] = config.LastServerVersion ?? "(unknown)",
                 ["configPath"] = ConfigManager.DefaultConfigPath()
             };
             ConsoleOutput.WriteJson(display);
