@@ -236,6 +236,17 @@ public class AbsApiClient
     private static readonly string MinSupportedVersion = "2.33.1";
     private static readonly string MaxTestedVersion = "2.36.0";
 
+    internal static readonly TimeSpan VersionCheckInterval = TimeSpan.FromHours(24);
+
+    /// <summary>
+    /// Whether the server version is due for a re-check. A timestamp in the
+    /// future means the clock moved backwards, which counts as stale.
+    /// </summary>
+    internal static bool ShouldCheckVersion(DateTimeOffset? lastCheck, DateTimeOffset now)
+        => lastCheck is null
+           || now - lastCheck.Value >= VersionCheckInterval
+           || lastCheck.Value > now;
+
     // The informational version carries CI's build stamp ("1.0.2+pr-1.a1b2c3d") so
     // --version and server logs identify which build this is. It lives in an
     // assembly-level attribute, which Native AOT can trim — self-test asserts it
