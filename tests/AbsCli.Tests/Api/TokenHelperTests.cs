@@ -10,6 +10,10 @@ public class TokenHelperTests
     // JWT without exp field (legacy token)
     private const string NoExpToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJ0ZXN0IiwiaWF0IjoxNzc1OTI0ODAyfQ.fakesig";
 
+    // Same exp as ExpiredToken, but a non-ASCII username puts '-' and '_' in the
+    // base64url payload — plain Convert.FromBase64String rejects those.
+    private const string Base64UrlToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJ0ZXN0IiwidXNlcm5hbWUiOiLQv9C-0LvRjNC30L7QstCw0YLQtdC70YwiLCJ0eXBlIjoiYWNjZXNzIiwiaWF0IjoxNzc1OTI0ODM5LCJleHAiOjE3NzU5Mjg0Mzl9.fakesig";
+
     [Fact]
     public void GetExpiration_ReturnsExpTime_WhenPresent()
     {
@@ -42,6 +46,15 @@ public class TokenHelperTests
         var result = TokenHelper.IsExpiringSoon(NoExpToken, thresholdSeconds: 60);
 
         Assert.False(result);
+    }
+
+    [Fact]
+    public void GetExpiration_DecodesBase64UrlPayload()
+    {
+        var exp = TokenHelper.GetExpiration(Base64UrlToken);
+
+        Assert.NotNull(exp);
+        Assert.Equal(1775928439, exp.Value.ToUnixTimeSeconds());
     }
 
     [Fact]
