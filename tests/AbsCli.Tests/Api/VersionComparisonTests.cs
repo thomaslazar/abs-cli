@@ -2,6 +2,9 @@ using AbsCli.Api;
 
 namespace AbsCli.Tests.Api;
 
+// CheckServerVersion logs, so this class shares the NLog collection to keep its
+// output from landing in a log-asserting test's MemoryTarget.
+[Collection("NLog")]
 public class VersionComparisonTests
 {
     [Theory]
