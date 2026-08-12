@@ -81,7 +81,13 @@ public static class LoginCommand
                 _logger.Error("Username and password are required.");
                 Environment.Exit(1);
             }
-            var tempConfig = new AppConfig { Server = server };
+            var fileConfig = configManager.Load();
+            var tempConfig = new AppConfig
+            {
+                Server = server,
+                LastVersionCheck = fileConfig.LastVersionCheck,
+                LastServerVersion = fileConfig.LastServerVersion
+            };
             var client = new AbsApiClient(tempConfig, configManager);
             try
             {
