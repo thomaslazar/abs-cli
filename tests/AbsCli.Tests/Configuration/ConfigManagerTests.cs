@@ -108,4 +108,60 @@ public class ConfigManagerTests
         Assert.Equal("config-token", resolved.AccessToken);
         Assert.Equal("config-lib", resolved.DefaultLibrary);
     }
+
+    [Fact]
+    public void UpdateVersionCheck_WritesBothFields()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"abs-cli-test-{Guid.NewGuid()}.json");
+        var manager = new ConfigManager(path);
+        var checkedAt = new DateTimeOffset(2026, 8, 12, 10, 0, 0, TimeSpan.Zero);
+        manager.UpdateVersionCheck("2.38.0", checkedAt);
+        var reloaded = manager.Load();
+        Assert.Equal("2.38.0", reloaded.LastServerVersion);
+        Assert.Equal(checkedAt, reloaded.LastVersionCheck);
+        File.Delete(path);
+    }
+
+    [Fact]
+    public void UpdateVersionCheck_PreservesExistingFields()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"abs-cli-test-{Guid.NewGuid()}.json");
+        var manager = new ConfigManager(path);
+        manager.Save(new AppConfig
+        {
+            Server = "https://file.example.com",
+            AccessToken = "file-token",
+            RefreshToken = "file-refresh",
+            DefaultLibrary = "lib-1"
+        });
+        manager.UpdateVersionCheck("2.38.0", DateTimeOffset.UtcNow);
+        var reloaded = manager.Load();
+        Assert.Equal("https://file.example.com", reloaded.Server);
+        Assert.Equal("file-token", reloaded.AccessToken);
+        Assert.Equal("file-refresh", reloaded.RefreshToken);
+        Assert.Equal("lib-1", reloaded.DefaultLibrary);
+        File.Delete(path);
+    }
+
+    [Fact]
+    public void UpdateVersionCheck_DoesNotPersistEnvValues()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"abs-cli-test-{Guid.NewGuid()}.json");
+        var manager = new ConfigManager(path);
+        manager.Save(new AppConfig { Server = "https://file.example.com" });
+        // Resolve() merges env into memory; UpdateVersionCheck must ignore that and
+        // rewrite only what is on disk, so an env token never reaches the file.
+        var resolved = manager.Resolve(envLookup: key => key switch
+        {
+            "ABS_TOKEN" => "env-secret",
+            "ABS_SERVER" => "https://env.example.com",
+            _ => null
+        });
+        Assert.Equal("env-secret", resolved.AccessToken);
+        manager.UpdateVersionCheck("2.38.0", DateTimeOffset.UtcNow);
+        var reloaded = manager.Load();
+        Assert.Null(reloaded.AccessToken);
+        Assert.Equal("https://file.example.com", reloaded.Server);
+        File.Delete(path);
+    }
 }
