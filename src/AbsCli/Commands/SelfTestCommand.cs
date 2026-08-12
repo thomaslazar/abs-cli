@@ -120,6 +120,14 @@ public static class SelfTestCommand
                 Assert(back.Libraries[0].Name == "Test", $"name mismatch: {back.Libraries[0].Name}");
             });
 
+            Check("ServerStatus round-trip", () =>
+            {
+                var obj = new ServerStatus { ServerVersion = "2.36.0" };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.ServerStatus);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.ServerStatus)!;
+                Assert(back.ServerVersion == "2.36.0", $"version mismatch: {back.ServerVersion}");
+            });
+
             Check("Library round-trip", () =>
             {
                 var obj = new Library { Id = "lib_2", Name = "Audio", MediaType = "book", DisplayOrder = 1 };

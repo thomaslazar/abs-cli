@@ -6,6 +6,7 @@ namespace AbsCli.Models;
 [JsonSerializable(typeof(AppConfig))]
 [JsonSerializable(typeof(LoginResponse))]
 [JsonSerializable(typeof(LoginRequest))]
+[JsonSerializable(typeof(ServerStatus))]
 [JsonSerializable(typeof(Dictionary<string, string>))]
 [JsonSerializable(typeof(LibraryListResponse))]
 [JsonSerializable(typeof(Library))]
