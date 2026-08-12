@@ -16,3 +16,11 @@ services:
 volumes:
   abs-config:
   abs-metadata:
+
+# This directory is named "docker", so Compose derives the project name "docker"
+# — as does any sibling repo with a docker/ dir, which lands their containers in
+# our docker_default network as orphans. An explicit network name keeps the two
+# apart, so `down -v` here can't tear the network out from under a sibling stack.
+networks:
+  default:
+    name: abs-cli-dev
