@@ -16,13 +16,27 @@ multiple ABS versions if the API surface hasn't changed.
 
 ## Runtime Version Check
 
-On first API call, the CLI reads the ABS server version from the login response
-(`serverSettings.version`). If the version is outside the known-compatible range:
+The CLI reads the server version at most once every 24 hours, from the
+unauthenticated `GET /status` endpoint, on whichever command runs first after the
+window lapses. `login` uses the version already in its own response instead of
+probing. The result is stored in `~/.abs-cli/config.json` as `lastVersionCheck`
+and `lastServerVersion`, and both are shown by `abs-cli config get`.
 
-- **Newer than tested:** Warning to stderr — e.g. against a hypothetical future release above the tested ceiling: `Warning: ABS server version 2.37.0 has not been tested with this version of abs-cli. Proceed with caution.`
-- **Older than supported:** Warning to stderr: `Warning: ABS server version 2.30.0 is older than the minimum supported version (2.33.1). Some features may not work.`
+Binding the check to login would be wrong: these are self-hosted servers, so the
+version changes when the image is pulled — an event involving no login — and tokens
+persist and refresh, so an install can run for months without logging in.
+
+If the version is outside the known-compatible range, a warning goes to stderr:
+
+- **Newer than tested:** `abs-cli 1.0.3 was tested up to ABS 2.36.0; this server is 2.38.0. Check for a newer abs-cli.`
+- **Older than supported:** `ABS server version 2.30.0 is older than the minimum supported version (2.33.1). Some features may not work.`
+
+When the version changed since the last check, the warning says so:
+`This server moved from ABS 2.36.0 to 2.38.0 since the last check.`
 
 Warnings only — the CLI does not refuse to run. The user decides whether to proceed.
+A failed probe is silent and does not update the timestamp, so the next invocation
+retries; a diagnostic must never be the thing that fails the command.
 
 ## Handling ABS Updates
 
