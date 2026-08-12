@@ -39,7 +39,11 @@ rootCommand.Subcommands.Add(SelfTestCommand.Create());
 rootCommand.Subcommands.Add(ChangelogCommand.Create());
 
 rootCommand.AddHelpSection("Environment variables",
-    "ABS_DEBUG=1   Same as --debug. Enables debug-level logging to stderr.");
+    "ABS_SERVER    Server URL.",
+    "ABS_TOKEN     Access token. Refresh needs a stored refresh token from 'login'.",
+    "ABS_LIBRARY   Default library ID.",
+    "ABS_DEBUG=1   Same as --debug. Enables debug-level logging to stderr.",
+    "Precedence: flags > env > config file.");
 
 rootCommand.UseCustomHelpSections();
 
