@@ -186,12 +186,26 @@ echo "Scanning library..."
 curl -sf -X POST "$ABS_URL/api/libraries/$LIBRARY_ID/scan" \
     -H "$AUTH" > /dev/null
 
+# Item count for the library, or 0 when the server answers with something else.
+# Mid-scan it can return an error body or drop the connection, and under
+# `set -euo pipefail` a throwing extraction aborts the whole seed instead of
+# letting the polling loop try again. Both callers poll, so 0 just means "retry".
+item_total() {
+    local body
+    body=$(curl -sf "$ABS_URL/api/libraries/$LIBRARY_ID/items?limit=0" -H "$AUTH" || true)
+    printf '%s' "$body" | python3 -c "
+import sys, json
+try:
+    print(json.load(sys.stdin).get('total', 0))
+except Exception:
+    print(0)
+"
+}
+
 # Wait for scan to complete
 echo "Waiting for scan..."
 for i in $(seq 1 30); do
-    ITEM_COUNT=$(curl -sf "$ABS_URL/api/libraries/$LIBRARY_ID/items?limit=0" \
-        -H "$AUTH" \
-        | python3 -c "import sys,json; print(json.load(sys.stdin)['total'])")
+    ITEM_COUNT=$(item_total)
     if [ "$ITEM_COUNT" -ge 15 ]; then
         echo "Scan complete: $ITEM_COUNT items"
         break
@@ -265,9 +279,8 @@ rm -rf "$EBOOK_TMP"
 curl -sf -X POST "$ABS_URL/api/libraries/$LIBRARY_ID/scan" -H "$AUTH" > /dev/null
 # Wait for scan to add a 16th item.
 for i in $(seq 1 20); do
-    ITEM_COUNT=$(curl -sf "$ABS_URL/api/libraries/$LIBRARY_ID/items?limit=0" -H "$AUTH" \
-        | python3 -c "import sys,json; print(json.load(sys.stdin).get('total',0))" 2>/dev/null)
-    if [ "${ITEM_COUNT:-0}" -ge 16 ]; then
+    ITEM_COUNT=$(item_total)
+    if [ "$ITEM_COUNT" -ge 16 ]; then
         echo "Multi-ebook fixture indexed (total items: $ITEM_COUNT)"
         break
     fi
