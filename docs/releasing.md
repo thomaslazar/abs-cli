@@ -49,7 +49,7 @@ git commit -m "chore: bump version to {version}"
 
 ### Step 3: Generate release notes (agent)
 
-Agent writes `release-notes.md` with two sections:
+Agent writes `temp/release-notes.md` with two sections:
 
 **Highlights** — 3-5 bullet points in plain language.
 
@@ -74,11 +74,11 @@ smoke test against live ABS). Agent monitors and reports results.
 ### Step 5: Tag and create GitHub Release (agent)
 
 After merge, agent switches to main and creates the release using the
-same `release-notes.md` from step 3:
+same `temp/release-notes.md` from step 3:
 
 ```bash
 git checkout main && git pull
-gh release create v{version} --title "v{version}" --notes-file release-notes.md
+gh release create v{version} --title "v{version}" --notes-file temp/release-notes.md
 ```
 
 **Human gate:** Confirm the release was created.
@@ -99,7 +99,7 @@ notes render correctly.
 
 ### Step 8: Done
 
-Agent cleans up (`release-notes.md`, any temp files) and reports summary.
+Agent cleans up (`temp/release-notes.md`, any other scratch files) and reports summary.
 
 ## Human Gates Summary
 
@@ -118,7 +118,7 @@ invoked via `/release` in Claude Code. The skill is human-invocable only
 (`disable-model-invocation: true`) to prevent accidental releases.
 
 `CHANGELOG.md` is the permanent record. GitHub Release notes mirror it.
-`release-notes.md` is the working document (gitignored) — written by agent,
+`temp/release-notes.md` is the working document (gitignored) — written by agent,
 reviewed by human, prepended to CHANGELOG.md, passed to `gh release create`.
 
 CI auto-attaches binaries to GitHub Releases via `gh release upload` in
