@@ -111,7 +111,8 @@ git commit -m "chore: bump version to ${VERSION_NUM}"
 
 ## Step 3: Generate Release Notes
 
-Generate release notes into `release-notes.md` with two sections:
+Generate release notes into `temp/release-notes.md` (the gitignored,
+host-mounted scratch dir — keeps the repo root clean) with two sections:
 
 **Highlights** — 3-5 bullet points describing what's new in plain language.
 Focus on what users care about, not implementation details.
@@ -128,7 +129,7 @@ fi
 git log --oneline $RANGE --pretty="- %s" | grep -E "^- (feat|fix|refactor|docs|test|ci|chore):" | sort
 ```
 
-Write `release-notes.md` in this format:
+Write `temp/release-notes.md` in this format:
 
 ```markdown
 ## {version} — YYYY-MM-DD
@@ -143,7 +144,7 @@ Write `release-notes.md` in this format:
 - fix: ...
 ```
 
-**GATE: Open `release-notes.md` in the editor** (e.g. `code release-notes.md`)
+**GATE: Open `temp/release-notes.md` in the editor** (e.g. `code temp/release-notes.md`)
 and ask the human to review and approve. If they want edits, make them and
 show again.
 
@@ -156,7 +157,7 @@ doesn't exist). Keep a header at the top:
 All notable changes to abs-cli are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
-{contents of release-notes.md}
+{contents of temp/release-notes.md}
 
 {previous entries...}
 ```
@@ -205,17 +206,17 @@ Show the PR URL. Wait for them to confirm the merge is done.
 ## Step 5: Tag and Create GitHub Release
 
 After the PR is merged, switch back to main and create the release.
-The `release-notes.md` from step 3 is still available (gitignored, not committed).
+The `temp/release-notes.md` from step 3 is still available (gitignored, not committed).
 
 ```bash
 git checkout main
 git pull
-gh release create "${VERSION}" --title "${VERSION}" --notes-file release-notes.md
+gh release create "${VERSION}" --title "${VERSION}" --notes-file temp/release-notes.md
 ```
 
 Clean up after the release is created:
 ```bash
-rm release-notes.md
+rm temp/release-notes.md
 ```
 
 Show the release URL.
