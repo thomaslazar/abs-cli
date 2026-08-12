@@ -1,4 +1,5 @@
 using AbsCli.Api;
+using AbsCli.Configuration;
 
 namespace AbsCli.Tests.Api;
 
@@ -8,6 +9,30 @@ namespace AbsCli.Tests.Api;
 [Collection("NLog")]
 public class VersionComparisonTests
 {
+    [Fact]
+    public void RecordServerVersion_UpdatesInMemoryConfigSoALaterSaveDoesNotRevertIt()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"abs-cli-test-{Guid.NewGuid()}");
+        Directory.CreateDirectory(tempDir);
+        var path = Path.Combine(tempDir, "config.json");
+        var manager = new ConfigManager(path);
+        manager.Save(new AppConfig { Server = "https://abs.example.com", AccessToken = "t" });
+        var config = manager.Resolve(envLookup: _ => null);
+        var client = new AbsApiClient(config, manager);
+
+        client.RecordServerVersion("2.36.0");
+
+        // In-memory copy must reflect the observed version...
+        Assert.Equal("2.36.0", config.LastServerVersion);
+        Assert.NotNull(config.LastVersionCheck);
+
+        // ...so a later whole-object Save (what RefreshTokenAsync does) preserves it.
+        manager.Save(config);
+        var reloaded = manager.Load();
+        Assert.Equal("2.36.0", reloaded.LastServerVersion);
+        Assert.NotNull(reloaded.LastVersionCheck);
+    }
+
     [Theory]
     [InlineData("2.36.0", "2.36.0", 0)]
     [InlineData("2.36.1", "2.36.0", 1)]

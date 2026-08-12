@@ -260,9 +260,17 @@ public class AbsApiClient
             _logger.Warn(warning);
         else
             _logger.Debug($"server version {observed} (in tested range {MinSupportedVersion}-{MaxTestedVersion})");
+        // Keep the in-memory config in sync with what we persist below. Without
+        // this, a later whole-object Save(_config) in the same process (e.g.
+        // RefreshTokenAsync mid-command) would write this instance's stale
+        // LastServerVersion/LastVersionCheck back over the fresh values we just
+        // wrote to disk, discarding this check.
+        var checkedAt = DateTimeOffset.UtcNow;
+        _config.LastServerVersion = observed;
+        _config.LastVersionCheck = checkedAt;
         try
         {
-            _configManager.UpdateVersionCheck(observed, DateTimeOffset.UtcNow);
+            _configManager.UpdateVersionCheck(observed, checkedAt);
         }
         catch (Exception ex)
         {
