@@ -112,21 +112,20 @@ public class ConfigManagerTests
     [Fact]
     public void UpdateVersionCheck_WritesBothFields()
     {
-        var path = Path.Combine(Path.GetTempPath(), $"abs-cli-test-{Guid.NewGuid()}.json");
-        var manager = new ConfigManager(path);
+        var configPath = Path.Combine(_tempDir, "config.json");
+        var manager = new ConfigManager(configPath);
         var checkedAt = new DateTimeOffset(2026, 8, 12, 10, 0, 0, TimeSpan.Zero);
         manager.UpdateVersionCheck("2.38.0", checkedAt);
         var reloaded = manager.Load();
         Assert.Equal("2.38.0", reloaded.LastServerVersion);
         Assert.Equal(checkedAt, reloaded.LastVersionCheck);
-        File.Delete(path);
     }
 
     [Fact]
     public void UpdateVersionCheck_PreservesExistingFields()
     {
-        var path = Path.Combine(Path.GetTempPath(), $"abs-cli-test-{Guid.NewGuid()}.json");
-        var manager = new ConfigManager(path);
+        var configPath = Path.Combine(_tempDir, "config.json");
+        var manager = new ConfigManager(configPath);
         manager.Save(new AppConfig
         {
             Server = "https://file.example.com",
@@ -140,14 +139,13 @@ public class ConfigManagerTests
         Assert.Equal("file-token", reloaded.AccessToken);
         Assert.Equal("file-refresh", reloaded.RefreshToken);
         Assert.Equal("lib-1", reloaded.DefaultLibrary);
-        File.Delete(path);
     }
 
     [Fact]
     public void UpdateVersionCheck_DoesNotPersistEnvValues()
     {
-        var path = Path.Combine(Path.GetTempPath(), $"abs-cli-test-{Guid.NewGuid()}.json");
-        var manager = new ConfigManager(path);
+        var configPath = Path.Combine(_tempDir, "config.json");
+        var manager = new ConfigManager(configPath);
         manager.Save(new AppConfig { Server = "https://file.example.com" });
         // Resolve() merges env into memory; UpdateVersionCheck must ignore that and
         // rewrite only what is on disk, so an env token never reaches the file.
@@ -162,6 +160,35 @@ public class ConfigManagerTests
         var reloaded = manager.Load();
         Assert.Null(reloaded.AccessToken);
         Assert.Equal("https://file.example.com", reloaded.Server);
-        File.Delete(path);
+    }
+
+    [Fact]
+    public void Resolve_CarriesVersionCheckStateFromFile()
+    {
+        var configPath = Path.Combine(_tempDir, "config.json");
+        var manager = new ConfigManager(configPath);
+        var checkedAt = new DateTimeOffset(2026, 8, 12, 10, 0, 0, TimeSpan.Zero);
+        manager.UpdateVersionCheck("2.36.0", checkedAt);
+        var resolved = manager.Resolve(envLookup: _ => null);
+        Assert.Equal("2.36.0", resolved.LastServerVersion);
+        Assert.Equal(checkedAt, resolved.LastVersionCheck);
+    }
+
+    [Fact]
+    public void Resolve_VersionCheckStateSurvivesResolveAndSave()
+    {
+        var configPath = Path.Combine(_tempDir, "config.json");
+        var manager = new ConfigManager(configPath);
+        var checkedAt = new DateTimeOffset(2026, 8, 12, 10, 0, 0, TimeSpan.Zero);
+        manager.UpdateVersionCheck("2.36.0", checkedAt);
+        var resolved = manager.Resolve(envLookup: _ => null);
+        resolved.AccessToken = "new-token";
+        resolved.RefreshToken = "new-refresh";
+        manager.Save(resolved);
+        var reloaded = manager.Load();
+        Assert.Equal("2.36.0", reloaded.LastServerVersion);
+        Assert.Equal(checkedAt, reloaded.LastVersionCheck);
+        Assert.Equal("new-token", reloaded.AccessToken);
+        Assert.Equal("new-refresh", reloaded.RefreshToken);
     }
 }

@@ -74,7 +74,9 @@ public class ConfigManager
             RefreshToken = fileConfig.RefreshToken,
             DefaultLibrary = flagLibrary
                 ?? envLookup("ABS_LIBRARY")
-                ?? fileConfig.DefaultLibrary
+                ?? fileConfig.DefaultLibrary,
+            LastVersionCheck = fileConfig.LastVersionCheck,
+            LastServerVersion = fileConfig.LastServerVersion
         };
     }
 }
