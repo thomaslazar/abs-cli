@@ -266,10 +266,17 @@ public class AbsApiClient
         }
     }
 
-    private static int CompareVersions(string a, string b)
+    /// <summary>
+    /// Compare two dotted version strings. Tolerant by design: a leading "v" is
+    /// dropped and each segment contributes only its leading digits, so
+    /// prerelease forms ("2.36.0-beta") and junk ("nightly") compare as 0 for
+    /// that segment instead of throwing. This runs on the login path — an
+    /// unparseable version must not take down an otherwise working command.
+    /// </summary>
+    internal static int CompareVersions(string a, string b)
     {
-        var aParts = a.Split('.').Select(int.Parse).ToArray();
-        var bParts = b.Split('.').Select(int.Parse).ToArray();
+        var aParts = ParseVersion(a);
+        var bParts = ParseVersion(b);
         var len = Math.Max(aParts.Length, bParts.Length);
         for (int i = 0; i < len; i++)
         {
@@ -279,6 +286,12 @@ public class AbsApiClient
         }
         return 0;
     }
+
+    private static int[] ParseVersion(string version) =>
+        version.TrimStart('v', 'V')
+            .Split('.')
+            .Select(p => int.TryParse(new string(p.TakeWhile(char.IsDigit).ToArray()), out var n) ? n : 0)
+            .ToArray();
 
     private async Task EnsureSuccessOrHandleAuthAsync(
         HttpResponseMessage response, HttpMethod method, string endpoint,

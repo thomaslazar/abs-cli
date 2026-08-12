@@ -497,6 +497,25 @@ public static class SelfTestCommand
                 Assert(TokenHelper.GetExpiration("not-a-jwt") == null, "should be null");
             });
 
+            Check("Base64url payload decodes", () =>
+            {
+                // Non-ASCII username puts '-' and '_' in the payload; exp = 1775928439
+                var token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJ0ZXN0IiwidXNlcm5hbWUiOiLQv9C-0LvRjNC30L7QstCw0YLQtdC70YwiLCJ0eXBlIjoiYWNjZXNzIiwiaWF0IjoxNzc1OTI0ODM5LCJleHAiOjE3NzU5Mjg0Mzl9.fakesig";
+                var exp = TokenHelper.GetExpiration(token);
+                Assert(exp != null, "exp should not be null");
+                Assert(exp!.Value.ToUnixTimeSeconds() == 1775928439, "wrong exp value");
+            });
+
+            Console.Error.WriteLine("");
+            Console.Error.WriteLine("=== Version Comparison ===");
+
+            Check("Non-numeric version does not throw", () =>
+            {
+                AbsApiClient.CheckServerVersion("2.36.0-beta");
+                AbsApiClient.CheckServerVersion("v2.36.0");
+                AbsApiClient.CheckServerVersion("nightly");
+            });
+
             Console.Error.WriteLine("");
             Console.Error.WriteLine("=== Console Output ===");
 

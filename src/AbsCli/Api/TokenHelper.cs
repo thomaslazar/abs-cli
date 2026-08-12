@@ -11,7 +11,10 @@ public static class TokenHelper
             var parts = token.Split('.');
             if (parts.Length != 3) return null;
 
-            var payload = parts[1];
+            // JWT payloads are base64url: map the alphabet back before padding,
+            // or any payload containing '-' or '_' (non-ASCII username) fails to
+            // decode and expiry is silently lost.
+            var payload = parts[1].Replace('-', '+').Replace('_', '/');
             // Fix base64 padding
             switch (payload.Length % 4)
             {

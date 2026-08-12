@@ -2,10 +2,20 @@
 
 ## Output
 
-- All commands write JSON to stdout
+- Commands that return API data write JSON to stdout
 - JSON matches ABS API response structure exactly — no transformation
-- Errors go to stderr, never stdout
+- Errors, warnings and progress go to stderr, never stdout — stdout stays pipeable
 - List commands return the ABS pagination envelope: `{ "results": [...], "total": N, "limit": N, "page": N }`
+
+Exceptions to JSON-on-stdout:
+
+- `--output -` streams raw bytes to stdout (`items cover download`,
+  `items ebook download`, `authors image download`); with a file path, stdout
+  stays empty
+- Side-effect-only commands (`login`, `config set`) write a human
+  confirmation to stderr and nothing to stdout
+- `changelog` writes human-readable text to stdout; `self-test` writes its whole
+  report to stderr
 
 ## Exit Codes
 
