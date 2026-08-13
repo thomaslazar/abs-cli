@@ -706,6 +706,46 @@ public static class SelfTestCommand
             });
 
             Console.Error.WriteLine();
+            Console.Error.WriteLine("=== Items Batch Models ===");
+
+            Check("LibraryItemIdsRequest round-trip", () =>
+            {
+                var obj = new LibraryItemIdsRequest { LibraryItemIds = new List<string> { "li_a", "li_b" } };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.LibraryItemIdsRequest);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.LibraryItemIdsRequest)!;
+                Assert(back.LibraryItemIds.Count == 2, $"count: {back.LibraryItemIds.Count}");
+                Assert(back.LibraryItemIds[0] == "li_a", $"first: {back.LibraryItemIds[0]}");
+            });
+
+            Check("ItemsBatchUpdateEntry list round-trip", () =>
+            {
+                var obj = new List<ItemsBatchUpdateEntry>
+                {
+                    new() { Id = "li_a", Metadata = new ItemMediaUpdateMetadata { Title = "T" }, Tags = new List<string> { "tag" } }
+                };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.ListItemsBatchUpdateEntry);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.ListItemsBatchUpdateEntry)!;
+                Assert(back.Count == 1, $"count: {back.Count}");
+                Assert(back[0].Id == "li_a", $"id: {back[0].Id}");
+                Assert(back[0].Metadata!.Title == "T", $"title: {back[0].Metadata!.Title}");
+                Assert(back[0].Tags![0] == "tag", $"tags: {back[0].Tags![0]}");
+            });
+
+            Check("ItemsBatchProgressEntry list round-trip", () =>
+            {
+                var obj = new List<ItemsBatchProgressEntry>
+                {
+                    new() { LibraryItemId = "li_a", CurrentTime = 12.5, IsFinished = true }
+                };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.ListItemsBatchProgressEntry);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.ListItemsBatchProgressEntry)!;
+                Assert(back.Count == 1, $"count: {back.Count}");
+                Assert(back[0].LibraryItemId == "li_a", $"libraryItemId: {back[0].LibraryItemId}");
+                Assert(back[0].CurrentTime == 12.5, $"currentTime: {back[0].CurrentTime}");
+                Assert(back[0].IsFinished == true, $"isFinished: {back[0].IsFinished}");
+            });
+
+            Console.Error.WriteLine();
             Console.Error.WriteLine("=== Embed Metadata Models ===");
 
             Check("EmbedMetadataOptions default round-trip", () =>
@@ -732,15 +772,6 @@ public static class SelfTestCommand
                 Assert(back.Started == true, $"started: {back.Started}");
                 Assert(back.Options.Backup == false, $"options.backup: {back.Options.Backup}");
                 Assert(back.Options.ForceEmbedChapters == true, $"options.forceEmbedChapters: {back.Options.ForceEmbedChapters}");
-            });
-
-            Check("BatchEmbedMetadataRequest round-trip", () =>
-            {
-                var obj = new BatchEmbedMetadataRequest { LibraryItemIds = new List<string> { "li_a", "li_b" } };
-                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.BatchEmbedMetadataRequest);
-                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.BatchEmbedMetadataRequest)!;
-                Assert(back.LibraryItemIds.Count == 2, $"count: {back.LibraryItemIds.Count}");
-                Assert(back.LibraryItemIds[0] == "li_a", $"first: {back.LibraryItemIds[0]}");
             });
 
             Check("BatchEmbedMetadataReceipt round-trip", () =>

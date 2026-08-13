@@ -51,6 +51,53 @@ public static class ItemsCommand
         return jsonBody;
     }
 
+    /// <summary>
+    /// Validates a batch-update body and returns it unchanged. ABS requires a
+    /// non-empty array whose entries each carry a unique id
+    /// (LibraryItemController.js:633-640); we check exactly that and nothing
+    /// more. The original bytes are what gets sent, so fields this type does not
+    /// model still reach ABS.
+    /// </summary>
+    internal static string PrepareBatchUpdateBody(string jsonBody)
+    {
+        var entries = JsonSerializer.Deserialize(jsonBody, AppJsonContext.Default.ListItemsBatchUpdateEntry);
+        if (entries is null || entries.Count == 0)
+            throw new ArgumentException("batch-update requires a non-empty JSON array of update objects");
+        if (entries.Any(e => string.IsNullOrEmpty(e.Id)))
+            throw new ArgumentException("every batch-update entry needs an \"id\"");
+        if (entries.Select(e => e.Id).Distinct().Count() != entries.Count)
+            throw new ArgumentException("batch-update entry ids must be unique");
+        return jsonBody;
+    }
+
+    /// <summary>
+    /// Validates a {"libraryItemIds":[...]} body and returns it unchanged.
+    /// Shared by batch-get, batch-delete, and batch-embed-metadata — ABS
+    /// requires only a non-empty array on all three (LibraryItemController.batchGet,
+    /// LibraryItemController.batchDelete, ToolsController.batchEmbedMetadata).
+    /// </summary>
+    internal static string PrepareLibraryItemIdsBody(string jsonBody)
+    {
+        var request = JsonSerializer.Deserialize(jsonBody, AppJsonContext.Default.LibraryItemIdsRequest);
+        if (request is null || request.LibraryItemIds.Count == 0)
+            throw new ArgumentException("requires a non-empty \"libraryItemIds\" array");
+        return jsonBody;
+    }
+
+    /// <summary>
+    /// Validates a batch-update-progress body and returns it unchanged. ABS
+    /// requires only a non-empty array (MeController.batchUpdateMediaProgress);
+    /// per-entry problems (unknown id, etc.) are skipped and logged
+    /// server-side rather than rejected.
+    /// </summary>
+    internal static string PrepareBatchUpdateProgressBody(string jsonBody)
+    {
+        var entries = JsonSerializer.Deserialize(jsonBody, AppJsonContext.Default.ListItemsBatchProgressEntry);
+        if (entries is null || entries.Count == 0)
+            throw new ArgumentException("batch-update-progress requires a non-empty JSON array");
+        return jsonBody;
+    }
+
     public static Command Create()
     {
         var command = new Command("items", "Manage library items");
@@ -239,6 +286,7 @@ public static class ItemsCommand
         command.AddExamples(
             "abs-cli items batch-update --input updates.json",
             "cat updates.json | abs-cli items batch-update --stdin");
+        command.AddRequestExample<List<ItemsBatchUpdateEntry>>();
         command.AddResponseExample<BatchUpdateResponse>();
         command.SetAction(async (parseResult, cancellationToken) =>
         {
@@ -254,9 +302,22 @@ public static class ItemsCommand
             string jsonBody = stdin
                 ? await Console.In.ReadToEndAsync()
                 : CommandHelper.ReadJsonInput(input!);
+
+            string validated;
+            try
+            {
+                validated = PrepareBatchUpdateBody(jsonBody);
+            }
+            catch (Exception ex) when (ex is JsonException or ArgumentException)
+            {
+                _logger.Error($"Invalid batch-update JSON: {ex.Message}");
+                Environment.Exit(1);
+                return 1;
+            }
+
             var (client, _) = CommandHelper.BuildClient();
             var service = new ItemsService(client);
-            var result = await service.BatchUpdateAsync(jsonBody);
+            var result = await service.BatchUpdateAsync(validated);
             ConsoleOutput.WriteJson(result, AppJsonContext.Default.BatchUpdateResponse);
             return 0;
         });
@@ -271,6 +332,7 @@ public static class ItemsCommand
         command.AddExamples(
             "abs-cli items batch-get --input ids.json",
             "echo '{\"libraryItemIds\":[\"li_abc\",\"li_def\"]}' | abs-cli items batch-get --stdin");
+        command.AddRequestExample<LibraryItemIdsRequest>();
         command.AddResponseExample<BatchGetResponse>();
         command.AddMediaUnionShapes();
         command.SetAction(async (parseResult, cancellationToken) =>
@@ -287,9 +349,22 @@ public static class ItemsCommand
             string jsonBody = stdin
                 ? await Console.In.ReadToEndAsync()
                 : CommandHelper.ReadJsonInput(input!);
+
+            string validated;
+            try
+            {
+                validated = PrepareLibraryItemIdsBody(jsonBody);
+            }
+            catch (Exception ex) when (ex is JsonException or ArgumentException)
+            {
+                _logger.Error($"Invalid batch-get JSON: {ex.Message}");
+                Environment.Exit(1);
+                return 1;
+            }
+
             var (client, _) = CommandHelper.BuildClient();
             var service = new ItemsService(client);
-            var result = await service.BatchGetAsync(jsonBody);
+            var result = await service.BatchGetAsync(validated);
             ConsoleOutput.WriteJson(result, AppJsonContext.Default.BatchGetResponse);
             return 0;
         });
@@ -340,6 +415,7 @@ public static class ItemsCommand
         command.AddExamples(
             "abs-cli items batch-delete --input ids.json",
             "echo '{\"libraryItemIds\":[\"li_a\",\"li_b\"]}' | abs-cli items batch-delete --stdin --hard");
+        command.AddRequestExample<LibraryItemIdsRequest>();
         command.AddShapeSection("Response shape",
             "{ \"success\": \"true\" }");
         command.SetAction(async (parseResult, cancellationToken) =>
@@ -356,9 +432,22 @@ public static class ItemsCommand
                 Environment.Exit(1);
                 return 1;
             }
+
+            string validated;
+            try
+            {
+                validated = PrepareLibraryItemIdsBody(jsonBody);
+            }
+            catch (Exception ex) when (ex is JsonException or ArgumentException)
+            {
+                _logger.Error($"Invalid batch-delete JSON: {ex.Message}");
+                Environment.Exit(1);
+                return 1;
+            }
+
             var (client, _) = CommandHelper.BuildClient();
             var service = new ItemsService(client);
-            await service.BatchDeleteAsync(jsonBody, hard);
+            await service.BatchDeleteAsync(validated, hard);
             ConsoleOutput.WriteJson(new Dictionary<string, string> { ["success"] = "true" });
             return 0;
         });
@@ -377,6 +466,7 @@ public static class ItemsCommand
         command.AddExamples(
             "abs-cli items batch-update-progress --input updates.json",
             "echo '[{\"libraryItemId\":\"li_a\",\"isFinished\":true}]' | abs-cli items batch-update-progress --stdin");
+        command.AddRequestExample<List<ItemsBatchProgressEntry>>();
         command.AddShapeSection("Response shape",
             "{ \"success\": \"true\" }");
         command.SetAction(async (parseResult, cancellationToken) =>
@@ -398,9 +488,22 @@ public static class ItemsCommand
                 Environment.Exit(1);
                 return 1;
             }
+
+            string validated;
+            try
+            {
+                validated = PrepareBatchUpdateProgressBody(jsonBody);
+            }
+            catch (Exception ex) when (ex is JsonException or ArgumentException)
+            {
+                _logger.Error($"Invalid batch-update-progress JSON: {ex.Message}");
+                Environment.Exit(1);
+                return 1;
+            }
+
             var (client, _) = CommandHelper.BuildClient();
             var service = new ProgressService(client);
-            await service.BatchUpdateAsync(jsonBody);
+            await service.BatchUpdateAsync(validated);
             ConsoleOutput.WriteJson(new Dictionary<string, string> { ["success"] = "true" });
             return 0;
         });
@@ -1049,6 +1152,7 @@ public static class ItemsCommand
             "In-place destructive rewrite.",
             "--wait exits 0 when ABS stops processing; this does NOT guarantee success.",
             "ABS internally queues at MAX_CONCURRENT_TASKS.");
+        command.AddRequestExample<LibraryItemIdsRequest>();
         command.AddResponseExample<BatchEmbedMetadataReceipt>();
         command.SetAction(async (parseResult, cancellationToken) =>
         {
@@ -1080,23 +1184,20 @@ public static class ItemsCommand
                 return 1;
             }
 
-            BatchEmbedMetadataRequest request;
+            string validated;
             try
             {
-                request = JsonSerializer.Deserialize(jsonBody, AppJsonContext.Default.BatchEmbedMetadataRequest)!;
+                validated = PrepareLibraryItemIdsBody(jsonBody);
             }
-            catch (JsonException ex)
+            catch (Exception ex) when (ex is JsonException or ArgumentException)
             {
-                _logger.Error($"Invalid JSON: {ex.Message}");
+                _logger.Error($"Invalid batch-embed-metadata JSON: {ex.Message}");
                 Environment.Exit(1);
                 return 1;
             }
-            if (request.LibraryItemIds.Count == 0)
-            {
-                _logger.Error("libraryItemIds must be a non-empty array");
-                Environment.Exit(1);
-                return 1;
-            }
+            // Original bytes go over the wire (validated above); the parsed ids
+            // here are only for the CLI-synthesised receipt and --wait polling.
+            var libraryItemIds = JsonSerializer.Deserialize(validated, AppJsonContext.Default.LibraryItemIdsRequest)!.LibraryItemIds;
 
             var options = new EmbedMetadataOptions
             {
@@ -1105,11 +1206,11 @@ public static class ItemsCommand
             };
             var (client, _) = CommandHelper.BuildClient();
             var service = new EmbedMetadataService(client);
-            var receipt = await service.StartBatchAsync(request, options);
+            var receipt = await service.StartBatchAsync(validated, libraryItemIds, options);
             if (wait)
             {
                 var ok = await service.WaitForCompletionAsync(
-                    request.LibraryItemIds, TimeSpan.FromSeconds(600), cancellationToken);
+                    libraryItemIds, TimeSpan.FromSeconds(600), cancellationToken);
                 if (!ok)
                 {
                     _logger.Error("Timed out waiting for embed-metadata task(s) to complete");

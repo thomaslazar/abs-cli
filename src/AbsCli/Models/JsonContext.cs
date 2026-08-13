@@ -63,7 +63,6 @@ namespace AbsCli.Models;
 [JsonSerializable(typeof(ChaptersSetResponse))]
 [JsonSerializable(typeof(EmbedMetadataOptions))]
 [JsonSerializable(typeof(EmbedMetadataReceipt))]
-[JsonSerializable(typeof(BatchEmbedMetadataRequest))]
 [JsonSerializable(typeof(BatchEmbedMetadataReceipt))]
 [JsonSerializable(typeof(EbookFileStatusReceipt))]
 [JsonSerializable(typeof(UploadManifestEntry))]
@@ -89,6 +88,11 @@ namespace AbsCli.Models;
 [JsonSerializable(typeof(ItemMediaUpdateRequest))]
 [JsonSerializable(typeof(ItemMediaUpdateMetadata))]
 [JsonSerializable(typeof(SeriesUpdateEntry))]
+[JsonSerializable(typeof(LibraryItemIdsRequest))]
+[JsonSerializable(typeof(ItemsBatchUpdateEntry))]
+[JsonSerializable(typeof(List<ItemsBatchUpdateEntry>))]
+[JsonSerializable(typeof(ItemsBatchProgressEntry))]
+[JsonSerializable(typeof(List<ItemsBatchProgressEntry>))]
 [JsonSourceGenerationOptions(WriteIndented = true)]
 public partial class AppJsonContext : JsonSerializerContext;
 

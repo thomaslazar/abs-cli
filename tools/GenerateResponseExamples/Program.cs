@@ -126,25 +126,45 @@ internal static class Program
         return attrData
             .Select(d => (Type)d.ConstructorArguments[0].Value!)
             .Where(t => !excluded.Contains(t))
-            .Where(t => !IsCollectionHelperType(t))
+            .Where(t => !IsCollectionHelperType(t, excluded))
             .ToList();
     }
 
-    private static bool IsCollectionHelperType(Type t)
+    private static bool IsCollectionHelperType(Type t, HashSet<Type> excludedElementTypes)
     {
-        // Skip registrations like Dictionary<string,string> or List<UploadManifestEntry>
-        // — those exist to let STJ serialise helper shapes, not response payloads.
+        // Dictionary<,> registrations exist to let STJ serialise a helper
+        // shape (e.g. Dictionary<string,string>), never a payload on their
+        // own — always skip. List<T> is different: some List<T> registrations
+        // ARE bare-array request bodies (e.g. `items batch-update`) that need
+        // an array sample for AddRequestExample. Only skip a List<T> when its
+        // element type is itself excluded (local-only, never on the wire) —
+        // e.g. List<UploadManifestEntry>.
         if (!t.IsGenericType) return false;
         var def = t.GetGenericTypeDefinition();
-        return def == typeof(Dictionary<,>) || def == typeof(List<>);
+        if (def == typeof(Dictionary<,>)) return true;
+        if (def == typeof(List<>)) return excludedElementTypes.Contains(t.GetGenericArguments()[0]);
+        return false;
     }
 
     private static string FullTypeName(Type t)
     {
         // Emit without global:: prefix, with nested types using '.' syntax.
-        var ns = t.Namespace ?? "";
-        var name = t.Name;
-        return string.IsNullOrEmpty(ns) ? name : $"{ns}.{name}";
+        // Generic types (e.g. List<T>) need their own recursive rendering —
+        // Type.Name for a generic type is the mangled "List`1" form.
+        if (t.IsGenericType)
+        {
+            var def = t.GetGenericTypeDefinition();
+            var rawName = def.Name;
+            var tickIndex = rawName.IndexOf('`');
+            var name = tickIndex >= 0 ? rawName[..tickIndex] : rawName;
+            var ns = def.Namespace ?? "";
+            var baseName = string.IsNullOrEmpty(ns) ? name : $"{ns}.{name}";
+            var args = string.Join(", ", t.GetGenericArguments().Select(FullTypeName));
+            return $"{baseName}<{args}>";
+        }
+        var typeNs = t.Namespace ?? "";
+        var typeName = t.Name;
+        return string.IsNullOrEmpty(typeNs) ? typeName : $"{typeNs}.{typeName}";
     }
 
     private static string Quote(string s)

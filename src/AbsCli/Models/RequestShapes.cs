@@ -85,3 +85,73 @@ public class SeriesUpdateEntry
     [JsonPropertyName("sequence")]
     public string? Sequence { get; set; }
 }
+
+/// <summary>
+/// Body for POST /api/items/batch/get, POST /api/items/batch/delete, and
+/// POST /api/tools/batch/embed-metadata — all three take the same
+/// {"libraryItemIds":[...]} shape (LibraryItemController.batchGet,
+/// LibraryItemController.batchDelete, ToolsController.batchEmbedMetadata).
+/// ABS requires the array to be non-empty on all three; nothing else.
+/// </summary>
+public class LibraryItemIdsRequest
+{
+    [JsonPropertyName("libraryItemIds")]
+    public List<string> LibraryItemIds { get; set; } = new();
+}
+
+/// <summary>
+/// One entry of the bare-array body for POST /api/items/batch/update
+/// (LibraryItemController.js:632-640). ABS requires every entry to carry
+/// an "id", and every id in the batch to be unique. metadata/tags reuse
+/// the same shape as `items update` (<see cref="ItemMediaUpdateMetadata"/>).
+/// </summary>
+public class ItemsBatchUpdateEntry
+{
+    [JsonPropertyName("id")]
+    public string? Id { get; set; }
+
+    [JsonPropertyName("metadata")]
+    public ItemMediaUpdateMetadata? Metadata { get; set; }
+
+    [JsonPropertyName("tags")]
+    public List<string>? Tags { get; set; }
+}
+
+/// <summary>
+/// One entry of the array body for PATCH /api/me/progress/batch/update
+/// (MeController.batchUpdateMediaProgress → User.createUpdateMediaProgressFromPayload).
+/// Unlike the single-item PATCH .../me/progress/:libraryItemId (whose id
+/// comes from the URL), each batch entry carries its own libraryItemId or
+/// episodeId. ABS applies no per-field validation here — a bad entry (e.g.
+/// unknown id) is skipped and logged server-side, not rejected; the batch
+/// as a whole only needs to be a non-empty array.
+/// </summary>
+public class ItemsBatchProgressEntry
+{
+    [JsonPropertyName("libraryItemId")]
+    public string? LibraryItemId { get; set; }
+
+    [JsonPropertyName("episodeId")]
+    public string? EpisodeId { get; set; }
+
+    [JsonPropertyName("duration")]
+    public double? Duration { get; set; }
+
+    [JsonPropertyName("currentTime")]
+    public double? CurrentTime { get; set; }
+
+    [JsonPropertyName("isFinished")]
+    public bool? IsFinished { get; set; }
+
+    [JsonPropertyName("hideFromContinueListening")]
+    public bool? HideFromContinueListening { get; set; }
+
+    [JsonPropertyName("ebookLocation")]
+    public string? EbookLocation { get; set; }
+
+    [JsonPropertyName("ebookProgress")]
+    public double? EbookProgress { get; set; }
+
+    [JsonPropertyName("finishedAt")]
+    public long? FinishedAt { get; set; }
+}
