@@ -40,6 +40,17 @@ public static class ItemsCommand
         return jsonBody;
     }
 
+    /// <summary>
+    /// Validates that an items-update body is syntactically JSON and returns it
+    /// unchanged. ABS requires no field here, so neither do we — inventing a
+    /// requirement it does not have would be client-side policy.
+    /// </summary>
+    internal static string PrepareMediaUpdateBody(string jsonBody)
+    {
+        JsonSerializer.Deserialize(jsonBody, AppJsonContext.Default.ItemMediaUpdateRequest);
+        return jsonBody;
+    }
+
     public static Command Create()
     {
         var command = new Command("items", "Manage library items");
@@ -176,6 +187,7 @@ public static class ItemsCommand
         command.AddExamples(
             "abs-cli items update --id \"li_abc123\" --input payload.json",
             "echo '{\"metadata\":{\"title\":\"New Title\"}}' | abs-cli items update --id \"li_abc123\" --stdin");
+        command.AddRequestExample<ItemMediaUpdateRequest>();
         command.AddResponseExample<UpdateMediaResponse>();
         command.AddMediaUnionShapes();
         command.SetAction(async (parseResult, cancellationToken) =>
@@ -193,9 +205,22 @@ public static class ItemsCommand
             string jsonBody = stdin
                 ? await Console.In.ReadToEndAsync(cancellationToken)
                 : CommandHelper.ReadJsonInput(input!);
+
+            string validated;
+            try
+            {
+                validated = PrepareMediaUpdateBody(jsonBody);
+            }
+            catch (JsonException ex)
+            {
+                _logger.Error($"Invalid update JSON: {ex.Message}");
+                Environment.Exit(1);
+                return 1;
+            }
+
             var (client, _) = CommandHelper.BuildClient();
             var service = new ItemsService(client);
-            var result = await service.UpdateMediaAsync(id, jsonBody);
+            var result = await service.UpdateMediaAsync(id, validated);
             ConsoleOutput.WriteJson(result, AppJsonContext.Default.UpdateMediaResponse);
             return 0;
         });

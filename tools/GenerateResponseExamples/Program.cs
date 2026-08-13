@@ -11,8 +11,9 @@ internal static class Program
     /// Usage: GenerateResponseExamples &lt;output path&gt;
     /// Emits a static class with a Type→JSON-sample dictionary for every type
     /// registered on AppJsonContext via [JsonSerializable], skipping types that
-    /// are not meaningful response payloads (auth request bodies, Dictionary
-    /// helper types, collection helper types).
+    /// are not meaningful wire shapes (local-only config, on-disk manifest
+    /// types, Dictionary/List helper registrations). Request body types are
+    /// included — commands render them via AddRequestExample.
     /// </summary>
     public static int Main(string[] args)
     {
@@ -104,22 +105,16 @@ internal static class Program
     {
         // Reflect over AppJsonContext's [JsonSerializable] attributes — the
         // single source of truth for types that cross the CLI↔server boundary.
-        // Exclude types that aren't response payloads:
-        //  - LoginRequest (request body only)
-        //  - AppConfig (local config, never a response)
-        //  - UploadManifestEntry (client-side manifest read from disk, never a response)
-        //  - raw Dictionary/List helper registrations (not command responses)
+        // Exclude types that aren't wire shapes at all:
+        //  - AppConfig (local config, never sent or received)
+        //  - UploadManifestEntry (client-side manifest read from disk, never on the wire)
+        //  - raw Dictionary/List helper registrations (not command payloads)
+        // Request body types are NOT excluded — commands render them via
+        // AddRequestExample, so they need a sample too.
         var excluded = new HashSet<Type>
         {
-            typeof(LoginRequest),
             typeof(Configuration.AppConfig),
             typeof(UploadManifestEntry),
-            typeof(TagRenameRequest),
-            typeof(GenreRenameRequest),
-            typeof(NarratorRenameRequest),
-            typeof(LibraryFolderRequest),
-            typeof(LibraryCreateRequest),
-            typeof(LibraryUpdateRequest),
         };
 
         // JsonSerializableAttribute.Type is not a public property in .NET 8 —

@@ -684,6 +684,19 @@ public static class SelfTestCommand
                 Assert(back.Updated == false, $"updated: {back.Updated}");
             });
 
+            Check("ItemMediaUpdateRequest round-trip", () =>
+            {
+                var obj = new ItemMediaUpdateRequest
+                {
+                    Metadata = new ItemMediaUpdateMetadata { Title = "T", Genres = new List<string> { "G" } },
+                    Tags = new List<string> { "tag" }
+                };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.ItemMediaUpdateRequest);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.ItemMediaUpdateRequest)!;
+                Assert(back.Metadata!.Title == "T", "title mismatch");
+                Assert(back.Tags!.Count == 1, "tags mismatch");
+            });
+
             Console.Error.WriteLine();
             Console.Error.WriteLine("=== Embed Metadata Models ===");
 

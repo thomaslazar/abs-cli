@@ -1,4 +1,5 @@
 using System.CommandLine;
+using System.Text.Json;
 using AbsCli.Commands;
 using Xunit;
 
@@ -109,5 +110,25 @@ public class ItemsCommandTests
         var output = RenderHelp("items", "file", "ffprobe").Replace("\r\n", "\n");
         Assert.Contains("Permission required:\n  admin", output);
         Assert.Contains("audio", output.ToLowerInvariant());
+    }
+
+    [Fact]
+    public void MediaUpdateBody_EmptyObject_IsAccepted()
+    {
+        // ABS accepts {} — we must not invent a requirement.
+        Assert.Equal("{}", ItemsCommand.PrepareMediaUpdateBody("{}"));
+    }
+
+    [Fact]
+    public void MediaUpdateBody_UnknownField_IsForwardedUnchanged()
+    {
+        const string body = "{\"metadata\":{\"title\":\"T\"},\"somethingNew\":1}";
+        Assert.Equal(body, ItemsCommand.PrepareMediaUpdateBody(body));
+    }
+
+    [Fact]
+    public void MediaUpdateBody_Malformed_Throws()
+    {
+        Assert.ThrowsAny<JsonException>(() => ItemsCommand.PrepareMediaUpdateBody("{not json"));
     }
 }
