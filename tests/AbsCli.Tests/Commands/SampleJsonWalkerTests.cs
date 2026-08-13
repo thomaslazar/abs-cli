@@ -23,7 +23,7 @@ public class SampleJsonWalkerTests
     {
         var json = Parse(SampleJsonWalker.Render(typeof(Primitives)));
         Assert.Equal("<string>", json.GetProperty("s").GetString());
-        Assert.Equal(JsonValueKind.Null, json.GetProperty("sn").ValueKind);
+        Assert.Equal("<string>", json.GetProperty("sn").GetString());
         Assert.Equal(0, json.GetProperty("i").GetInt32());
         Assert.Equal(0, json.GetProperty("l").GetInt64());
         Assert.Equal(0d, json.GetProperty("d").GetDouble());

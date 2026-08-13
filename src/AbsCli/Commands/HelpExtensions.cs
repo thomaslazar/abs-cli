@@ -54,7 +54,7 @@ public static class HelpExtensions
     }
 
     public static void AddResponseExample<T>(this Command command)
-        => AddResponseExampleSection(command, ResponseExamples.For(typeof(T)));
+        => AddResponseExampleSection(command, JsonExamples.For(typeof(T)));
 
     /// <summary>
     /// Appends two extra sections describing the concrete shapes of
@@ -67,10 +67,10 @@ public static class HelpExtensions
     {
         command.AddShapeSection(
             "Book media shape (when mediaType is \"book\")",
-            ResponseExamples.For(typeof(AbsCli.Models.BookMediaMinified)).Split('\n'));
+            JsonExamples.For(typeof(AbsCli.Models.BookMediaMinified)).Split('\n'));
         command.AddShapeSection(
             "Podcast media shape (when mediaType is \"podcast\")",
-            ResponseExamples.For(typeof(AbsCli.Models.PodcastMedia)).Split('\n'));
+            JsonExamples.For(typeof(AbsCli.Models.PodcastMedia)).Split('\n'));
     }
 
     /// <summary>
@@ -80,8 +80,8 @@ public static class HelpExtensions
     /// </summary>
     public static void AddResponseExample(this Command command, Type envelopeType, Type elementType)
     {
-        var envelopeJson = ResponseExamples.For(envelopeType);
-        var elementJson = ResponseExamples.For(elementType);
+        var envelopeJson = JsonExamples.For(envelopeType);
+        var elementJson = JsonExamples.For(elementType);
         var spliced = SpliceResultsArray(envelopeJson, elementJson);
         AddResponseExampleSection(command, spliced);
     }

@@ -165,10 +165,7 @@ public static class SampleJsonWalker
                 continue;
             }
 
-            if (IsNullableString(prop))
-                writer.WriteNullValue();
-            else
-                WriteValue(writer, prop.PropertyType, visiting, overrides);
+            WriteValue(writer, prop.PropertyType, visiting, overrides);
         }
         writer.WriteEndObject();
         visiting.Remove(type);
@@ -217,18 +214,5 @@ public static class SampleJsonWalker
         }
         valueType = typeof(object);
         return false;
-    }
-
-    /// <summary>
-    /// Returns true only for nullable <see cref="string"/> properties (string?).
-    /// Other nullable reference types (e.g. Node?) are rendered via WriteValue so
-    /// that recursive self-references produce the "&lt;recursive&gt;" sentinel.
-    /// </summary>
-    private static bool IsNullableString(PropertyInfo prop)
-    {
-        if (prop.PropertyType != typeof(string)) return false;
-        var ctx = new NullabilityInfoContext();
-        var info = ctx.Create(prop);
-        return info.ReadState == NullabilityState.Nullable;
     }
 }

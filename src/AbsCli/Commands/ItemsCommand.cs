@@ -129,7 +129,7 @@ public static class ItemsCommand
         command.AddResponseExample<LibraryItemMinified>();
         command.AddMediaUnionShapes();
         command.AddShapeSection("Response shape (--expanded)",
-            ResponseExamples.For(typeof(LibraryItemExpanded)).Split('\n'));
+            JsonExamples.For(typeof(LibraryItemExpanded)).Split('\n'));
         command.SetAction(async (parseResult, cancellationToken) =>
         {
             var id = parseResult.GetValue(idOption)!;
