@@ -155,8 +155,8 @@ public static class CollectionsCommand
         var libraryOption = new Option<string?>("--library") { Description = "Library ID" };
         var nameOption = new Option<string>("--name") { Description = "Collection name", Required = true };
         var descriptionOption = new Option<string?>("--description") { Description = "Optional description" };
-        var inputOption = new Option<string?>("--input") { Description = "JSON file with books array (`{\"books\":[\"lid\",...]}`)" };
-        var stdinOption = new Option<bool>("--stdin") { Description = "Read books JSON from stdin" };
+        var inputOption = new Option<string?>("--input") { Description = "JSON file with the request body (see --help-full)" };
+        var stdinOption = new Option<bool>("--stdin") { Description = "Read the request body from stdin" };
         var command = new Command("create", "Create a collection (requires at least one book)")
         { libraryOption, nameOption, descriptionOption, inputOption, stdinOption };
         command.AddPermissionRequired("update");
@@ -261,8 +261,8 @@ public static class CollectionsCommand
     private static Command CreateReorderCommand()
     {
         var idOption = new Option<string>("--id") { Description = "Collection ID", Required = true };
-        var inputOption = new Option<string?>("--input") { Description = "JSON file with books array (`{\"books\":[\"lid\",...]}`)" };
-        var stdinOption = new Option<bool>("--stdin") { Description = "Read books JSON from stdin" };
+        var inputOption = new Option<string?>("--input") { Description = "JSON file with the request body (see --help-full)" };
+        var stdinOption = new Option<bool>("--stdin") { Description = "Read the request body from stdin" };
         var command = new Command("reorder", "Reorder existing books in a collection")
         { idOption, inputOption, stdinOption };
         command.AddPermissionRequired("update");
@@ -379,8 +379,8 @@ public static class CollectionsCommand
     private static Command CreateBatchAddCommand()
     {
         var idOption = new Option<string>("--id") { Description = "Collection ID", Required = true };
-        var inputOption = new Option<string?>("--input") { Description = "JSON file with books array (`{\"books\":[\"lid\",...]}`)" };
-        var stdinOption = new Option<bool>("--stdin") { Description = "Read books JSON from stdin" };
+        var inputOption = new Option<string?>("--input") { Description = "JSON file with the request body (see --help-full)" };
+        var stdinOption = new Option<bool>("--stdin") { Description = "Read the request body from stdin" };
         var command = new Command("batch-add", "Add multiple books to a collection")
         { idOption, inputOption, stdinOption };
         command.AddPermissionRequired("update");
@@ -425,8 +425,8 @@ public static class CollectionsCommand
     private static Command CreateBatchRemoveCommand()
     {
         var idOption = new Option<string>("--id") { Description = "Collection ID", Required = true };
-        var inputOption = new Option<string?>("--input") { Description = "JSON file with books array (`{\"books\":[\"lid\",...]}`)" };
-        var stdinOption = new Option<bool>("--stdin") { Description = "Read books JSON from stdin" };
+        var inputOption = new Option<string?>("--input") { Description = "JSON file with the request body (see --help-full)" };
+        var stdinOption = new Option<bool>("--stdin") { Description = "Read the request body from stdin" };
         var command = new Command("batch-remove", "Remove multiple books from a collection")
         { idOption, inputOption, stdinOption };
         command.AddPermissionRequired("update");

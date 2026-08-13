@@ -227,8 +227,8 @@ public static class ItemsCommand
     private static Command CreateUpdateCommand()
     {
         var idOption = new Option<string>("--id") { Description = "Item ID", Required = true };
-        var inputOption = new Option<string?>("--input") { Description = "JSON file with the update body" };
-        var stdinOption = new Option<bool>("--stdin") { Description = "Read the update body from stdin" };
+        var inputOption = new Option<string?>("--input") { Description = "JSON file with the request body (see --help-full)" };
+        var stdinOption = new Option<bool>("--stdin") { Description = "Read the request body from stdin" };
         var command = new Command("update", "Update a single item's metadata") { idOption, inputOption, stdinOption };
         command.AddPermissionRequired("update");
         command.AddExamples(
@@ -279,8 +279,8 @@ public static class ItemsCommand
 
     private static Command CreateBatchUpdateCommand()
     {
-        var inputOption = new Option<string?>("--input") { Description = "JSON file path" };
-        var stdinOption = new Option<bool>("--stdin") { Description = "Read JSON from stdin" };
+        var inputOption = new Option<string?>("--input") { Description = "JSON file with the request body (see --help-full)" };
+        var stdinOption = new Option<bool>("--stdin") { Description = "Read the request body from stdin" };
         var command = new Command("batch-update", "Batch update multiple items") { inputOption, stdinOption };
         command.AddPermissionRequired("update");
         command.AddExamples(
@@ -326,8 +326,8 @@ public static class ItemsCommand
 
     private static Command CreateBatchGetCommand()
     {
-        var inputOption = new Option<string?>("--input") { Description = "JSON file with libraryItemIds" };
-        var stdinOption = new Option<bool>("--stdin") { Description = "Read JSON from stdin" };
+        var inputOption = new Option<string?>("--input") { Description = "JSON file with the request body (see --help-full)" };
+        var stdinOption = new Option<bool>("--stdin") { Description = "Read the request body from stdin" };
         var command = new Command("batch-get", "Batch get multiple items by ID") { inputOption, stdinOption };
         command.AddExamples(
             "abs-cli items batch-get --input ids.json",
@@ -402,8 +402,8 @@ public static class ItemsCommand
 
     private static Command CreateBatchDeleteCommand()
     {
-        var inputOption = new Option<string?>("--input") { Description = "JSON file with {\"libraryItemIds\":[...]}" };
-        var stdinOption = new Option<bool>("--stdin") { Description = "Read JSON from stdin" };
+        var inputOption = new Option<string?>("--input") { Description = "JSON file with the request body (see --help-full)" };
+        var stdinOption = new Option<bool>("--stdin") { Description = "Read the request body from stdin" };
         var hardOption = new Option<bool>("--hard") { Description = "Also delete files from disk (applies to every id in the batch)" };
         var command = new Command("batch-delete", "Delete multiple library items")
             { inputOption, stdinOption, hardOption };
@@ -456,8 +456,8 @@ public static class ItemsCommand
 
     private static Command CreateBatchUpdateProgressCommand()
     {
-        var inputOption = new Option<string?>("--input") { Description = "JSON file with array body" };
-        var stdinOption = new Option<bool>("--stdin") { Description = "Read JSON array from stdin" };
+        var inputOption = new Option<string?>("--input") { Description = "JSON file with the request body (see --help-full)" };
+        var stdinOption = new Option<bool>("--stdin") { Description = "Read the request body from stdin" };
         var command = new Command("batch-update-progress", "Bulk update media progress from a JSON array")
             { inputOption, stdinOption };
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
@@ -782,8 +782,8 @@ public static class ItemsCommand
     private static Command CreateChaptersSetCommand()
     {
         var idOption = new Option<string>("--id") { Description = "Library item ID", Required = true };
-        var inputOption = new Option<string?>("--input") { Description = "JSON file path" };
-        var stdinOption = new Option<bool>("--stdin") { Description = "Read JSON from stdin" };
+        var inputOption = new Option<string?>("--input") { Description = "JSON file with the request body (see --help-full)" };
+        var stdinOption = new Option<bool>("--stdin") { Description = "Read the request body from stdin" };
         var command = new Command("set", "Write chapters onto a library item (DB + sidecar; does NOT touch the audio file)")
         {
             idOption, inputOption, stdinOption
@@ -1132,8 +1132,8 @@ public static class ItemsCommand
 
     private static Command CreateBatchEmbedMetadataCommand()
     {
-        var inputOption = new Option<string?>("--input") { Description = "JSON file path with {libraryItemIds:[...]}" };
-        var stdinOption = new Option<bool>("--stdin") { Description = "Read JSON from stdin" };
+        var inputOption = new Option<string?>("--input") { Description = "JSON file with the request body (see --help-full)" };
+        var stdinOption = new Option<bool>("--stdin") { Description = "Read the request body from stdin" };
         var noBackupOption = new Option<bool>("--no-backup") { Description = "Skip the server-side pre-rewrite backup (default: backup on)" };
         var forceEmbedChaptersOption = new Option<bool>("--force-embed-chapters") { Description = "Embed chapters into multi-file items (default: tags + cover only on multi-file)" };
         var waitOption = new Option<bool>("--wait") { Description = "Block until all embed tasks disappear from /api/tasks (max 600s)" };

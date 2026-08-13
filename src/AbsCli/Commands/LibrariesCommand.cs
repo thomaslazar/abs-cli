@@ -250,8 +250,8 @@ public static class LibrariesCommand
 
     private static Command CreateReorderCommand()
     {
-        var inputOption = new Option<string?>("--input") { Description = "JSON file with an array of {id, newOrder}" };
-        var stdinOption = new Option<bool>("--stdin") { Description = "Read the reorder JSON array from stdin" };
+        var inputOption = new Option<string?>("--input") { Description = "JSON file with the request body (see --help-full)" };
+        var stdinOption = new Option<bool>("--stdin") { Description = "Read the request body from stdin" };
         var command = new Command("reorder", "Reorder libraries by display order")
         { inputOption, stdinOption };
         command.AddPermissionRequired("admin");

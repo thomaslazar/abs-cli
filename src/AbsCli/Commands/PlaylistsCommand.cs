@@ -81,8 +81,8 @@ public static class PlaylistsCommand
         var libraryOption = new Option<string?>("--library") { Description = "Library ID" };
         var nameOption = new Option<string>("--name") { Description = "Playlist name", Required = true };
         var descriptionOption = new Option<string?>("--description") { Description = "Optional description" };
-        var inputOption = new Option<string?>("--input") { Description = "JSON file with books array (`{\"books\":[\"lid\",...]}`)" };
-        var stdinOption = new Option<bool>("--stdin") { Description = "Read books JSON from stdin" };
+        var inputOption = new Option<string?>("--input") { Description = "JSON file with the request body (see --help-full)" };
+        var stdinOption = new Option<bool>("--stdin") { Description = "Read the request body from stdin" };
         var command = new Command("create", "Create a playlist")
         { libraryOption, nameOption, descriptionOption, inputOption, stdinOption };
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
@@ -172,8 +172,8 @@ public static class PlaylistsCommand
     private static Command CreateReorderCommand()
     {
         var idOption = new Option<string>("--id") { Description = "Playlist ID", Required = true };
-        var inputOption = new Option<string?>("--input") { Description = "JSON file with books array (`{\"books\":[\"lid\",...]}`)" };
-        var stdinOption = new Option<bool>("--stdin") { Description = "Read books JSON from stdin" };
+        var inputOption = new Option<string?>("--input") { Description = "JSON file with the request body (see --help-full)" };
+        var stdinOption = new Option<bool>("--stdin") { Description = "Read the request body from stdin" };
         var command = new Command("reorder", "Reorder existing items in a playlist")
         { idOption, inputOption, stdinOption };
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
@@ -274,8 +274,8 @@ public static class PlaylistsCommand
     private static Command CreateBatchAddCommand()
     {
         var idOption = new Option<string>("--id") { Description = "Playlist ID", Required = true };
-        var inputOption = new Option<string?>("--input") { Description = "JSON file with books array (`{\"books\":[\"lid\",...]}`)" };
-        var stdinOption = new Option<bool>("--stdin") { Description = "Read books JSON from stdin" };
+        var inputOption = new Option<string?>("--input") { Description = "JSON file with the request body (see --help-full)" };
+        var stdinOption = new Option<bool>("--stdin") { Description = "Read the request body from stdin" };
         var command = new Command("batch-add", "Add multiple books to a playlist")
         { idOption, inputOption, stdinOption };
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
@@ -305,8 +305,8 @@ public static class PlaylistsCommand
     private static Command CreateBatchRemoveCommand()
     {
         var idOption = new Option<string>("--id") { Description = "Playlist ID", Required = true };
-        var inputOption = new Option<string?>("--input") { Description = "JSON file with books array (`{\"books\":[\"lid\",...]}`)" };
-        var stdinOption = new Option<bool>("--stdin") { Description = "Read books JSON from stdin" };
+        var inputOption = new Option<string?>("--input") { Description = "JSON file with the request body (see --help-full)" };
+        var stdinOption = new Option<bool>("--stdin") { Description = "Read the request body from stdin" };
         var command = new Command("batch-remove", "Remove multiple books from a playlist")
         { idOption, inputOption, stdinOption };
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
