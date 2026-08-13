@@ -53,9 +53,13 @@ var debugEnabled = parseResult.GetValue(debugOption)
 var logJson = parseResult.GetValue(logJsonOption);
 LogSetup.Configure(debugEnabled, logJson);
 
+// Without this, System.CommandLine's own handler catches everything a command
+// throws, dumps a stack trace to stderr and returns 1 — the catch below never
+// runs. Off, so one exception surfaces as one logged error line.
+var invocation = new InvocationConfiguration { EnableDefaultExceptionHandler = false };
 try
 {
-    return await parseResult.InvokeAsync();
+    return await parseResult.InvokeAsync(invocation);
 }
 catch (Exception ex)
 {

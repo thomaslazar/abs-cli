@@ -1,3 +1,4 @@
+using System.Text.Json;
 using AbsCli.Configuration;
 
 namespace AbsCli.Tests.Configuration;
@@ -47,6 +48,58 @@ public class ConfigManagerTests
         Assert.Equal("access123", loaded.AccessToken);
         Assert.Equal("refresh456", loaded.RefreshToken);
         Assert.Equal("lib-id-1", loaded.DefaultLibrary);
+    }
+
+    [Fact]
+    public void Load_ThrowsActionableError_WhenFileIsNotJson()
+    {
+        var configPath = Path.Combine(_tempDir, "config.json");
+        File.WriteAllText(configPath, "not json{");
+        var manager = new ConfigManager(configPath);
+
+        var ex = Assert.Throws<InvalidOperationException>(() => manager.Load());
+
+        Assert.Contains(configPath, ex.Message);
+        Assert.Contains("abs-cli login", ex.Message);
+        Assert.IsType<JsonException>(ex.InnerException);
+    }
+
+    [Fact]
+    public void Save_ReplacesAtomically_SoAnOpenReaderStillSeesWholeOldFile()
+    {
+        var configPath = Path.Combine(_tempDir, "config.json");
+        var manager = new ConfigManager(configPath);
+        manager.Save(new AppConfig { Server = "https://old.example.com", RefreshToken = "old-refresh" });
+        var before = File.ReadAllText(configPath);
+        // A handle opened before the write must still read the complete old
+        // document: an atomic replace swaps the directory entry, it never
+        // truncates the bytes under someone else's handle.
+        using var reader = new FileStream(
+            configPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        manager.Save(new AppConfig { Server = "https://new.example.com", RefreshToken = "new-refresh" });
+        Assert.Equal(before, new StreamReader(reader).ReadToEnd());
+        Assert.Equal("https://new.example.com", manager.Load().Server);
+    }
+
+    [Fact]
+    public void Save_LeavesNoTempFileBehind()
+    {
+        var configPath = Path.Combine(_tempDir, "config.json");
+        var manager = new ConfigManager(configPath);
+        manager.Save(new AppConfig { Server = "https://example.com" });
+        Assert.Equal(new[] { "config.json" }, Directory.GetFiles(_tempDir).Select(Path.GetFileName).Order());
+    }
+
+    [Fact]
+    public void Save_PreservesRestrictiveFileMode()
+    {
+        if (OperatingSystem.IsWindows()) return;
+        var configPath = Path.Combine(_tempDir, "config.json");
+        var manager = new ConfigManager(configPath);
+        manager.Save(new AppConfig { Server = "https://example.com" });
+        File.SetUnixFileMode(configPath, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+        manager.Save(new AppConfig { Server = "https://example.com", RefreshToken = "secret" });
+        Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite, File.GetUnixFileMode(configPath));
     }
 
     [Fact]

@@ -26,7 +26,18 @@ public class ConfigManager
             return new AppConfig();
 
         var json = File.ReadAllText(_configPath);
-        return JsonSerializer.Deserialize(json, AppJsonContext.Default.AppConfig) ?? new AppConfig();
+        try
+        {
+            return JsonSerializer.Deserialize(json, AppJsonContext.Default.AppConfig) ?? new AppConfig();
+        }
+        catch (JsonException ex)
+        {
+            // Every command loads the config, so a raw parser message here is the
+            // only thing the operator ever sees. Name the file and the way out.
+            throw new InvalidOperationException(
+                $"Config file is not valid JSON: {_configPath} — delete it and run 'abs-cli login'. ({ex.Message})",
+                ex);
+        }
     }
 
     public void Save(AppConfig config)
@@ -36,7 +47,14 @@ public class ConfigManager
             Directory.CreateDirectory(dir);
 
         var json = JsonSerializer.Serialize(config, AppJsonContext.Default.AppConfig);
-        File.WriteAllText(_configPath, json);
+        // Write-then-rename. A truncated config.json costs a re-login: it holds the
+        // only copy of the refresh token, and the server rotates the old one away
+        // as soon as it is used.
+        var tmpPath = _configPath + ".tmp";
+        File.WriteAllText(tmpPath, json);
+        if (!OperatingSystem.IsWindows() && File.Exists(_configPath))
+            File.SetUnixFileMode(tmpPath, File.GetUnixFileMode(_configPath));
+        File.Move(tmpPath, _configPath, overwrite: true);
     }
 
     /// <summary>
