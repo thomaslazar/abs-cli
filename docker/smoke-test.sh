@@ -35,9 +35,13 @@ echo ""
 
 PASS=0
 FAIL=0
+SKIP=0
 
 pass() { echo "  PASS: $1"; PASS=$((PASS + 1)); }
 fail() { echo "  FAIL: $1 — $2"; FAIL=$((FAIL + 1)); }
+# For assertions whose precondition could not be established — a timing-dependent
+# scenario that did not materialise is untested, not passed and not broken.
+skip() { echo "  SKIP: $1 — $2"; SKIP=$((SKIP + 1)); }
 
 assert_json_key() {
     local label="$1" key="$2" json="$3"
@@ -1505,9 +1509,13 @@ CANCEL_TEST_ITEM_ID=""
 encode_cleanup() { cleanup_items "${ENCODE_TMP:-}" "${ENCODE_ITEM_ID:-}" "${CANCEL_TEST_ITEM_ID:-}"; }
 trap encode_cleanup EXIT
 
-ffmpeg -y -f lavfi -i "sine=frequency=440:duration=30" -ac 2 -c:a libmp3lame -b:a 128k \
+# 180s each rather than a token few seconds: both the "already processing" and the
+# cancel assertions need the merge task to still be in flight when the next
+# request lands, and ABS clears the pending task as soon as it finishes. Six
+# minutes of audio keeps even a codec=copy remux observable.
+ffmpeg -y -f lavfi -i "sine=frequency=440:duration=180" -ac 2 -c:a libmp3lame -b:a 128k \
     "$ENCODE_TMP/track1.mp3" > /dev/null 2>&1
-ffmpeg -y -f lavfi -i "sine=frequency=523:duration=30" -ac 2 -c:a libmp3lame -b:a 128k \
+ffmpeg -y -f lavfi -i "sine=frequency=523:duration=180" -ac 2 -c:a libmp3lame -b:a 128k \
     "$ENCODE_TMP/track2.mp3" > /dev/null 2>&1
 
 if [ -s "$ENCODE_TMP/track1.mp3" ] && [ -s "$ENCODE_TMP/track2.mp3" ]; then
@@ -1551,12 +1559,38 @@ else
 fi
 
 # Already-processing 400: a second start before the task completes should fail.
-output=$($CLI items encode-m4b start --id "$ENCODE_ITEM_ID" --codec copy 2>&1 || true)
-if echo "$output" | grep -q "already processing"; then
-    pass "encode-m4b start: second start while pending returns 400"
+# ABS returns the 400 only while a pending task exists for the item
+# (AbMergeManager.getPendingTaskByLibraryItemId), so confirm the merge really is
+# still in flight before asserting on the guard. Without this check a merge that
+# finished first looks identical to a broken guard: the second start simply
+# succeeds and returns a normal receipt.
+encode_pending=0
+for i in $(seq 1 20); do
+    if $CLI tasks list 2>/dev/null | python3 -c "
+import sys, json
+tasks = json.load(sys.stdin).get('tasks', [])
+for t in tasks:
+    data = t.get('data') or {}
+    if t.get('action') == 'encode-m4b' and data.get('libraryItemId') == '$ENCODE_ITEM_ID' and not t.get('isFinished'):
+        raise SystemExit(0)
+raise SystemExit(1)
+" 2>/dev/null; then
+        encode_pending=1
+        break
+    fi
+    sleep 0.1
+done
+
+if [ "$encode_pending" = "1" ]; then
+    output=$($CLI items encode-m4b start --id "$ENCODE_ITEM_ID" --codec copy 2>&1 || true)
+    if echo "$output" | grep -q "already processing"; then
+        pass "encode-m4b start: second start while pending returns 400"
+    else
+        fail "encode-m4b start: second start while pending returns 400" "missing 'already processing'"
+        echo "    response: ${output:0:200}"
+    fi
 else
-    fail "encode-m4b start: second start while pending returns 400" "missing 'already processing'"
-    echo "    response: ${output:0:200}"
+    skip "encode-m4b start: second start while pending returns 400" "merge finished before a pending task could be observed"
 fi
 
 # Poll tasks list until all tasks are gone. The encode-m4b itself finishes
@@ -1619,7 +1653,7 @@ fi
 
 # Cancel happy path: upload a separate item, start an aac re-encode (slower
 # than copy/remux), cancel mid-flight, verify the item was NOT merged. The
-# 30s fixtures + aac@192k re-encoding gives enough headroom for the cancel to
+# 180s fixtures + aac@192k re-encoding gives enough headroom for the cancel to
 # arrive before the task finishes on typical hardware.
 output=$($CLI upload --library "$LIB_ID" --folder "$FOLDER_ID" \
     --title "ENCODE_M4B_CANCEL_TEST" --author "Smoke Author" \
@@ -2355,7 +2389,7 @@ rm -rf "$VC_HOME"
 # ============================================================
 echo ""
 echo "========================================"
-echo "Results: $PASS passed, $FAIL failed"
+echo "Results: $PASS passed, $FAIL failed, $SKIP skipped"
 echo "========================================"
 
 if [ "$FAIL" -gt 0 ]; then
