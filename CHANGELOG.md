@@ -3,6 +3,57 @@
 All notable changes to abs-cli are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## v1.0.4 — 2026-08-13
+
+Patch release. The server version check now runs once a day instead of only at
+login, plus three config-file robustness fixes.
+
+### Highlights
+
+- **The version check no longer depends on logging in.** Self-hosted servers change
+  version when the image is pulled, and tokens refresh for months without a fresh
+  login — so the old login-only check almost never fired. It now runs on the first
+  command after a 24-hour window, via Audiobookshelf's unauthenticated
+  `GET /status`, with its own 3-second timeout and silent on failure so it can
+  never break the command it precedes.
+- **The warning says what to do:** `abs-cli 1.0.4 was tested up to ABS 2.36.0;
+  this server is 2.38.0. Check for a newer abs-cli.` It also notes when the
+  version changed since the last check.
+- **Two new CLI-managed config keys**, `lastVersionCheck` and
+  `lastServerVersion`, shown by `abs-cli config get` and not settable.
+- **Token refresh no longer writes environment values into `config.json`.**
+  Running with `ABS_TOKEN`, `ABS_SERVER` or `ABS_LIBRARY` set meant a refresh
+  persisted those into the file you had deliberately kept them out of.
+- **An interrupted config write can no longer destroy your refresh token.**
+  Saving now writes a temp file and renames over the target, preserving the
+  existing file mode, so a config you `chmod 600`'d stays that way.
+- **A corrupt `config.json` reports one error line instead of a stack trace**, and
+  names the file and the way out.
+- **`seed.sh` no longer aborts mid-scan** when a scan poll returns no `total`.
+
+### Changes
+
+- chore: bump version to 1.0.4
+- chore: regenerate response examples for ServerStatus
+- chore: write release notes to temp/ instead of the repo root
+- docs: add server version check cadence spec and plan
+- docs: document the 24h runtime version check
+- feat: add 24h staleness decision for the server version check
+- feat: add ServerStatus DTO for the /status version probe
+- feat: check the server version at most daily instead of only at login
+- feat: persist server version check state in config
+- feat: show version check state in config get
+- fix: carry version check state through config resolution
+- fix: harden config.json read and write
+- fix: stop seed.sh aborting when a scan poll returns no total
+- fix: stop token refresh writing env values into config.json
+- fix: sync in-memory config when recording the server version
+- fix: thread stored version state into login's temp client
+- refactor: replace CheckServerVersion with a pure VersionWarning
+- test: assert version check cadence in the smoke suite
+- test: join the NLog collection from VersionComparisonTests
+- test: make the encode-m4b already-processing assertion deterministic
+
 ## v1.0.3 — 2026-08-12
 
 Patch release. Fixes two robustness bugs found by an audit from `grimoire-cli`,
