@@ -63,4 +63,25 @@ public class ItemMediaUpdateMetadata
 
     [JsonPropertyName("genres")]
     public List<string>? Genres { get; set; }
+
+    [JsonPropertyName("series")]
+    public List<SeriesUpdateEntry>? Series { get; set; }
+}
+
+/// <summary>
+/// Series entry for ItemMediaUpdateMetadata.series. Handled by the controller
+/// separately from the rest of metadata (Book.updateSeriesFromRequest), which is
+/// why it takes objects where the sibling metadata arrays take plain strings.
+/// Two quirks worth knowing: sequence must be a JSON string — a number is
+/// silently dropped to null (Book.js:528) — and if any entry lacks a string
+/// name, ABS silently ignores the whole series update rather than erroring
+/// (Book.js:511).
+/// </summary>
+public class SeriesUpdateEntry
+{
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = "";
+
+    [JsonPropertyName("sequence")]
+    public string? Sequence { get; set; }
 }

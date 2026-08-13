@@ -187,6 +187,9 @@ public static class ItemsCommand
         command.AddExamples(
             "abs-cli items update --id \"li_abc123\" --input payload.json",
             "echo '{\"metadata\":{\"title\":\"New Title\"}}' | abs-cli items update --id \"li_abc123\" --stdin");
+        command.AddHelpSection("Caveats",
+            "metadata.series[].sequence must be a JSON string — a number is silently dropped to null.",
+            "metadata.series entries missing a string name silently drop the whole series update, no error.");
         command.AddRequestExample<ItemMediaUpdateRequest>();
         command.AddResponseExample<UpdateMediaResponse>();
         command.AddMediaUnionShapes();

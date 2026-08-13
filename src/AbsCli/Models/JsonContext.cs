@@ -88,6 +88,7 @@ namespace AbsCli.Models;
 [JsonSerializable(typeof(LibraryUpdateRequest))]
 [JsonSerializable(typeof(ItemMediaUpdateRequest))]
 [JsonSerializable(typeof(ItemMediaUpdateMetadata))]
+[JsonSerializable(typeof(SeriesUpdateEntry))]
 [JsonSourceGenerationOptions(WriteIndented = true)]
 public partial class AppJsonContext : JsonSerializerContext;
 

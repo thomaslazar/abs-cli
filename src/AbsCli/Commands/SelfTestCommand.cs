@@ -688,13 +688,21 @@ public static class SelfTestCommand
             {
                 var obj = new ItemMediaUpdateRequest
                 {
-                    Metadata = new ItemMediaUpdateMetadata { Title = "T", Genres = new List<string> { "G" } },
+                    Metadata = new ItemMediaUpdateMetadata
+                    {
+                        Title = "T",
+                        Genres = new List<string> { "G" },
+                        Series = new List<SeriesUpdateEntry> { new() { Name = "S", Sequence = "1" } }
+                    },
                     Tags = new List<string> { "tag" }
                 };
                 var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.ItemMediaUpdateRequest);
                 var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.ItemMediaUpdateRequest)!;
                 Assert(back.Metadata!.Title == "T", "title mismatch");
                 Assert(back.Tags!.Count == 1, "tags mismatch");
+                Assert(back.Metadata!.Series!.Count == 1, "series count mismatch");
+                Assert(back.Metadata!.Series![0].Name == "S", "series name mismatch");
+                Assert(back.Metadata!.Series![0].Sequence == "1", "series sequence mismatch");
             });
 
             Console.Error.WriteLine();
