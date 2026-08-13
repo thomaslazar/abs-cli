@@ -10,6 +10,70 @@ public static class CollectionsCommand
 {
     private static readonly NLog.Logger _logger = NLog.LogManager.GetCurrentClassLogger();
 
+    /// <summary>
+    /// Parses a {"books":[...]} body and returns the entries ABS itself
+    /// would keep — non-null, non-empty strings (CollectionController
+    /// filters with `.filter((b) => !!b && typeof b == 'string')` in
+    /// create/addBatch/removeBatch).
+    /// </summary>
+    private static List<string> ParseValidBooks(string jsonBody)
+    {
+        var parsed = JsonSerializer.Deserialize(jsonBody, AppJsonContext.Default.BooksRequest);
+        return (parsed?.Books ?? new List<string>()).Where(b => !string.IsNullOrEmpty(b)).ToList();
+    }
+
+    /// <summary>
+    /// Validates the books array supplied to `create` and returns the
+    /// filtered entries. ABS 400s "Invalid collection data. No books" when
+    /// no valid string id survives the filter (CollectionController.js:44-50)
+    /// — the plan's "books optional" is wrong; it is required here.
+    /// </summary>
+    internal static List<string> PrepareCreateBooks(string jsonBody)
+    {
+        var books = ParseValidBooks(jsonBody);
+        if (books.Count == 0)
+            throw new ArgumentException("create requires at least one book id in \"books\"");
+        return books;
+    }
+
+    /// <summary>
+    /// Validates a reorder body and returns it unchanged. ABS applies no
+    /// non-empty requirement here — CollectionController.update (the
+    /// endpoint reorder actually calls) treats an empty/absent "books" as a
+    /// no-op, not an error (CollectionController.js:168-170) — so only
+    /// structural JSON validity is checked.
+    /// </summary>
+    internal static string PrepareReorderBody(string jsonBody)
+    {
+        JsonSerializer.Deserialize(jsonBody, AppJsonContext.Default.BooksRequest);
+        return jsonBody;
+    }
+
+    /// <summary>
+    /// Validates a batch-add body and returns it unchanged. ABS requires at
+    /// least one valid string book id after filtering, 400 "Invalid request
+    /// body" otherwise (CollectionController.addBatch, js:320-323).
+    /// </summary>
+    internal static string PrepareBatchAddBody(string jsonBody)
+    {
+        if (ParseValidBooks(jsonBody).Count == 0)
+            throw new ArgumentException("batch-add requires at least one book id in \"books\"");
+        return jsonBody;
+    }
+
+    /// <summary>
+    /// Validates a batch-remove body and returns it unchanged. Same
+    /// non-empty-after-filter requirement as batch-add
+    /// (CollectionController.removeBatch, js:381-384 — that path actually
+    /// 500s rather than 400s on empty, but the requirement is the same).
+    /// </summary>
+    internal static string PrepareBatchRemoveBody(string jsonBody)
+    {
+        if (ParseValidBooks(jsonBody).Count == 0)
+            throw new ArgumentException("batch-remove requires at least one book id in \"books\"");
+        return jsonBody;
+    }
+
     public static Command Create()
     {
         var command = new Command("collections", "Manage collections (curated lists of book library items)");
@@ -101,6 +165,7 @@ public static class CollectionsCommand
         command.AddExamples(
             "abs-cli collections create --library \"lib_1\" --name \"Light Novels\" --input books.json",
             "echo '{\"books\":[\"li_a\",\"li_b\"]}' | abs-cli collections create --name \"My set\" --stdin");
+        command.AddRequestExample<CollectionCreateRequest>();
         command.AddResponseExample<Collection>();
         command.SetAction(async (parseResult, cancellationToken) =>
         {
@@ -109,6 +174,12 @@ public static class CollectionsCommand
             var description = parseResult.GetValue(descriptionOption);
             var input = parseResult.GetValue(inputOption);
             var stdin = parseResult.GetValue(stdinOption);
+            if (string.IsNullOrEmpty(name))
+            {
+                _logger.Error("--name cannot be empty");
+                Environment.Exit(1);
+                return 1;
+            }
 
             string booksJson;
             if (stdin && input != null)
@@ -129,10 +200,9 @@ public static class CollectionsCommand
             List<string> books;
             try
             {
-                var parsed = JsonSerializer.Deserialize(booksJson, AppJsonContext.Default.CollectionBooksRequest);
-                books = parsed?.Books ?? new List<string>();
+                books = PrepareCreateBooks(booksJson);
             }
-            catch (JsonException ex)
+            catch (Exception ex) when (ex is JsonException or ArgumentException)
             {
                 _logger.Error($"Invalid JSON input: {ex.Message}");
                 Environment.Exit(1);
@@ -202,6 +272,7 @@ public static class CollectionsCommand
         command.AddExamples(
             "abs-cli collections reorder --id \"col_abc\" --input order.json",
             "echo '{\"books\":[\"li_c\",\"li_a\",\"li_b\"]}' | abs-cli collections reorder --id \"col_abc\" --stdin");
+        command.AddRequestExample<BooksRequest>();
         command.AddResponseExample<Collection>();
         command.SetAction(async (parseResult, cancellationToken) =>
         {
@@ -213,9 +284,20 @@ public static class CollectionsCommand
             if (stdin) booksJson = await Console.In.ReadToEndAsync(cancellationToken);
             else if (input != null) booksJson = CommandHelper.ReadJsonInput(input);
             else { _logger.Error("Provide --input <file> or --stdin."); Environment.Exit(1); return 1; }
+            string validated;
+            try
+            {
+                validated = PrepareReorderBody(booksJson);
+            }
+            catch (JsonException ex)
+            {
+                _logger.Error($"Invalid JSON input: {ex.Message}");
+                Environment.Exit(1);
+                return 1;
+            }
             var (client, _) = CommandHelper.BuildClient();
             var service = new CollectionsService(client);
-            var result = await service.ReorderAsync(id, booksJson);
+            var result = await service.ReorderAsync(id, validated);
             ConsoleOutput.WriteJson(result, AppJsonContext.Default.Collection);
             return 0;
         });
@@ -308,6 +390,7 @@ public static class CollectionsCommand
         command.AddExamples(
             "abs-cli collections batch-add --id \"col_abc\" --input books.json",
             "echo '{\"books\":[\"li_a\",\"li_b\"]}' | abs-cli collections batch-add --id \"col_abc\" --stdin");
+        command.AddRequestExample<BooksRequest>();
         command.AddResponseExample<Collection>();
         command.SetAction(async (parseResult, cancellationToken) =>
         {
@@ -319,9 +402,20 @@ public static class CollectionsCommand
             if (stdin) booksJson = await Console.In.ReadToEndAsync(cancellationToken);
             else if (input != null) booksJson = CommandHelper.ReadJsonInput(input);
             else { _logger.Error("Provide --input <file> or --stdin."); Environment.Exit(1); return 1; }
+            string validated;
+            try
+            {
+                validated = PrepareBatchAddBody(booksJson);
+            }
+            catch (Exception ex) when (ex is JsonException or ArgumentException)
+            {
+                _logger.Error($"Invalid JSON input: {ex.Message}");
+                Environment.Exit(1);
+                return 1;
+            }
             var (client, _) = CommandHelper.BuildClient();
             var service = new CollectionsService(client);
-            var result = await service.BatchAddAsync(id, booksJson);
+            var result = await service.BatchAddAsync(id, validated);
             ConsoleOutput.WriteJson(result, AppJsonContext.Default.Collection);
             return 0;
         });
@@ -341,6 +435,7 @@ public static class CollectionsCommand
         command.AddExamples(
             "abs-cli collections batch-remove --id \"col_abc\" --input books.json",
             "echo '{\"books\":[\"li_a\",\"li_b\"]}' | abs-cli collections batch-remove --id \"col_abc\" --stdin");
+        command.AddRequestExample<BooksRequest>();
         command.AddResponseExample<Collection>();
         command.SetAction(async (parseResult, cancellationToken) =>
         {
@@ -352,9 +447,20 @@ public static class CollectionsCommand
             if (stdin) booksJson = await Console.In.ReadToEndAsync(cancellationToken);
             else if (input != null) booksJson = CommandHelper.ReadJsonInput(input);
             else { _logger.Error("Provide --input <file> or --stdin."); Environment.Exit(1); return 1; }
+            string validated;
+            try
+            {
+                validated = PrepareBatchRemoveBody(booksJson);
+            }
+            catch (Exception ex) when (ex is JsonException or ArgumentException)
+            {
+                _logger.Error($"Invalid JSON input: {ex.Message}");
+                Environment.Exit(1);
+                return 1;
+            }
             var (client, _) = CommandHelper.BuildClient();
             var service = new CollectionsService(client);
-            var result = await service.BatchRemoveAsync(id, booksJson);
+            var result = await service.BatchRemoveAsync(id, validated);
             ConsoleOutput.WriteJson(result, AppJsonContext.Default.Collection);
             return 0;
         });

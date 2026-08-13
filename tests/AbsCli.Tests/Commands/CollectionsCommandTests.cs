@@ -1,4 +1,5 @@
 using System.CommandLine;
+using System.Text.Json;
 using AbsCli.Commands;
 using Xunit;
 
@@ -111,5 +112,108 @@ public class CollectionsCommandTests
         Assert.Equal(2, body.Count);
         Assert.Equal("n", body["name"]);
         Assert.Equal("d", body["description"]);
+    }
+
+    [Fact]
+    public void CreateBooks_Valid_ReturnsFilteredList()
+    {
+        var books = CollectionsCommand.PrepareCreateBooks("{\"books\":[\"li_a\",\"li_b\"]}");
+        Assert.Equal(new[] { "li_a", "li_b" }, books);
+    }
+
+    [Fact]
+    public void CreateBooks_DropsEmptyEntries_LikeAbsDoes()
+    {
+        var books = CollectionsCommand.PrepareCreateBooks("{\"books\":[\"li_a\",\"\",\"li_b\"]}");
+        Assert.Equal(new[] { "li_a", "li_b" }, books);
+    }
+
+    [Fact]
+    public void CreateBooks_Empty_Rejected()
+    {
+        Assert.Throws<ArgumentException>(() => CollectionsCommand.PrepareCreateBooks("{\"books\":[]}"));
+    }
+
+    [Fact]
+    public void CreateBooks_OnlyEmptyStrings_Rejected()
+    {
+        Assert.Throws<ArgumentException>(() => CollectionsCommand.PrepareCreateBooks("{\"books\":[\"\"]}"));
+    }
+
+    [Fact]
+    public void CreateBooks_MissingField_Rejected()
+    {
+        Assert.Throws<ArgumentException>(() => CollectionsCommand.PrepareCreateBooks("{}"));
+    }
+
+    [Fact]
+    public void CreateBooks_Malformed_Throws()
+    {
+        Assert.ThrowsAny<JsonException>(() => CollectionsCommand.PrepareCreateBooks("{not json"));
+    }
+
+    [Fact]
+    public void ReorderBody_Valid_IsForwardedUnchanged()
+    {
+        const string body = "{\"books\":[\"li_c\",\"li_a\",\"li_b\"]}";
+        Assert.Equal(body, CollectionsCommand.PrepareReorderBody(body));
+    }
+
+    [Fact]
+    public void ReorderBody_Empty_IsAllowed()
+    {
+        // ABS treats an empty/absent books array as a no-op, not an error.
+        const string body = "{\"books\":[]}";
+        Assert.Equal(body, CollectionsCommand.PrepareReorderBody(body));
+    }
+
+    [Fact]
+    public void ReorderBody_Malformed_Throws()
+    {
+        Assert.ThrowsAny<JsonException>(() => CollectionsCommand.PrepareReorderBody("{not json"));
+    }
+
+    [Fact]
+    public void BatchAddBody_Valid_IsForwardedUnchanged()
+    {
+        const string body = "{\"books\":[\"li_a\",\"li_b\"]}";
+        Assert.Equal(body, CollectionsCommand.PrepareBatchAddBody(body));
+    }
+
+    [Fact]
+    public void BatchAddBody_Empty_Rejected()
+    {
+        Assert.Throws<ArgumentException>(() => CollectionsCommand.PrepareBatchAddBody("{\"books\":[]}"));
+    }
+
+    [Fact]
+    public void BatchAddBody_MissingField_Rejected()
+    {
+        Assert.Throws<ArgumentException>(() => CollectionsCommand.PrepareBatchAddBody("{}"));
+    }
+
+    [Fact]
+    public void BatchAddBody_Malformed_Throws()
+    {
+        Assert.ThrowsAny<JsonException>(() => CollectionsCommand.PrepareBatchAddBody("{not json"));
+    }
+
+    [Fact]
+    public void BatchRemoveBody_Valid_IsForwardedUnchanged()
+    {
+        const string body = "{\"books\":[\"li_a\",\"li_b\"]}";
+        Assert.Equal(body, CollectionsCommand.PrepareBatchRemoveBody(body));
+    }
+
+    [Fact]
+    public void BatchRemoveBody_Empty_Rejected()
+    {
+        Assert.Throws<ArgumentException>(() => CollectionsCommand.PrepareBatchRemoveBody("{\"books\":[]}"));
+    }
+
+    [Fact]
+    public void BatchRemoveBody_Malformed_Throws()
+    {
+        Assert.ThrowsAny<JsonException>(() => CollectionsCommand.PrepareBatchRemoveBody("{not json"));
     }
 }

@@ -25,12 +25,15 @@ public class CollectionCreateRequest
 }
 
 /// <summary>
-/// Body for reorder, batch-add, and batch-remove. Entries are
-/// libraryItemIds. For reorder this must be the FULL current
-/// membership in the desired order — partial lists produce undefined
-/// behavior server-side (see spec).
+/// Body for <c>{"books":[...]}</c> — shared by collections reorder,
+/// batch-add, batch-remove, and (as a partial input) create, AND by the
+/// playlists reorder/batch-add/batch-remove CLI contract (see
+/// PlaylistsService.SerializeItems for how those map it to ABS's
+/// <c>items:[{libraryItemId}]</c> wire body). For collections reorder this
+/// must be the FULL current membership in the desired order — partial
+/// lists produce undefined behavior server-side (see spec).
 /// </summary>
-public class CollectionBooksRequest
+public class BooksRequest
 {
     [JsonPropertyName("books")]
     public List<string> Books { get; set; } = new();

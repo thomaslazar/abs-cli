@@ -246,11 +246,11 @@ public static class SelfTestCommand
                 Assert(back.Books[0] == "li_a", $"books: {back.Books[0]}");
             });
 
-            Check("CollectionBooksRequest round-trip", () =>
+            Check("BooksRequest round-trip", () =>
             {
-                var obj = new CollectionBooksRequest { Books = new() { "li_a", "li_b" } };
-                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.CollectionBooksRequest);
-                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.CollectionBooksRequest)!;
+                var obj = new BooksRequest { Books = new() { "li_a", "li_b" } };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.BooksRequest);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.BooksRequest)!;
                 Assert(back.Books.Count == 2, $"count: {back.Books.Count}");
             });
 
