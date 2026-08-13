@@ -108,7 +108,7 @@ public class LibraryItemIdsRequest
 public class ItemsBatchUpdateEntry
 {
     [JsonPropertyName("id")]
-    public string? Id { get; set; }
+    public string Id { get; set; } = "";
 
     [JsonPropertyName("metadata")]
     public ItemMediaUpdateMetadata? Metadata { get; set; }
@@ -122,9 +122,12 @@ public class ItemsBatchUpdateEntry
 /// (MeController.batchUpdateMediaProgress → User.createUpdateMediaProgressFromPayload).
 /// Unlike the single-item PATCH .../me/progress/:libraryItemId (whose id
 /// comes from the URL), each batch entry carries its own libraryItemId or
-/// episodeId. ABS applies no per-field validation here — a bad entry (e.g.
-/// unknown id) is skipped and logged server-side, not rejected; the batch
-/// as a whole only needs to be a non-empty array.
+/// episodeId — exactly one of the two identifies the target (User.js:735:
+/// episodeId present → podcast episode lookup; otherwise → libraryItemId
+/// lookup), so neither can be modeled as unconditionally required. ABS
+/// applies no per-field validation here — a bad entry (e.g. unknown id, or
+/// neither id supplied) is skipped and logged server-side, not rejected;
+/// the batch as a whole only needs to be a non-empty array.
 /// </summary>
 public class ItemsBatchProgressEntry
 {
