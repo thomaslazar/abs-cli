@@ -57,6 +57,14 @@ public static class HelpExtensions
         => AddResponseExampleSection(command, JsonExamples.For(typeof(T)));
 
     /// <summary>
+    /// Registers the request-body shape for a command that reads JSON from
+    /// --input/--stdin. Tagged as a shape section so it renders only under
+    /// --help-full, keeping plain --help terse.
+    /// </summary>
+    public static void AddRequestExample<T>(this Command command)
+        => command.AddShapeSection("Request shape", JsonExamples.For(typeof(T)).Split('\n'));
+
+    /// <summary>
     /// Appends two extra sections describing the concrete shapes of
     /// <c>LibraryItemMinified.media</c>. The main response-shape sample emits a
     /// placeholder there because the field is a union of book and podcast.
@@ -134,7 +142,7 @@ public static class HelpExtensions
         helpOption.Action = new CustomHelpAction(defaultAction, includeShapes: false);
         var fullHelp = new Option<bool>("--help-full")
         {
-            Description = "Show full help including response-shape blocks.",
+            Description = "Show full help including request/response-shape blocks.",
             Recursive = true,
             Action = new CustomHelpAction(defaultAction, includeShapes: true),
         };
@@ -167,7 +175,7 @@ public static class HelpExtensions
     {
         if (!CommandSections.TryGetValue(command, out var sections)) return;
         if (!sections.Any(s => s.IsShape)) return;
-        output.WriteLine("Run --help-full to see response shape(s).");
+        output.WriteLine("Run --help-full to see request/response shape(s).");
         output.WriteLine();
     }
 
