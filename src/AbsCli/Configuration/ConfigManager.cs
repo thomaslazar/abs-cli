@@ -72,6 +72,19 @@ public class ConfigManager
         Save(onDisk);
     }
 
+    /// <summary>
+    /// Persist rotated tokens by rewriting only the on-disk config. Same reason
+    /// as <see cref="UpdateVersionCheck"/>: saving a resolved <see cref="AppConfig"/>
+    /// would write an ABS_TOKEN or ABS_LIBRARY the operator kept out of the file.
+    /// </summary>
+    public void UpdateTokens(string? accessToken, string? refreshToken)
+    {
+        var onDisk = Load();
+        onDisk.AccessToken = accessToken;
+        onDisk.RefreshToken = refreshToken;
+        Save(onDisk);
+    }
+
     public AppConfig Resolve(
         string? flagServer = null,
         string? flagToken = null,
