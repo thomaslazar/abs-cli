@@ -110,6 +110,8 @@ internal static class JsonExamples
           "{\n  \"id\": \"<string>\",\n  \"ino\": \"<string|null>\",\n  \"libraryId\": \"<string>\",\n  \"folderId\": \"<string|null>\",\n  \"path\": \"<string|null>\",\n  \"relPath\": \"<string|null>\",\n  \"isFile\": false,\n  \"mtimeMs\": 0,\n  \"ctimeMs\": 0,\n  \"birthtimeMs\": 0,\n  \"addedAt\": 0,\n  \"updatedAt\": 0,\n  \"isMissing\": false,\n  \"isInvalid\": false,\n  \"mediaType\": \"<string>\",\n  \"media\": \"<book or podcast media — see Book media shape / Podcast media shape below>\",\n  \"numFiles\": 0,\n  \"size\": 0\n}" },
         { typeof(AbsCli.Models.LibraryListResponse),
           "{\n  \"libraries\": [\n    {\n      \"id\": \"<string>\",\n      \"name\": \"<string>\",\n      \"folders\": [\n        {\n          \"id\": \"<string>\",\n          \"fullPath\": \"<string>\",\n          \"libraryId\": \"<string>\",\n          \"addedAt\": 0\n        }\n      ],\n      \"displayOrder\": 0,\n      \"icon\": \"<string|null>\",\n      \"mediaType\": \"<string>\",\n      \"provider\": \"<string|null>\",\n      \"lastScan\": 0,\n      \"lastScanVersion\": \"<string|null>\",\n      \"createdAt\": 0,\n      \"lastUpdate\": 0\n    }\n  ]\n}" },
+        { typeof(AbsCli.Models.LibraryReorderEntry),
+          "{\n  \"id\": \"<string>\",\n  \"newOrder\": 0\n}" },
         { typeof(AbsCli.Models.LibraryUpdateRequest),
           "{}" },
         { typeof(AbsCli.Models.LoginRequest),
@@ -184,6 +186,8 @@ internal static class JsonExamples
           "[\n  {\n    \"libraryItemId\": \"<string|null>\",\n    \"episodeId\": \"<string|null>\",\n    \"duration\": 0,\n    \"currentTime\": 0,\n    \"isFinished\": false,\n    \"hideFromContinueListening\": false,\n    \"ebookLocation\": \"<string|null>\",\n    \"ebookProgress\": 0,\n    \"finishedAt\": 0\n  }\n]" },
         { typeof(System.Collections.Generic.List<AbsCli.Models.ItemsBatchUpdateEntry>),
           "[\n  {\n    \"id\": \"<string>\",\n    \"metadata\": {\n      \"title\": \"<string|null>\",\n      \"subtitle\": \"<string|null>\",\n      \"publishedYear\": \"<string|null>\",\n      \"publishedDate\": \"<string|null>\",\n      \"publisher\": \"<string|null>\",\n      \"description\": \"<string|null>\",\n      \"isbn\": \"<string|null>\",\n      \"asin\": \"<string|null>\",\n      \"language\": \"<string|null>\",\n      \"explicit\": false,\n      \"abridged\": false,\n      \"narrators\": [\n        \"<string>\"\n      ],\n      \"genres\": [\n        \"<string>\"\n      ],\n      \"series\": [\n        {\n          \"name\": \"<string>\",\n          \"sequence\": \"<string|null>\"\n        }\n      ]\n    },\n    \"tags\": [\n      \"<string>\"\n    ]\n  }\n]" },
+        { typeof(System.Collections.Generic.List<AbsCli.Models.LibraryReorderEntry>),
+          "[\n  {\n    \"id\": \"<string>\",\n    \"newOrder\": 0\n  }\n]" },
     };
 
     public static string For(Type type)

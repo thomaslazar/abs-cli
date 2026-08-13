@@ -85,6 +85,8 @@ namespace AbsCli.Models;
 [JsonSerializable(typeof(LibraryFolderRequest))]
 [JsonSerializable(typeof(LibraryCreateRequest))]
 [JsonSerializable(typeof(LibraryUpdateRequest))]
+[JsonSerializable(typeof(LibraryReorderEntry))]
+[JsonSerializable(typeof(List<LibraryReorderEntry>))]
 [JsonSerializable(typeof(ItemMediaUpdateRequest))]
 [JsonSerializable(typeof(ItemMediaUpdateMetadata))]
 [JsonSerializable(typeof(SeriesUpdateEntry))]

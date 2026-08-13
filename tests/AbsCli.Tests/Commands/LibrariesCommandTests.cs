@@ -1,4 +1,5 @@
 using System.CommandLine;
+using System.Text.Json;
 using AbsCli.Commands;
 using AbsCli.Models;
 using Xunit;
@@ -101,5 +102,43 @@ public class LibrariesCommandTests
     public void LibrariesGet_RequiresId()
     {
         Assert.Contains("--id", RenderHelp("libraries", "get"));
+    }
+
+    [Fact]
+    public void ReorderBody_Valid_IsForwardedUnchanged()
+    {
+        const string body = "[{\"id\":\"lib_1\",\"newOrder\":1},{\"id\":\"lib_2\",\"newOrder\":2}]";
+        Assert.Equal(body, LibrariesCommand.PrepareReorderBody(body));
+    }
+
+    [Fact]
+    public void ReorderBody_EmptyArray_IsAllowed()
+    {
+        // ABS treats an empty array as a no-op (no library touched, no error).
+        Assert.Equal("[]", LibrariesCommand.PrepareReorderBody("[]"));
+    }
+
+    [Fact]
+    public void ReorderBody_NotAnArray_Rejected()
+    {
+        Assert.ThrowsAny<JsonException>(() => LibrariesCommand.PrepareReorderBody("{\"id\":\"lib_1\"}"));
+    }
+
+    [Fact]
+    public void ReorderBody_MissingId_Rejected()
+    {
+        Assert.Throws<ArgumentException>(() => LibrariesCommand.PrepareReorderBody("[{\"newOrder\":1}]"));
+    }
+
+    [Fact]
+    public void ReorderBody_MissingNewOrder_Rejected()
+    {
+        Assert.Throws<ArgumentException>(() => LibrariesCommand.PrepareReorderBody("[{\"id\":\"lib_1\"}]"));
+    }
+
+    [Fact]
+    public void ReorderBody_Malformed_Throws()
+    {
+        Assert.ThrowsAny<JsonException>(() => LibrariesCommand.PrepareReorderBody("[{not json"));
     }
 }

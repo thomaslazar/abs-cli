@@ -1,4 +1,5 @@
 using System.CommandLine;
+using System.Text.Json;
 using AbsCli.Models;
 using AbsCli.Output;
 using AbsCli.Services;
@@ -259,6 +260,7 @@ public static class LibrariesCommand
         command.AddExamples(
             "abs-cli libraries reorder --input order.json",
             "echo '[{\"id\":\"lib_1\",\"newOrder\":1}]' | abs-cli libraries reorder --stdin");
+        command.AddRequestExample<List<LibraryReorderEntry>>();
         command.AddResponseExample<LibraryListResponse>();
         command.SetAction(async (parseResult, cancellationToken) =>
         {
@@ -279,12 +281,40 @@ public static class LibrariesCommand
                 Environment.Exit(1);
                 return 1;
             }
+            string validated;
+            try
+            {
+                validated = PrepareReorderBody(orderJson);
+            }
+            catch (Exception ex) when (ex is JsonException or ArgumentException)
+            {
+                _logger.Error($"Invalid reorder JSON: {ex.Message}");
+                Environment.Exit(1);
+                return 1;
+            }
             var (client, _) = CommandHelper.BuildClient();
             var service = new LibrariesService(client);
-            var result = await service.ReorderAsync(orderJson);
+            var result = await service.ReorderAsync(validated);
             ConsoleOutput.WriteJson(result, AppJsonContext.Default.LibraryListResponse);
             return 0;
         });
         return command;
+    }
+
+    /// <summary>
+    /// Validates a reorder body and returns it unchanged. ABS requires the
+    /// whole body to be an array of objects, each with a string "id" and a
+    /// numeric "newOrder" (LibraryController.reorder) — a single bad entry
+    /// 400s the entire request before any library is touched, so we check
+    /// the same up front rather than shipping a request we know will fail.
+    /// </summary>
+    internal static string PrepareReorderBody(string jsonBody)
+    {
+        var entries = JsonSerializer.Deserialize(jsonBody, AppJsonContext.Default.ListLibraryReorderEntry);
+        if (entries is null)
+            throw new ArgumentException("reorder requires a JSON array of objects");
+        if (entries.Any(e => string.IsNullOrEmpty(e.Id) || e.NewOrder is null))
+            throw new ArgumentException("every reorder entry needs a string \"id\" and a numeric \"newOrder\"");
+        return jsonBody;
     }
 }

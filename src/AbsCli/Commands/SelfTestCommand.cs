@@ -137,6 +137,20 @@ public static class SelfTestCommand
                 Assert(back.DisplayOrder == 1, $"displayOrder: {back.DisplayOrder}");
             });
 
+            Check("LibraryReorderEntry list round-trip", () =>
+            {
+                var obj = new List<LibraryReorderEntry>
+                {
+                    new() { Id = "lib_1", NewOrder = 1 },
+                    new() { Id = "lib_2", NewOrder = 2 }
+                };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.ListLibraryReorderEntry);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.ListLibraryReorderEntry)!;
+                Assert(back.Count == 2, $"count: {back.Count}");
+                Assert(back[0].Id == "lib_1", $"id: {back[0].Id}");
+                Assert(back[0].NewOrder == 1, $"newOrder: {back[0].NewOrder}");
+            });
+
             Check("PaginatedResponse round-trip", () =>
             {
                 var json = """{"results":[{"id":"item1"}],"total":42,"limit":10,"page":0}""";
