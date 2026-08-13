@@ -2012,7 +2012,7 @@ else
 fi
 
 output=$(echo '{"libraryItemIds":[]}' | $CLI items batch-embed-metadata --stdin 2>&1 || true)
-if echo "$output" | grep -q "non-empty array"; then
+if echo "$output" | grep -qE "non-empty .*array"; then
     pass "batch-embed-metadata: empty list rejected client-side"
 else
     fail "batch-embed-metadata: empty list rejected client-side" "unexpected: ${output:0:200}"
@@ -2041,7 +2041,7 @@ else
 fi
 
 output=$(echo '{"libraryItemIds":"not-an-array"}' | $CLI items batch-embed-metadata --stdin 2>&1 || true)
-if echo "$output" | grep -q "Invalid JSON"; then
+if echo "$output" | grep -qE "Invalid .*JSON"; then
     pass "batch-embed-metadata: wrong-typed libraryItemIds rejected client-side"
 else
     fail "batch-embed-metadata: wrong-typed libraryItemIds rejected client-side" "unexpected: ${output:0:200}"

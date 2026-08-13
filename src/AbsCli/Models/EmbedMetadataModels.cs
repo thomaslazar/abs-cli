@@ -40,18 +40,6 @@ public class EmbedMetadataReceipt
 }
 
 /// <summary>
-/// Request body for POST /api/tools/batch/embed-metadata. Also the
-/// deserialization target for --input / --stdin payloads on
-/// `abs-cli items batch-embed-metadata` — shape validation is the
-/// AOT JSON pass.
-/// </summary>
-public class BatchEmbedMetadataRequest
-{
-    [JsonPropertyName("libraryItemIds")]
-    public List<string> LibraryItemIds { get; set; } = new();
-}
-
-/// <summary>
 /// Receipt printed by `abs-cli items batch-embed-metadata` on success.
 /// Same semantics as EmbedMetadataReceipt but carries the full input
 /// list instead of a single ID.

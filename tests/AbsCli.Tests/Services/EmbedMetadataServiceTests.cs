@@ -43,25 +43,25 @@ public class EmbedMetadataServiceTests
     }
 
     [Fact]
-    public void BatchEmbedMetadataRequest_RoundTrip()
+    public void LibraryItemIdsRequest_RoundTrip()
     {
-        var obj = new BatchEmbedMetadataRequest
+        var obj = new LibraryItemIdsRequest
         {
             LibraryItemIds = new List<string> { "li_a", "li_b" }
         };
-        var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.BatchEmbedMetadataRequest);
-        var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.BatchEmbedMetadataRequest)!;
+        var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.LibraryItemIdsRequest);
+        var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.LibraryItemIdsRequest)!;
         Assert.Equal(2, back.LibraryItemIds.Count);
         Assert.Equal("li_a", back.LibraryItemIds[0]);
         Assert.Equal("li_b", back.LibraryItemIds[1]);
     }
 
     [Fact]
-    public void BatchEmbedMetadataRequest_RejectsWrongTypes()
+    public void LibraryItemIdsRequest_RejectsWrongTypes()
     {
         var wrong = "{\"libraryItemIds\":\"not-an-array\"}";
         Assert.Throws<JsonException>(() =>
-            JsonSerializer.Deserialize(wrong, AppJsonContext.Default.BatchEmbedMetadataRequest));
+            JsonSerializer.Deserialize(wrong, AppJsonContext.Default.LibraryItemIdsRequest));
     }
 
     [Fact]

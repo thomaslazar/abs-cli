@@ -51,11 +51,26 @@ When a new ABS version is released:
      server/controllers/SeriesController.js \
      server/controllers/AuthorController.js \
      server/controllers/SearchController.js \
+     server/controllers/CollectionController.js \
+     server/controllers/PlaylistController.js \
+     server/controllers/MeController.js \
+     server/controllers/ToolsController.js \
+     server/controllers/MiscController.js \
+     server/controllers/CacheController.js \
+     server/controllers/BackupController.js \
      server/auth/TokenManager.js \
      server/models/ \
      server/objects/
    ```
-3. **Update DTOs** if response shapes changed
+3. **Update DTOs if request *or* response shapes changed.** For every command with a
+   documented request shape, re-read its controller method and confirm the type's
+   fields still match — required keys, types, and nesting. Update the type, rebuild
+   (which regenerates the samples), and spot-check the affected `--help-full` output.
+   A drifted request shape is a correctness bug, not stale docs: agents construct
+   payloads from it, and nothing in CI can catch the drift.
+   Nullability is load-bearing here — a non-nullable field renders `"<string>"` and a
+   nullable one `"<string|null>"`, so getting it wrong misinforms agents about whether
+   a field is required.
 4. **Run integration tests** against the new ABS version (update the Docker image tag
    in docker-compose)
 5. **Update the compatibility matrix** in README and in this doc

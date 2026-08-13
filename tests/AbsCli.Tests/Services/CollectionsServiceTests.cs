@@ -107,11 +107,11 @@ public class CollectionsServiceTests
     }
 
     [Fact]
-    public void CollectionBooksRequest_RoundTrip()
+    public void BooksRequest_RoundTrip()
     {
-        var obj = new CollectionBooksRequest { Books = new List<string> { "li_a", "li_b", "li_c" } };
-        var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.CollectionBooksRequest);
-        var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.CollectionBooksRequest)!;
+        var obj = new BooksRequest { Books = new List<string> { "li_a", "li_b", "li_c" } };
+        var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.BooksRequest);
+        var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.BooksRequest)!;
         Assert.Equal(3, back.Books.Count);
         Assert.Equal("li_a", back.Books[0]);
     }

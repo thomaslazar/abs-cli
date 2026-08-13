@@ -137,6 +137,20 @@ public static class SelfTestCommand
                 Assert(back.DisplayOrder == 1, $"displayOrder: {back.DisplayOrder}");
             });
 
+            Check("LibraryReorderEntry list round-trip", () =>
+            {
+                var obj = new List<LibraryReorderEntry>
+                {
+                    new() { Id = "lib_1", NewOrder = 1 },
+                    new() { Id = "lib_2", NewOrder = 2 }
+                };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.ListLibraryReorderEntry);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.ListLibraryReorderEntry)!;
+                Assert(back.Count == 2, $"count: {back.Count}");
+                Assert(back[0].Id == "lib_1", $"id: {back[0].Id}");
+                Assert(back[0].NewOrder == 1, $"newOrder: {back[0].NewOrder}");
+            });
+
             Check("PaginatedResponse round-trip", () =>
             {
                 var json = """{"results":[{"id":"item1"}],"total":42,"limit":10,"page":0}""";
@@ -246,11 +260,11 @@ public static class SelfTestCommand
                 Assert(back.Books[0] == "li_a", $"books: {back.Books[0]}");
             });
 
-            Check("CollectionBooksRequest round-trip", () =>
+            Check("BooksRequest round-trip", () =>
             {
-                var obj = new CollectionBooksRequest { Books = new() { "li_a", "li_b" } };
-                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.CollectionBooksRequest);
-                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.CollectionBooksRequest)!;
+                var obj = new BooksRequest { Books = new() { "li_a", "li_b" } };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.BooksRequest);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.BooksRequest)!;
                 Assert(back.Books.Count == 2, $"count: {back.Books.Count}");
             });
 
@@ -684,6 +698,67 @@ public static class SelfTestCommand
                 Assert(back.Updated == false, $"updated: {back.Updated}");
             });
 
+            Check("ItemMediaUpdateRequest round-trip", () =>
+            {
+                var obj = new ItemMediaUpdateRequest
+                {
+                    Metadata = new ItemMediaUpdateMetadata
+                    {
+                        Title = "T",
+                        Genres = new List<string> { "G" },
+                        Series = new List<SeriesUpdateEntry> { new() { Name = "S", Sequence = "1" } }
+                    },
+                    Tags = new List<string> { "tag" }
+                };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.ItemMediaUpdateRequest);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.ItemMediaUpdateRequest)!;
+                Assert(back.Metadata!.Title == "T", "title mismatch");
+                Assert(back.Tags!.Count == 1, "tags mismatch");
+                Assert(back.Metadata!.Series!.Count == 1, "series count mismatch");
+                Assert(back.Metadata!.Series![0].Name == "S", "series name mismatch");
+                Assert(back.Metadata!.Series![0].Sequence == "1", "series sequence mismatch");
+            });
+
+            Console.Error.WriteLine();
+            Console.Error.WriteLine("=== Items Batch Models ===");
+
+            Check("LibraryItemIdsRequest round-trip", () =>
+            {
+                var obj = new LibraryItemIdsRequest { LibraryItemIds = new List<string> { "li_a", "li_b" } };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.LibraryItemIdsRequest);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.LibraryItemIdsRequest)!;
+                Assert(back.LibraryItemIds.Count == 2, $"count: {back.LibraryItemIds.Count}");
+                Assert(back.LibraryItemIds[0] == "li_a", $"first: {back.LibraryItemIds[0]}");
+            });
+
+            Check("ItemsBatchUpdateEntry list round-trip", () =>
+            {
+                var obj = new List<ItemsBatchUpdateEntry>
+                {
+                    new() { Id = "li_a", Metadata = new ItemMediaUpdateMetadata { Title = "T" }, Tags = new List<string> { "tag" } }
+                };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.ListItemsBatchUpdateEntry);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.ListItemsBatchUpdateEntry)!;
+                Assert(back.Count == 1, $"count: {back.Count}");
+                Assert(back[0].Id == "li_a", $"id: {back[0].Id}");
+                Assert(back[0].Metadata!.Title == "T", $"title: {back[0].Metadata!.Title}");
+                Assert(back[0].Tags![0] == "tag", $"tags: {back[0].Tags![0]}");
+            });
+
+            Check("ItemsBatchProgressEntry list round-trip", () =>
+            {
+                var obj = new List<ItemsBatchProgressEntry>
+                {
+                    new() { LibraryItemId = "li_a", CurrentTime = 12.5, IsFinished = true }
+                };
+                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.ListItemsBatchProgressEntry);
+                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.ListItemsBatchProgressEntry)!;
+                Assert(back.Count == 1, $"count: {back.Count}");
+                Assert(back[0].LibraryItemId == "li_a", $"libraryItemId: {back[0].LibraryItemId}");
+                Assert(back[0].CurrentTime == 12.5, $"currentTime: {back[0].CurrentTime}");
+                Assert(back[0].IsFinished == true, $"isFinished: {back[0].IsFinished}");
+            });
+
             Console.Error.WriteLine();
             Console.Error.WriteLine("=== Embed Metadata Models ===");
 
@@ -711,15 +786,6 @@ public static class SelfTestCommand
                 Assert(back.Started == true, $"started: {back.Started}");
                 Assert(back.Options.Backup == false, $"options.backup: {back.Options.Backup}");
                 Assert(back.Options.ForceEmbedChapters == true, $"options.forceEmbedChapters: {back.Options.ForceEmbedChapters}");
-            });
-
-            Check("BatchEmbedMetadataRequest round-trip", () =>
-            {
-                var obj = new BatchEmbedMetadataRequest { LibraryItemIds = new List<string> { "li_a", "li_b" } };
-                var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.BatchEmbedMetadataRequest);
-                var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.BatchEmbedMetadataRequest)!;
-                Assert(back.LibraryItemIds.Count == 2, $"count: {back.LibraryItemIds.Count}");
-                Assert(back.LibraryItemIds[0] == "li_a", $"first: {back.LibraryItemIds[0]}");
             });
 
             Check("BatchEmbedMetadataReceipt round-trip", () =>

@@ -54,7 +54,15 @@ public static class HelpExtensions
     }
 
     public static void AddResponseExample<T>(this Command command)
-        => AddResponseExampleSection(command, ResponseExamples.For(typeof(T)));
+        => AddResponseExampleSection(command, JsonExamples.For(typeof(T)));
+
+    /// <summary>
+    /// Registers the request-body shape for a command that reads JSON from
+    /// --input/--stdin. Tagged as a shape section so it renders only under
+    /// --help-full, keeping plain --help terse.
+    /// </summary>
+    public static void AddRequestExample<T>(this Command command)
+        => command.AddShapeSection("Request shape", JsonExamples.For(typeof(T)).Split('\n'));
 
     /// <summary>
     /// Appends two extra sections describing the concrete shapes of
@@ -67,10 +75,10 @@ public static class HelpExtensions
     {
         command.AddShapeSection(
             "Book media shape (when mediaType is \"book\")",
-            ResponseExamples.For(typeof(AbsCli.Models.BookMediaMinified)).Split('\n'));
+            JsonExamples.For(typeof(AbsCli.Models.BookMediaMinified)).Split('\n'));
         command.AddShapeSection(
             "Podcast media shape (when mediaType is \"podcast\")",
-            ResponseExamples.For(typeof(AbsCli.Models.PodcastMedia)).Split('\n'));
+            JsonExamples.For(typeof(AbsCli.Models.PodcastMedia)).Split('\n'));
     }
 
     /// <summary>
@@ -80,8 +88,8 @@ public static class HelpExtensions
     /// </summary>
     public static void AddResponseExample(this Command command, Type envelopeType, Type elementType)
     {
-        var envelopeJson = ResponseExamples.For(envelopeType);
-        var elementJson = ResponseExamples.For(elementType);
+        var envelopeJson = JsonExamples.For(envelopeType);
+        var elementJson = JsonExamples.For(elementType);
         var spliced = SpliceResultsArray(envelopeJson, elementJson);
         AddResponseExampleSection(command, spliced);
     }
@@ -134,7 +142,7 @@ public static class HelpExtensions
         helpOption.Action = new CustomHelpAction(defaultAction, includeShapes: false);
         var fullHelp = new Option<bool>("--help-full")
         {
-            Description = "Show full help including response-shape blocks.",
+            Description = "Show full help including request/response-shape blocks.",
             Recursive = true,
             Action = new CustomHelpAction(defaultAction, includeShapes: true),
         };
@@ -167,7 +175,7 @@ public static class HelpExtensions
     {
         if (!CommandSections.TryGetValue(command, out var sections)) return;
         if (!sections.Any(s => s.IsShape)) return;
-        output.WriteLine("Run --help-full to see response shape(s).");
+        output.WriteLine("Run --help-full to see request/response shape(s).");
         output.WriteLine();
     }
 

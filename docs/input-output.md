@@ -39,8 +39,15 @@ abs-cli items batch-update --input updates.json
 cat corrections.json | abs-cli items batch-update --stdin
 ```
 
-Update JSON format matches what the ABS API expects — `PATCH /api/items/{id}/media`
-for single items, `PATCH /api/items/batch/update` for batch. No custom schema.
+Every command that reads a body documents that body's shape under `--help-full`,
+generated from the type the CLI parses it with — e.g. `abs-cli items update
+--help-full` prints the accepted `metadata` fields, and `abs-cli items batch-update
+--help-full` shows that its body is a bare array rather than an object.
+
+In a generated shape, `"<string>"` marks a field ABS requires and `"<string|null>"`
+one it does not. Bodies are forwarded to ABS verbatim: the CLI parses them to reject
+malformed JSON and to check what the endpoint itself requires, but never rewrites
+them, so a field the CLI does not model still reaches the server.
 
 ## Pipeline Support
 

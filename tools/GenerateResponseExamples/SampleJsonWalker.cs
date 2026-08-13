@@ -165,10 +165,20 @@ public static class SampleJsonWalker
                 continue;
             }
 
-            if (IsNullableString(prop))
-                writer.WriteNullValue();
-            else
-                WriteValue(writer, prop.PropertyType, visiting, overrides);
+            // Samples now serve two readers: an agent composing a request body
+            // (needs the type) and someone reading a response shape (needs to
+            // know the field can be absent). "<string|null>" carries both,
+            // unlike a bare `null` (old behaviour, type-blind) or `<string>`
+            // (current behaviour, optionality-blind). Scoped to leaf string
+            // placeholders — nullable collections/nested objects still recurse
+            // structurally below without the suffix (documented limitation:
+            // suffixing a multi-line object/array placeholder is awkward).
+            if (prop.PropertyType == typeof(string) && IsNullableReferenceProperty(prop))
+            {
+                writer.WriteStringValue("<string|null>");
+                continue;
+            }
+            WriteValue(writer, prop.PropertyType, visiting, overrides);
         }
         writer.WriteEndObject();
         visiting.Remove(type);
@@ -220,13 +230,15 @@ public static class SampleJsonWalker
     }
 
     /// <summary>
-    /// Returns true only for nullable <see cref="string"/> properties (string?).
-    /// Other nullable reference types (e.g. Node?) are rendered via WriteValue so
-    /// that recursive self-references produce the "&lt;recursive&gt;" sentinel.
+    /// True for any nullable reference-typed property (string?, Node?, List&lt;T&gt;?, …)
+    /// — value types (bool, int, Nullable&lt;T&gt;) are never reference-nullable, so
+    /// those are excluded up front. Detection is intentionally general; callers
+    /// decide whether the caller-site rendering can carry the "|null" suffix
+    /// (currently only plain string leaves do — see the call site above).
     /// </summary>
-    private static bool IsNullableString(PropertyInfo prop)
+    private static bool IsNullableReferenceProperty(PropertyInfo prop)
     {
-        if (prop.PropertyType != typeof(string)) return false;
+        if (prop.PropertyType.IsValueType) return false;
         var ctx = new NullabilityInfoContext();
         var info = ctx.Create(prop);
         return info.ReadState == NullabilityState.Nullable;

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using AbsCli.Models;
 using AbsCli.Tools.GenerateResponseExamples;
 
 namespace AbsCli.Tests.Commands;
@@ -23,11 +24,22 @@ public class SampleJsonWalkerTests
     {
         var json = Parse(SampleJsonWalker.Render(typeof(Primitives)));
         Assert.Equal("<string>", json.GetProperty("s").GetString());
-        Assert.Equal(JsonValueKind.Null, json.GetProperty("sn").ValueKind);
+        Assert.Equal("<string|null>", json.GetProperty("sn").GetString());
         Assert.Equal(0, json.GetProperty("i").GetInt32());
         Assert.Equal(0, json.GetProperty("l").GetInt64());
         Assert.Equal(0d, json.GetProperty("d").GetDouble());
         Assert.False(json.GetProperty("b").GetBoolean());
+    }
+
+    [Fact]
+    public void RealModel_NullableStringField_RendersWithNullSuffix()
+    {
+        // ServerStatus.ServerVersion is a single nullable string — a real-model
+        // regression check that the synthetic Primitives.Sn case above doesn't
+        // mask a wiring gap (e.g. an attribute lookup that only works on the
+        // test's own property).
+        var json = Parse(SampleJsonWalker.Render(typeof(ServerStatus)));
+        Assert.Equal("<string|null>", json.GetProperty("serverVersion").GetString());
     }
 
     [Fact]

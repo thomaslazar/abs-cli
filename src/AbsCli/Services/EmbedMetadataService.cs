@@ -32,22 +32,26 @@ public class EmbedMetadataService
     }
 
     /// <summary>
-    /// Start a batch embed-metadata task. Body is the typed request
-    /// (re-serialised through AppJsonContext for canonical shape).
-    /// Same options apply uniformly across every item in the batch.
+    /// Start a batch embed-metadata task. <paramref name="jsonBody"/> is the
+    /// original validated request bytes, sent as-is — the caller has already
+    /// parsed it to confirm libraryItemIds is non-empty and extracted
+    /// <paramref name="libraryItemIds"/> for the receipt/wait, but forwarding
+    /// the original bytes (not a re-serialisation) keeps any field this type
+    /// does not model intact. Same options apply uniformly across every item
+    /// in the batch.
     /// </summary>
     public async Task<BatchEmbedMetadataReceipt> StartBatchAsync(
-        BatchEmbedMetadataRequest request,
+        string jsonBody,
+        List<string> libraryItemIds,
         EmbedMetadataOptions options)
     {
         var endpoint = ApiEndpoints.ToolsBatchEmbedMetadata + BuildQuery(options);
-        var json = JsonSerializer.Serialize(request, AppJsonContext.Default.BatchEmbedMetadataRequest);
-        await _client.PostAsync(endpoint, json, permissionHint: "admin permission");
+        await _client.PostAsync(endpoint, jsonBody, permissionHint: "admin permission");
         return new BatchEmbedMetadataReceipt
         {
             Action = "embed-metadata",
             Started = true,
-            LibraryItemIds = request.LibraryItemIds,
+            LibraryItemIds = libraryItemIds,
             Options = options
         };
     }

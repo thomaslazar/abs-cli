@@ -90,7 +90,7 @@ public class HelpExtensionsTests
         cmd.AddResponseExample<AbsCli.Models.AuthorItem>();
         var output = RenderHelp(cmd);
         Assert.DoesNotContain("Response shape:", output);
-        Assert.Contains("Run --help-full to see response shape", output);
+        Assert.Contains("Run --help-full to see request/response shape", output);
     }
 
     [Fact]
@@ -110,5 +110,34 @@ public class HelpExtensionsTests
         cmd.AddHelpSection("Examples", "abs-cli demo");
         var output = RenderHelp(cmd);
         Assert.DoesNotContain("Run --help-full", output);
+    }
+
+    [Fact]
+    public void RequestShape_AppearsUnderHelpFull()
+    {
+        var command = new Command("demo", "Demo");
+        command.AddRequestExample<AbsCli.Models.ChaptersSetRequest>();
+        var output = RenderHelpFull(command);
+        Assert.Contains("Request shape", output);
+        Assert.Contains("chapters", output);
+    }
+
+    [Fact]
+    public void RequestShape_HiddenFromPlainHelp()
+    {
+        var command = new Command("demo", "Demo");
+        command.AddRequestExample<AbsCli.Models.ChaptersSetRequest>();
+        var output = RenderHelp(command);
+        Assert.DoesNotContain("Request shape", output);
+    }
+
+    [Fact]
+    public void PlainHelp_HintMentionsRequestShapes()
+    {
+        var command = new Command("demo", "Demo");
+        command.AddRequestExample<AbsCli.Models.ChaptersSetRequest>();
+        var output = RenderHelp(command);
+        Assert.Contains("--help-full", output);
+        Assert.Contains("request", output, StringComparison.OrdinalIgnoreCase);
     }
 }

@@ -1,4 +1,5 @@
 using System.CommandLine;
+using System.Text.Json;
 using AbsCli.Commands;
 using Xunit;
 
@@ -79,5 +80,31 @@ public class ItemsChaptersCommandTests
         Assert.Contains("DB + sidecar", output);
         Assert.Contains("embed-metadata", output);
         Assert.Contains("500", output);
+    }
+
+    [Fact]
+    public void ChaptersSet_ForwardsOriginalBytes_NotCanonicalised()
+    {
+        // A body missing "end" must reach ABS unchanged so ABS can 400 it,
+        // rather than being silently filled with end: 0.
+        const string body = "{\"chapters\":[{\"title\":\"One\",\"start\":0}]}";
+        var forwarded = ItemsCommand.PrepareChaptersBody(body);
+        Assert.Equal(body, forwarded);
+        Assert.DoesNotContain("\"end\"", forwarded);
+    }
+
+    [Fact]
+    public void ChaptersSet_ValidFullBody_ReturnedUnchanged()
+    {
+        const string body = "{\"chapters\":[{\"title\":\"One\",\"start\":0,\"end\":10.5}]}";
+        var forwarded = ItemsCommand.PrepareChaptersBody(body);
+        Assert.Equal(body, forwarded);
+    }
+
+    [Fact]
+    public void ChaptersSet_MalformedJson_ThrowsJsonException()
+    {
+        const string body = "{\"chapters\":[{";
+        Assert.Throws<JsonException>(() => ItemsCommand.PrepareChaptersBody(body));
     }
 }

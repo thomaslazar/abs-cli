@@ -1,4 +1,5 @@
 using System.CommandLine;
+using System.Text.Json;
 using AbsCli.Commands;
 using Xunit;
 
@@ -109,5 +110,142 @@ public class ItemsCommandTests
         var output = RenderHelp("items", "file", "ffprobe").Replace("\r\n", "\n");
         Assert.Contains("Permission required:\n  admin", output);
         Assert.Contains("audio", output.ToLowerInvariant());
+    }
+
+    [Fact]
+    public void MediaUpdateBody_EmptyObject_IsAccepted()
+    {
+        // ABS accepts {} — we must not invent a requirement.
+        Assert.Equal("{}", ItemsCommand.PrepareMediaUpdateBody("{}"));
+    }
+
+    [Fact]
+    public void MediaUpdateBody_UnknownField_IsForwardedUnchanged()
+    {
+        const string body = "{\"metadata\":{\"title\":\"T\"},\"somethingNew\":1}";
+        Assert.Equal(body, ItemsCommand.PrepareMediaUpdateBody(body));
+    }
+
+    [Fact]
+    public void MediaUpdateBody_Malformed_Throws()
+    {
+        Assert.ThrowsAny<JsonException>(() => ItemsCommand.PrepareMediaUpdateBody("{not json"));
+    }
+
+    [Fact]
+    public void BatchUpdateBody_Valid_IsForwardedUnchanged()
+    {
+        const string body = "[{\"id\":\"li_a\",\"tags\":[\"x\"]}]";
+        Assert.Equal(body, ItemsCommand.PrepareBatchUpdateBody(body));
+    }
+
+    [Fact]
+    public void BatchUpdateBody_EmptyArray_Rejected()
+    {
+        Assert.Throws<ArgumentException>(() => ItemsCommand.PrepareBatchUpdateBody("[]"));
+    }
+
+    [Fact]
+    public void BatchUpdateBody_DuplicateIds_Rejected()
+    {
+        Assert.Throws<ArgumentException>(
+            () => ItemsCommand.PrepareBatchUpdateBody("[{\"id\":\"li_a\"},{\"id\":\"li_a\"}]"));
+    }
+
+    [Fact]
+    public void BatchUpdateBody_MissingId_Rejected()
+    {
+        Assert.Throws<ArgumentException>(() => ItemsCommand.PrepareBatchUpdateBody("[{\"tags\":[\"x\"]}]"));
+    }
+
+    [Fact]
+    public void BatchUpdateBody_Malformed_Throws()
+    {
+        Assert.ThrowsAny<JsonException>(() => ItemsCommand.PrepareBatchUpdateBody("[{"));
+    }
+
+    [Fact]
+    public void LibraryItemIdsBody_Valid_IsForwardedUnchanged()
+    {
+        const string body = "{\"libraryItemIds\":[\"li_a\",\"li_b\"]}";
+        Assert.Equal(body, ItemsCommand.PrepareLibraryItemIdsBody(body));
+    }
+
+    [Fact]
+    public void LibraryItemIdsBody_EmptyArray_Rejected()
+    {
+        Assert.Throws<ArgumentException>(
+            () => ItemsCommand.PrepareLibraryItemIdsBody("{\"libraryItemIds\":[]}"));
+    }
+
+    [Fact]
+    public void LibraryItemIdsBody_MissingField_Rejected()
+    {
+        Assert.Throws<ArgumentException>(() => ItemsCommand.PrepareLibraryItemIdsBody("{}"));
+    }
+
+    [Fact]
+    public void LibraryItemIdsBody_Malformed_Throws()
+    {
+        Assert.ThrowsAny<JsonException>(() => ItemsCommand.PrepareLibraryItemIdsBody("{\"libraryItemIds\":["));
+    }
+
+    [Fact]
+    public void BatchUpdateProgressBody_Valid_IsForwardedUnchanged()
+    {
+        const string body = "[{\"libraryItemId\":\"li_a\",\"isFinished\":true}]";
+        Assert.Equal(body, ItemsCommand.PrepareBatchUpdateProgressBody(body));
+    }
+
+    [Fact]
+    public void BatchUpdateProgressBody_EmptyArray_Rejected()
+    {
+        Assert.Throws<ArgumentException>(() => ItemsCommand.PrepareBatchUpdateProgressBody("[]"));
+    }
+
+    [Fact]
+    public void BatchUpdateProgressBody_Malformed_Throws()
+    {
+        Assert.ThrowsAny<JsonException>(() => ItemsCommand.PrepareBatchUpdateProgressBody("[{"));
+    }
+
+    [Fact]
+    public void BatchUpdate_HelpFull_ShowsRequestShape()
+    {
+        var output = RenderHelp("items", "batch-update");
+        Assert.Contains("Request shape:", output);
+        Assert.Contains("\"id\"", output);
+    }
+
+    [Fact]
+    public void BatchGet_HelpFull_ShowsRequestShape()
+    {
+        var output = RenderHelp("items", "batch-get");
+        Assert.Contains("Request shape:", output);
+        Assert.Contains("\"libraryItemIds\"", output);
+    }
+
+    [Fact]
+    public void BatchDelete_HelpFull_ShowsRequestShape()
+    {
+        var output = RenderHelp("items", "batch-delete");
+        Assert.Contains("Request shape:", output);
+        Assert.Contains("\"libraryItemIds\"", output);
+    }
+
+    [Fact]
+    public void BatchUpdateProgress_HelpFull_ShowsRequestShape()
+    {
+        var output = RenderHelp("items", "batch-update-progress");
+        Assert.Contains("Request shape:", output);
+        Assert.Contains("\"currentTime\"", output);
+    }
+
+    [Fact]
+    public void BatchEmbedMetadata_HelpFull_ShowsRequestShape()
+    {
+        var output = RenderHelp("items", "batch-embed-metadata");
+        Assert.Contains("Request shape:", output);
+        Assert.Contains("\"libraryItemIds\"", output);
     }
 }

@@ -43,9 +43,10 @@ public class ChaptersService
     }
 
     /// <summary>
-    /// Write chapters onto a library item. The caller passes a JSON
-    /// body that has already been deserialised + re-serialised through
-    /// ChaptersSetRequest (the CLI's shape gate). ABS validates the
+    /// Write chapters onto a library item. The caller passes the
+    /// original JSON body verbatim — it is only parsed as
+    /// ChaptersSetRequest to validate shape, never re-serialised, so
+    /// ABS receives exactly what the caller sent. ABS validates the
     /// body itself (LibraryItemController.js:861) and returns 500
     /// (not 400/404) for missing/non-book/no-audio items
     /// (LibraryItemController.js:856-858) — that quirk is documented

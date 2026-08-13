@@ -18,6 +18,18 @@ public class PlaylistsCommandTests
         return output.ToString();
     }
 
+    private static string RenderFullHelp(params string[] path)
+    {
+        var root = new RootCommand();
+        root.Subcommands.Add(PlaylistsCommand.Create());
+        root.UseCustomHelpSections();
+        var output = new StringWriter();
+        var config = new InvocationConfiguration { Output = output };
+        var args = path.Concat(new[] { "--help-full" }).ToArray();
+        root.Parse(args).Invoke(config);
+        return output.ToString();
+    }
+
     [Fact]
     public void Playlists_HasAllElevenSubcommands()
     {
@@ -76,5 +88,25 @@ public class PlaylistsCommandTests
             var help = RenderHelp("playlists", sub.Name);
             Assert.DoesNotContain("Permission required", help);
         }
+    }
+
+    [Theory]
+    [InlineData("reorder")]
+    [InlineData("batch-add")]
+    [InlineData("batch-remove")]
+    public void BooksToItems_Help_DocumentsAsymmetryAndRequestShape(string verb)
+    {
+        var output = RenderFullHelp("playlists", verb);
+        Assert.Contains("sends ABS's `items` shape", output);
+        var requestIdx = output.IndexOf("Request shape:", StringComparison.Ordinal);
+        Assert.True(requestIdx >= 0, "missing Request shape section");
+        var afterRequest = output[requestIdx..];
+        var responseIdx = afterRequest.IndexOf("Response shape:", StringComparison.Ordinal);
+        var requestSection = responseIdx >= 0 ? afterRequest[..responseIdx] : afterRequest;
+        // The CLI's documented input contract is `books`, not ABS's wire `items` —
+        // this is the exact asymmetry the help note calls out, so the Request
+        // shape block must show `books` and never `items`.
+        Assert.Contains("\"books\"", requestSection);
+        Assert.DoesNotContain("\"items\"", requestSection);
     }
 }

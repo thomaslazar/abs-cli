@@ -8,8 +8,8 @@ public class ResponseExamplesJsonValidTest
     [Fact]
     public void EveryRegisteredSample_ParsesAsJson()
     {
-        Assert.NotEmpty(ResponseExamples.All);
-        foreach (var (type, json) in ResponseExamples.All)
+        Assert.NotEmpty(JsonExamples.All);
+        foreach (var (type, json) in JsonExamples.All)
         {
             try
             {
