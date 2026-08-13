@@ -97,7 +97,8 @@ public class ChapterWriteEntry
 /// Full request body for POST /api/items/:id/chapters. Also serves
 /// as the input shape: --input / --stdin payloads deserialize into
 /// this type, and a deserialization failure is the CLI's only
-/// pre-HTTP validation.
+/// pre-HTTP validation. This type is also the source of the
+/// documented request shape shown under --help-full.
 /// </summary>
 public class ChaptersSetRequest
 {

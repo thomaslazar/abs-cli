@@ -27,6 +27,19 @@ public static class ItemsCommand
         return "Provide --input <file> or --stdin";
     }
 
+    /// <summary>
+    /// Validates a chapters body and returns it unchanged. Parsing is the gate;
+    /// the original bytes are what gets sent, so a field the type does not model
+    /// is passed through and a missing one is ABS's 400 to give rather than
+    /// something we silently default (End is a non-nullable double, so
+    /// re-serialising a body without "end" would fill in 0).
+    /// </summary>
+    internal static string PrepareChaptersBody(string jsonBody)
+    {
+        JsonSerializer.Deserialize(jsonBody, AppJsonContext.Default.ChaptersSetRequest);
+        return jsonBody;
+    }
+
     public static Command Create()
     {
         var command = new Command("items", "Manage library items");
@@ -653,6 +666,7 @@ public static class ItemsCommand
             "Writes ABS DB + sidecar only — use 'items embed-metadata' to bake into the file.",
             "ABS returns 500 (not 400/404) when item is missing, not a book, or has no audio tracks.",
             "No semantic validation: end>start and non-overlap are not checked.");
+        command.AddRequestExample<ChaptersSetRequest>();
         command.AddResponseExample<ChaptersSetResponse>();
         command.SetAction(async (parseResult, cancellationToken) =>
         {
@@ -682,10 +696,10 @@ public static class ItemsCommand
                 return 1;
             }
 
-            ChaptersSetRequest parsed;
+            string validated;
             try
             {
-                parsed = JsonSerializer.Deserialize(jsonBody, AppJsonContext.Default.ChaptersSetRequest)!;
+                validated = PrepareChaptersBody(jsonBody);
             }
             catch (JsonException ex)
             {
@@ -693,11 +707,10 @@ public static class ItemsCommand
                 Environment.Exit(1);
                 return 1;
             }
-            var canonical = JsonSerializer.Serialize(parsed, AppJsonContext.Default.ChaptersSetRequest);
 
             var (client, _) = CommandHelper.BuildClient();
             var service = new ChaptersService(client);
-            var result = await service.SetAsync(id, canonical);
+            var result = await service.SetAsync(id, validated);
             ConsoleOutput.WriteJson(result, AppJsonContext.Default.ChaptersSetResponse);
             return 0;
         });
