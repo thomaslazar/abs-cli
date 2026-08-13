@@ -182,10 +182,13 @@ public static class PlaylistsCommand
             "rejected with 400 (an empty list is a no-op).",
             "",
             "Example for a 3-item playlist: `{\"books\":[\"li_c\",\"li_a\",\"li_b\"]}`",
-            "moves li_c to position 1.");
+            "moves li_c to position 1.",
+            "",
+            "Takes book ids as `books`; sends ABS's `items` shape on the wire.");
         command.AddExamples(
             "abs-cli playlists reorder --id \"pl_abc\" --input order.json",
             "echo '{\"books\":[\"li_c\",\"li_a\",\"li_b\"]}' | abs-cli playlists reorder --id \"pl_abc\" --stdin");
+        command.AddRequestExample<BooksRequest>();
         command.AddResponseExample<Playlist>();
         command.SetAction(async (parseResult, cancellationToken) =>
         {
@@ -277,10 +280,13 @@ public static class PlaylistsCommand
         { idOption, inputOption, stdinOption };
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
             "Silently skips books already in the playlist. Books must be in",
-            "the same library as the playlist.");
+            "the same library as the playlist.",
+            "",
+            "Takes book ids as `books`; sends ABS's `items` shape on the wire.");
         command.AddExamples(
             "abs-cli playlists batch-add --id \"pl_abc\" --input books.json",
             "echo '{\"books\":[\"li_a\",\"li_b\"]}' | abs-cli playlists batch-add --id \"pl_abc\" --stdin");
+        command.AddRequestExample<BooksRequest>();
         command.AddResponseExample<Playlist>();
         command.SetAction(async (parseResult, cancellationToken) =>
         {
@@ -305,10 +311,13 @@ public static class PlaylistsCommand
         { idOption, inputOption, stdinOption };
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
             "Tolerates books not in the playlist (no-op for those). Removing",
-            "the playlist's last item deletes the playlist.");
+            "the playlist's last item deletes the playlist.",
+            "",
+            "Takes book ids as `books`; sends ABS's `items` shape on the wire.");
         command.AddExamples(
             "abs-cli playlists batch-remove --id \"pl_abc\" --input books.json",
             "echo '{\"books\":[\"li_a\",\"li_b\"]}' | abs-cli playlists batch-remove --id \"pl_abc\" --stdin");
+        command.AddRequestExample<BooksRequest>();
         command.AddResponseExample<Playlist>();
         command.SetAction(async (parseResult, cancellationToken) =>
         {
@@ -379,7 +388,7 @@ public static class PlaylistsCommand
     {
         try
         {
-            var parsed = JsonSerializer.Deserialize(booksJson, AppJsonContext.Default.CollectionBooksRequest);
+            var parsed = JsonSerializer.Deserialize(booksJson, AppJsonContext.Default.BooksRequest);
             books = parsed?.Books ?? new List<string>();
             return true;
         }

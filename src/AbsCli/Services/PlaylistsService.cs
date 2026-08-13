@@ -104,7 +104,13 @@ public class PlaylistsService
             AppJsonContext.Default.Playlist);
     }
 
-    private static string SerializeItems(List<string> books)
+    /// <summary>
+    /// Maps the CLI's book-id list to ABS's items:[{libraryItemId}] wire
+    /// body. Internal (not private) so PlaylistsService_BooksContract tests
+    /// can pin the CLI input contract (books) to the actual wire shape
+    /// (items) and catch drift between them.
+    /// </summary>
+    internal static string SerializeItems(List<string> books)
     {
         var body = new PlaylistItemsRequest
         {

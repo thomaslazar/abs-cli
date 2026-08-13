@@ -1,5 +1,6 @@
 using System.Text.Json;
 using AbsCli.Models;
+using AbsCli.Services;
 using Xunit;
 
 namespace AbsCli.Tests.Services;
@@ -91,5 +92,14 @@ public class PlaylistsServiceTests
         var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.PlaylistItemRef);
         var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.PlaylistItemRef)!;
         Assert.Equal("li_z", back.LibraryItemId);
+    }
+
+    [Fact]
+    public void Playlists_BooksContract_ProducesItemsWireBody()
+    {
+        var wire = PlaylistsService.SerializeItems(new List<string> { "li_a", "li_b" });
+        Assert.Contains("\"items\"", wire);
+        Assert.Contains("\"libraryItemId\":\"li_a\"", wire.Replace(" ", ""));
+        Assert.DoesNotContain("\"books\"", wire);
     }
 }
