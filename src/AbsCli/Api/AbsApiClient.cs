@@ -295,7 +295,7 @@ public class AbsApiClient
         }
     }
 
-    private async Task RefreshTokenAsync()
+    internal async Task RefreshTokenAsync()
     {
         if (_config.RefreshToken == null)
         {
@@ -319,7 +319,10 @@ public class AbsApiClient
 
         _config.AccessToken = loginResponse.User.AccessToken;
         _config.RefreshToken = loginResponse.User.RefreshToken;
-        _configManager.Save(_config);
+        // Patch the file rather than Save(_config): _config is resolved, so a
+        // whole-object save would leak ABS_TOKEN/ABS_SERVER/ABS_LIBRARY from the
+        // environment into a config the operator deliberately kept them out of.
+        _configManager.UpdateTokens(_config.AccessToken, _config.RefreshToken);
 
         _http.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", _config.AccessToken);
