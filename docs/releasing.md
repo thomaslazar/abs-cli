@@ -111,6 +111,37 @@ Agent cleans up (`temp/release-notes.md`, any other scratch files) and reports s
 | 5. Create release | Release URL confirmation | Point of no return for the tag |
 | 7. Verify | Final visual check | Human confirms the public-facing page |
 
+## Repository protection
+
+Enforced server-side by repository rulesets, not classic branch protection:
+
+| Ref | Rules |
+|-----|-------|
+| default branch (`main`) | `deletion`, `non_fast_forward` |
+| `refs/tags/v*` | `deletion`, `non_fast_forward` |
+
+Release tags are immutable once pushed — that is what makes step 5 a point of
+no return. No required status checks and no required pull request: the
+status-check rule applies to direct pushes as well as merges, and a freshly
+pushed commit has no passing checks yet, so requiring them would silently
+forbid doc-only commits straight to `main`.
+
+`bypass_actors` is empty by design. Editing the ruleset is the escape hatch,
+and that leaves a trace.
+
+Verify what is actually enforced:
+
+```bash
+gh api repos/thomaslazar/abs-cli/rules/branches/main --jq '[.[].type]'
+# ["deletion","non_fast_forward"]
+```
+
+Use that endpoint, not the ruleset list or the web UI — both report a ruleset
+as "active" even when its `conditions.ref_name.include` is empty and it
+therefore matches no refs at all. `main protection` sat in exactly that state,
+inert, from 2026-04-14 to 2026-08-13. GitHub exposes no equivalent endpoint for
+tags; the tag ruleset can only be checked by reading the ruleset object.
+
 ## Implementation
 
 Implemented as `.claude/skills/release/SKILL.md` — a project-local skill
