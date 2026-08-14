@@ -3,6 +3,61 @@
 All notable changes to abs-cli are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## v1.1.0 — 2026-08-14
+
+Minor release. Every command that takes a JSON body now documents that body's
+shape under `--help-full`, and the tested Audiobookshelf range narrows to
+`2.34.0 — 2.36.0`.
+
+### Highlights
+
+- **Request shapes for all 16 JSON-input commands.** `items update`,
+  `items batch-update`, the batch verbs, `chapters set`, the `collections` and
+  `playlists` bodies and `libraries reorder` each print their accepted body under
+  `--help-full`, generated from the type the CLI parses it with rather than
+  described in prose. Previously the only hint was the option's own description,
+  which was inconsistent, sometimes empty, and in one case wrong — `batch-update`
+  claimed `{libraryItemIds: […]}` for a body that is a bare array.
+- **The samples say what is required.** A field ABS requires renders `"<string>"`,
+  one it does not renders `"<string|null>"`, so an agent can tell mandatory from
+  optional without consulting the server source.
+- **Bodies are still forwarded verbatim.** Parsing is a validation gate only — it
+  rejects malformed JSON and checks what the endpoint itself requires, then sends
+  the original bytes, so a field the CLI does not model still reaches ABS.
+- **Minimum supported ABS version is now 2.34.0.** Below that,
+  `LibraryItemController.batchUpdate` has no permission check, so a read-only user
+  can batch-update items — the `update` permission this CLI documents for that verb
+  is not enforced. Verified by running the full smoke suite against both versions:
+  2.33.1 gives 336/338, 2.34.0 gives 338/338.
+- **Three bugs fixed on the way.** `chapters set` no longer turns a body missing
+  `end` into a zero-length chapter (it re-serialised through a non-nullable
+  `double`, silently sending `"end": 0` where ABS should have returned 400);
+  `batch-embed-metadata` no longer re-serialises its body either; and
+  `collections create --name ""` is now rejected client-side, as ABS rejects it
+  after tag-stripping.
+
+### Changes
+
+- chore: bump version to 1.1.0
+- docs: add request-shapes-in-help spec and plan
+- docs: collapse per-option body prose now that shapes are documented
+- docs: record the enforced branch and tag rulesets
+- docs: require request-shape review on ABS version bumps
+- feat: add request-shape help sections behind --help-full
+- feat: document the collections request shapes
+- feat: document the items batch request shapes
+- feat: document the items update request shape
+- feat: document the libraries reorder request shape
+- feat: document the playlists request contract
+- feat: document the series shape on items update
+- fix: document the two request shapes PR #81 missed
+- fix: forward the original chapters body instead of a canonicalisation
+- fix: mark nullable string samples with a |null suffix
+- fix: raise the minimum supported ABS version to 2.34.0
+- fix: render required request fields as non-nullable in shapes
+- refactor: render nullable fields as typed placeholders in json samples
+- test: loosen batch-embed-metadata error assertions to the meaningful part
+
 ## v1.0.4 — 2026-08-13
 
 Patch release. The server version check now runs once a day instead of only at
