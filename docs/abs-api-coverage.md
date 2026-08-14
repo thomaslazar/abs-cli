@@ -5,7 +5,7 @@ any) that implements it.
 
 - **Reference:** ABS server source at `temp/audiobookshelf/server/routers/`
   (routes) and `server/controllers/` (handlers). Tested range:
-  `2.33.1 – 2.36.0` (`AbsApiClient.cs`).
+  `2.34.0 – 2.36.0` (`AbsApiClient.cs`).
 - **Permission** column uses ABS's tokens (`admin` / `update` / `upload` /
   `download` / `delete`); blank = any authenticated user. `?` = not visible at
   the router layer.

@@ -329,7 +329,12 @@ public class AbsApiClient
         _logger.Debug("token refresh succeeded");
     }
 
-    private static readonly string MinSupportedVersion = "2.33.1";
+    // Raised from 2.33.1 after verifying the band empirically: on 2.33.1
+    // LibraryItemController.batchUpdate has no canUpdate check, so a read-only
+    // user can batch-update items. ABS added the check in 2.34.0, so below that
+    // the 'update' permission this CLI documents for `items batch-update` is not
+    // actually enforced. Everything else passed at 2.33.1 (336/338).
+    private static readonly string MinSupportedVersion = "2.34.0";
     private static readonly string MaxTestedVersion = "2.36.0";
 
     internal static readonly TimeSpan VersionCheckInterval = TimeSpan.FromHours(24);
