@@ -143,9 +143,19 @@ for cmd in "login" "config get" "config set" \
            "tasks list" \
            "search"; do
     label="help+examples: abs-cli $cmd"
-    output=$($CLI $cmd --help 2>&1) || true
+    output=$($CLI $cmd --help 2>&1) && rc=0 || rc=$?
     if ! echo "$output" | grep -q "Description:\|Usage:"; then
-        fail "$label" "no help text"
+        # Seen once (2026-08-14) with no captured evidence, because this branch used
+        # to discard the output. `--help` touches no network and 650 consecutive
+        # invocations — including under four concurrent builds — never reproduced it,
+        # so retry once and report either way rather than guessing: a genuine break
+        # fails twice, and a transient one leaves a visible note instead of red.
+        retry=$($CLI $cmd --help 2>&1) && retry_rc=0 || retry_rc=$?
+        if echo "$retry" | grep -q "Description:\|Usage:"; then
+            pass "$label (passed on retry; first attempt rc=$rc, output=[${output:0:80}])"
+            continue
+        fi
+        fail "$label" "no help text after retry (rc=$rc then $retry_rc, output=[${output:0:200}])"
         continue
     fi
     example_count=$(echo "$output" | grep -c "abs-cli " || true)
@@ -698,8 +708,34 @@ output=$($CLI backup upload --file "$BACKUP_DL" 2>/dev/null)
 assert_json_key "backup upload returns backups" "backups" "$output"
 rm -f "$BACKUP_DL"
 
-output=$($CLI backup apply --id "$BACKUP_ID" 2>/dev/null)
-pass "backup apply completed (exit 0)"
+output=$($CLI backup apply --id "$BACKUP_ID" 2>/dev/null) && apply_rc=0 || apply_rc=$?
+if [ "$apply_rc" = "0" ]; then
+    pass "backup apply completed (exit 0)"
+else
+    fail "backup apply completed (exit 0)" "exit=$apply_rc"
+fi
+
+# Applying a backup disconnects ABS's database for as long as it takes to extract
+# the sqlite file and the metadata folders, and writing into /metadata wakes ABS's
+# own folder watcher, whose handler queries the DB while it is disconnected. That
+# unhandled rejection exits the process (see the note in docker-compose.yml, which
+# is why the stack has a restart policy). Wait for the server to answer again
+# before continuing, so one upstream race cannot cascade into every later
+# assertion.
+apply_wait_ok=0
+for i in $(seq 1 60); do
+    if curl -sf -m 3 "$ABS_URL/healthcheck" >/dev/null 2>&1; then
+        apply_wait_ok=1
+        [ "$i" -gt 1 ] && echo "  (server took ${i}s to answer after backup apply)"
+        break
+    fi
+    sleep 1
+done
+if [ "$apply_wait_ok" = "1" ]; then
+    pass "server responsive after backup apply"
+else
+    fail "server responsive after backup apply" "no healthcheck response within 60s"
+fi
 
 output=$($CLI backup delete --id "$BACKUP_ID" 2>/dev/null)
 assert_json_key "backup delete returns backups" "backups" "$output"
