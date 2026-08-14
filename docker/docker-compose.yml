@@ -6,6 +6,15 @@ services:
     volumes:
       - abs-config:/config
       - abs-metadata:/metadata
+    # ABS can kill itself during `backup apply`: BackupManager.requestApplyBackup
+    # disconnects the database, then spends seconds extracting the sqlite file and
+    # the metadata-items/ + metadata-authors/ folders before reconnecting. Writing
+    # into /metadata wakes ABS's own folder watcher, whose handler queries the DB
+    # (library.findByPk) while it is disconnected — "ConnectionManager.getConnection
+    # was called after the connection manager was closed" — and the unhandled
+    # rejection exits the process. Without a restart policy that one upstream race
+    # takes the whole smoke suite down with it.
+    restart: unless-stopped
     environment:
       - PORT=80
       # The smoke test authenticates via `abs-cli login` at every section
