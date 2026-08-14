@@ -66,6 +66,24 @@ public class ItemMediaUpdateMetadata
 
     [JsonPropertyName("series")]
     public List<SeriesUpdateEntry>? Series { get; set; }
+
+    [JsonPropertyName("authors")]
+    public List<AuthorUpdateEntry>? Authors { get; set; }
+}
+
+/// <summary>
+/// Author entry for ItemMediaUpdateMetadata.authors. Like series, handled by the
+/// controller separately from the rest of metadata
+/// (LibraryItemController.js:251-252 → Book.updateAuthorsFromRequest), which is
+/// why it takes objects where the sibling metadata arrays take plain strings.
+/// Only `name` is read — it is trimmed, and an author that does not exist yet is
+/// created. Any `id` on the entry is ignored, which is why one is not documented
+/// here: authors are matched by name, not id.
+/// </summary>
+public class AuthorUpdateEntry
+{
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = "";
 }
 
 /// <summary>
