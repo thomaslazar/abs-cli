@@ -90,6 +90,7 @@ namespace AbsCli.Models;
 [JsonSerializable(typeof(ItemMediaUpdateRequest))]
 [JsonSerializable(typeof(ItemMediaUpdateMetadata))]
 [JsonSerializable(typeof(SeriesUpdateEntry))]
+[JsonSerializable(typeof(AuthorUpdateEntry))]
 [JsonSerializable(typeof(LibraryItemIdsRequest))]
 [JsonSerializable(typeof(ItemsBatchUpdateEntry))]
 [JsonSerializable(typeof(List<ItemsBatchUpdateEntry>))]

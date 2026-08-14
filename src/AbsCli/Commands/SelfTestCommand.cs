@@ -706,7 +706,8 @@ public static class SelfTestCommand
                     {
                         Title = "T",
                         Genres = new List<string> { "G" },
-                        Series = new List<SeriesUpdateEntry> { new() { Name = "S", Sequence = "1" } }
+                        Series = new List<SeriesUpdateEntry> { new() { Name = "S", Sequence = "1" } },
+                        Authors = new List<AuthorUpdateEntry> { new() { Name = "A" } }
                     },
                     Tags = new List<string> { "tag" }
                 };
@@ -717,6 +718,8 @@ public static class SelfTestCommand
                 Assert(back.Metadata!.Series!.Count == 1, "series count mismatch");
                 Assert(back.Metadata!.Series![0].Name == "S", "series name mismatch");
                 Assert(back.Metadata!.Series![0].Sequence == "1", "series sequence mismatch");
+                Assert(back.Metadata!.Authors!.Count == 1, "authors count mismatch");
+                Assert(back.Metadata!.Authors![0].Name == "A", "author name mismatch");
             });
 
             Console.Error.WriteLine();

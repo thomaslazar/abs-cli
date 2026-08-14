@@ -88,10 +88,11 @@ public static class PlaylistsCommand
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
             "Books are optional — omit --input/--stdin to create an",
             "empty playlist. --library falls back to the configured",
-            "defaultLibrary. Input shape: `{\"books\":[\"lid\",...]}`.");
+            "defaultLibrary. Book ids are sent as ABS's item shape.");
         command.AddExamples(
             "abs-cli playlists create --library \"lib_1\" --name \"Roadtrip\"",
             "abs-cli playlists create --library \"lib_1\" --name \"Roadtrip\" --input books.json");
+        command.AddRequestExample<BooksRequest>();
         command.AddResponseExample<Playlist>();
         command.SetAction(async (parseResult, cancellationToken) =>
         {
