@@ -13,7 +13,8 @@ services:
     # (library.findByPk) while it is disconnected — "ConnectionManager.getConnection
     # was called after the connection manager was closed" — and the unhandled
     # rejection exits the process. Without a restart policy that one upstream race
-    # takes the whole smoke suite down with it.
+    # takes the whole smoke suite down with it. Full write-up, and what an upstream
+    # report should say, in docs/abs-upstream-bugs.md.
     restart: unless-stopped
     environment:
       - PORT=80

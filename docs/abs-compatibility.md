@@ -39,6 +39,11 @@ Warnings only — the CLI does not refuse to run. The user decides whether to pr
 A failed probe is silent and does not update the timestamp, so the next invocation
 retries; a diagnostic must never be the thing that fails the command.
 
+Bugs found in ABS itself while testing against it are recorded in
+[abs-upstream-bugs.md](abs-upstream-bugs.md), along with any workaround this repo
+carries for them. Check it when bumping a version — a fix upstream may let a
+workaround be dropped.
+
 ## Handling ABS Updates
 
 When a new ABS version is released:
