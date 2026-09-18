@@ -23,11 +23,13 @@ public class UploadServiceContentTests
                 "lib-1", "fold-1", "Big Book", "Someone", null,
                 new[] { (LocalPath: path, UploadName: "big.m4b") });
 
-            await content.CopyToAsync(Stream.Null);
+            var counter = new CountingStream();
+            await content.CopyToAsync(counter);
 
             Assert.NotNull(content.Headers.ContentLength);
             Assert.True(content.Headers.ContentLength > OverTwoGigabytes,
                 $"expected a body larger than the file, got {content.Headers.ContentLength}");
+            Assert.Equal(content.Headers.ContentLength, counter.BytesWritten);
         }
         finally
         {
@@ -55,11 +57,48 @@ public class UploadServiceContentTests
             // library/folder/title always; no author or series part when null; one
             // part per file, named by index.
             Assert.Equal(new[] { "library", "folder", "title", "0", "1" }, names);
+            // File parts must carry no Content-Type: that is what keeps the wire
+            // format identical to the old ByteArrayContent parts.
+            Assert.All(content.Skip(3), p => Assert.Null(p.Headers.ContentType));
+            Assert.Equal(new[] { "01.mp3", "02.mp3" },
+                content.Skip(3).Select(p => p.Headers.ContentDisposition!.FileName!.Trim('"')));
         }
         finally
         {
             File.Delete(a);
             File.Delete(b);
+        }
+    }
+
+    private sealed class CountingStream : Stream
+    {
+        public long BytesWritten { get; private set; }
+        public override bool CanRead => false;
+        public override bool CanSeek => false;
+        public override bool CanWrite => true;
+        public override long Length => throw new NotSupportedException();
+        public override long Position
+        {
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
+        }
+        public override void Flush() { }
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => BytesWritten += count;
+        public override void Write(ReadOnlySpan<byte> buffer) => BytesWritten += buffer.Length;
+
+        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            BytesWritten += count;
+            return Task.CompletedTask;
+        }
+
+        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            BytesWritten += buffer.Length;
+            return ValueTask.CompletedTask;
         }
     }
 }

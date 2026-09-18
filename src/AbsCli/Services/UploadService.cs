@@ -57,21 +57,29 @@ public class UploadService
         IReadOnlyList<(string LocalPath, string UploadName)> files)
     {
         var content = new MultipartFormDataContent();
-        content.Add(new StringContent(libraryId), "library");
-        content.Add(new StringContent(folderId), "folder");
-        content.Add(new StringContent(uploadTitle), "title");
-        if (author != null)
-            content.Add(new StringContent(author), "author");
-        if (series != null)
-            content.Add(new StringContent(series), "series");
-        for (int i = 0; i < files.Count; i++)
+        try
         {
-            // No explicit Content-Type: ByteArrayContent sent none either, and the
-            // wire format must not change.
-            var fileContent = new StreamContent(File.OpenRead(files[i].LocalPath));
-            content.Add(fileContent, i.ToString(), files[i].UploadName);
+            content.Add(new StringContent(libraryId), "library");
+            content.Add(new StringContent(folderId), "folder");
+            content.Add(new StringContent(uploadTitle), "title");
+            if (author != null)
+                content.Add(new StringContent(author), "author");
+            if (series != null)
+                content.Add(new StringContent(series), "series");
+            for (int i = 0; i < files.Count; i++)
+            {
+                // No explicit Content-Type: ByteArrayContent sent none either, and the
+                // wire format must not change.
+                var fileContent = new StreamContent(File.OpenRead(files[i].LocalPath));
+                content.Add(fileContent, i.ToString(), files[i].UploadName);
+            }
+            return content;
         }
-        return content;
+        catch
+        {
+            content.Dispose();
+            throw;
+        }
     }
 
     public async Task<string> ResolveFolderIdAsync(string libraryId)
