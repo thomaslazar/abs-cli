@@ -30,10 +30,10 @@ public class CoversService
     /// </summary>
     public async Task<CoverApplyResponse> UploadFromFileAsync(string itemId, string localFilePath)
     {
-        var fileBytes = await File.ReadAllBytesAsync(localFilePath);
-        var fileContent = new ByteArrayContent(fileBytes);
-        var content = new MultipartFormDataContent();
-        content.Add(fileContent, "cover", Path.GetFileName(localFilePath));
+        // StreamContent for consistency with the other upload paths; the `using`
+        // closes the file handle.
+        using var content = new MultipartFormDataContent();
+        content.Add(new StreamContent(File.OpenRead(localFilePath)), "cover", Path.GetFileName(localFilePath));
         return await _client.PostMultipartAsync(ApiEndpoints.ItemCover(itemId), content,
             AppJsonContext.Default.CoverApplyResponse, "'upload' permission");
     }
