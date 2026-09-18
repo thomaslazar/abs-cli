@@ -502,4 +502,5 @@ failed. Do not mark the smoke as passed in a PR description without having run i
 - `dotnet format AbsCli.sln --verify-no-changes` is clean.
 - `docker/smoke-test.sh` passes against a freshly seeded stack.
 - No `File.ReadAllBytesAsync` remains in `src/AbsCli/Services/` — check with
-  `grep -rn "ReadAllBytes" src/AbsCli`.
+  `grep -rn "ReadAllBytes" src/AbsCli --include=*.cs --exclude-dir=bin --exclude-dir=obj`
+  (the bare form drowns in AOT debug artifacts under `src/AbsCli/bin/`).
