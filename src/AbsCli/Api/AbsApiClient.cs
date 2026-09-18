@@ -131,7 +131,8 @@ public class AbsApiClient
         await PreflightAsync();
         using var cts = new CancellationTokenSource(timeout ?? DefaultRequestTimeout);
         var response = await _http.PostAsync(endpoint, content, cts.Token);
-        await EnsureSuccessOrHandleAuthAsync(response, HttpMethod.Post, endpoint, permissionHint, notFoundHint);
+        await EnsureSuccessOrHandleAuthAsync(response, HttpMethod.Post, endpoint, permissionHint, notFoundHint,
+            replayable: false);
     }
 
     public async Task<T> PostMultipartAsync<T>(string endpoint, MultipartFormDataContent content,
@@ -140,7 +141,8 @@ public class AbsApiClient
         await PreflightAsync();
         using var cts = new CancellationTokenSource(timeout ?? DefaultRequestTimeout);
         var response = await _http.PostAsync(endpoint, content, cts.Token);
-        await EnsureSuccessOrHandleAuthAsync(response, HttpMethod.Post, endpoint, permissionHint, notFoundHint);
+        await EnsureSuccessOrHandleAuthAsync(response, HttpMethod.Post, endpoint, permissionHint, notFoundHint,
+            replayable: false);
         var json = await response.Content.ReadAsStringAsync(cts.Token);
         return JsonSerializer.Deserialize(json, typeInfo)
             ?? throw new InvalidOperationException($"Failed to deserialize response from {endpoint}");
@@ -411,11 +413,23 @@ public class AbsApiClient
     private async Task EnsureSuccessOrHandleAuthAsync(
         HttpResponseMessage response, HttpMethod method, string endpoint,
         string? permissionHint = null,
-        string? notFoundHint = null)
+        string? notFoundHint = null,
+        bool replayable = true)
     {
         if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
         {
             await RefreshTokenAsync();
+            if (!replayable)
+            {
+                // The request body is a consumed file stream; resending the URL
+                // alone would post an empty multipart, and upload reports success
+                // from the request rather than the response — so a silent retry
+                // here reads as a successful upload that never happened. The token
+                // is refreshed above, so a re-run succeeds immediately.
+                _logger.Error("Session expired mid-request and the upload body cannot be resent. " +
+                    "Tokens have been refreshed — re-run the command.");
+                Environment.Exit(2);
+            }
             var retryRequest = new HttpRequestMessage(method, endpoint);
             var retryResponse = await _http.SendAsync(retryRequest);
             if (!retryResponse.IsSuccessStatusCode)
