@@ -31,7 +31,8 @@ public class CoversService
     public async Task<CoverApplyResponse> UploadFromFileAsync(string itemId, string localFilePath)
     {
         // StreamContent for consistency with the other upload paths; the `using`
-        // closes the file handle.
+        // closes the file handle. No timeout override: cover images are small
+        // enough that the default 100s is fine, unlike library/backup uploads.
         using var content = new MultipartFormDataContent();
         content.Add(new StreamContent(File.OpenRead(localFilePath)), "cover", Path.GetFileName(localFilePath));
         return await _client.PostMultipartAsync(ApiEndpoints.ItemCover(itemId), content,
