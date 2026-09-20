@@ -33,9 +33,13 @@ public class ConfigManager
         catch (JsonException ex)
         {
             // Every command loads the config, so a raw parser message here is the
-            // only thing the operator ever sees. Name the file and the way out.
+            // only thing the operator ever sees. Lead with repair: this file holds
+            // the only copy of the refresh token, and deleting it to fix a stray
+            // byte throws away a valid 30-day session.
             throw new InvalidOperationException(
-                $"Config file is not valid JSON: {_configPath} — delete it and run 'abs-cli login'. ({ex.Message})",
+                $"Config file is not valid JSON: {_configPath} ({ex.Message}). " +
+                "It holds the only copy of your refresh token — inspect and repair it " +
+                "before deleting. If it is unrecoverable, delete it and run 'abs-cli login'.",
                 ex);
         }
     }
