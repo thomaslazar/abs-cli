@@ -73,7 +73,8 @@ var tmpPath = _configPath + "." + Guid.NewGuid().ToString("N") + ".tmp";
 Everything else in `Save` is unchanged: serialize, write, copy the Unix file mode from
 the existing config, `File.Move(tmpPath, _configPath, overwrite: true)`.
 
-A `try`/`finally` deletes the staging file if anything throws between write and rename.
+A `try`/`catch` deletes the staging file if anything throws between write and rename,
+then rethrows.
 The old fixed name self-overwrote on the next run and so never needed cleanup; a unique
 name without it would accumulate orphans in `~/.abs-cli/`.
 
