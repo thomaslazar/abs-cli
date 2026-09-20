@@ -33,13 +33,12 @@ public class ConfigManager
         catch (JsonException ex)
         {
             // Every command loads the config, so a raw parser message here is the
-            // only thing the operator ever sees. Lead with repair: this file holds
-            // the only copy of the refresh token, and deleting it to fix a stray
-            // byte throws away a valid 30-day session.
+            // only thing the operator ever sees. Lead with repair, not deletion:
+            // this file holds the only copy of the refresh token.
             throw new InvalidOperationException(
                 $"Config file is not valid JSON: {_configPath} ({ex.Message}). " +
-                "It holds the only copy of your refresh token — inspect and repair it " +
-                "before deleting. If it is unrecoverable, delete it and run 'abs-cli login'.",
+                "It holds the only copy of your refresh token — repair it if you can. " +
+                "Otherwise delete it and run: abs-cli login.",
                 ex);
         }
     }
@@ -59,15 +58,24 @@ public class ConfigManager
         var tmpPath = _configPath + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
         {
-            File.WriteAllText(tmpPath, json);
+            // Created owner-only from the first byte, not chmod'd after: a kill
+            // between an open-world-readable create and a later chmod would leave
+            // the refresh token exposed in the staging file.
+            var options = new FileStreamOptions { Mode = FileMode.CreateNew, Access = FileAccess.Write };
+            if (!OperatingSystem.IsWindows())
+                options.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+            using (var stream = new FileStream(tmpPath, options))
+            using (var writer = new StreamWriter(stream))
+                writer.Write(json);
             if (!OperatingSystem.IsWindows() && File.Exists(_configPath))
                 File.SetUnixFileMode(tmpPath, File.GetUnixFileMode(_configPath));
             File.Move(tmpPath, _configPath, overwrite: true);
         }
         catch
         {
-            // The old fixed name was reclaimed by the next run; a unique one would
-            // otherwise accumulate orphans in ~/.abs-cli/.
+            // A killed process — not just a thrown exception — can still leave this
+            // file behind; creating it owner-only above is what keeps that orphan
+            // from being world-readable rather than what prevents it existing.
             try { File.Delete(tmpPath); } catch { /* best effort */ }
             throw;
         }

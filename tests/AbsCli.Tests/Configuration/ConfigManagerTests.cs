@@ -320,4 +320,14 @@ public class ConfigManagerTests
         var names = Directory.GetFiles(_tempDir).Select(Path.GetFileName).ToArray();
         Assert.Equal(new[] { "config.json" }, names);
     }
+
+    [Fact]
+    public void Save_CreatesConfigOwnerOnly_OnFirstEverSave()
+    {
+        if (OperatingSystem.IsWindows()) return;
+        var configPath = Path.Combine(_tempDir, "config.json");
+        var manager = new ConfigManager(configPath);
+        manager.Save(new AppConfig { Server = "https://example.com", RefreshToken = "secret" });
+        Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite, File.GetUnixFileMode(configPath));
+    }
 }
