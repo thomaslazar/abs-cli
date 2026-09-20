@@ -290,6 +290,8 @@ public class ConfigManagerTests
         // one thread's File.Move consumes the shared tmp out from under another,
         // throwing FileNotFoundException. The assertions below cover both: Load()
         // throws on a torn file, and Save() throws if the staging file vanishes.
+        // Parallel.For(0, 16, ...) provokes less interleaving on CI's 2-4 vCPU
+        // runners than on a dev box — a false-negative risk there, not a flake risk.
         var longConfig = new AppConfig
         {
             Server = "https://long.example.com",
@@ -311,14 +313,15 @@ public class ConfigManagerTests
     }
 
     [Fact]
-    public void Save_LeavesNoStagingFilesBehind()
+    public void Save_RemovesStagingFile_WhenTheRenameFails()
     {
         var configPath = Path.Combine(_tempDir, "config.json");
+        // A directory sitting at the config path makes File.Move onto it fail,
+        // exercising the catch block's cleanup without depending on timing.
+        Directory.CreateDirectory(configPath);
         var manager = new ConfigManager(configPath);
-        manager.Save(new AppConfig { Server = "https://example.com" });
-        manager.Save(new AppConfig { Server = "https://example.com", AccessToken = "tok" });
-        var names = Directory.GetFiles(_tempDir).Select(Path.GetFileName).ToArray();
-        Assert.Equal(new[] { "config.json" }, names);
+        Assert.ThrowsAny<Exception>(() => manager.Save(new AppConfig { Server = "https://example.com" }));
+        Assert.Empty(Directory.GetFiles(_tempDir, "*.tmp"));
     }
 
     [Fact]
