@@ -280,13 +280,16 @@ public class ConfigManagerTests
     }
 
     [Fact]
-    public void Save_ConcurrentWriters_NeverLeaveATornFile()
+    public void Save_ConcurrentWriters_DoNotCorruptTheConfig()
     {
         var configPath = Path.Combine(_tempDir, "config.json");
         var manager = new ConfigManager(configPath);
-        // Alternating sizes are what make a tear visible: a short write over a
-        // long one leaves the long document's tail behind, which is exactly the
-        // trailing-brace corruption reported in #88.
+        // Two symptoms of one defect, a staging path shared by every writer. Across
+        // processes (#88) it tore the JSON: a short write over a long one left the
+        // long document's tail behind. In-process the rename race fires first —
+        // one thread's File.Move consumes the shared tmp out from under another,
+        // throwing FileNotFoundException. The assertions below cover both: Load()
+        // throws on a torn file, and Save() throws if the staging file vanishes.
         var longConfig = new AppConfig
         {
             Server = "https://long.example.com",
