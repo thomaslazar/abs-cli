@@ -47,14 +47,26 @@ public class ConfigManager
             Directory.CreateDirectory(dir);
 
         var json = JsonSerializer.Serialize(config, AppJsonContext.Default.AppConfig);
-        // Write-then-rename. A truncated config.json costs a re-login: it holds the
-        // only copy of the refresh token, and the server rotates the old one away
-        // as soon as it is used.
-        var tmpPath = _configPath + ".tmp";
-        File.WriteAllText(tmpPath, json);
-        if (!OperatingSystem.IsWindows() && File.Exists(_configPath))
-            File.SetUnixFileMode(tmpPath, File.GetUnixFileMode(_configPath));
-        File.Move(tmpPath, _configPath, overwrite: true);
+        // Write-then-rename through a staging file unique to this writer. A truncated
+        // config.json costs a re-login: it holds the only copy of the refresh token.
+        // The name must be unique — concurrent invocations sharing one .tmp truncate
+        // and overwrite each other's bytes there, and the rename then publishes the
+        // damage as a valid-looking replace (#88).
+        var tmpPath = _configPath + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        try
+        {
+            File.WriteAllText(tmpPath, json);
+            if (!OperatingSystem.IsWindows() && File.Exists(_configPath))
+                File.SetUnixFileMode(tmpPath, File.GetUnixFileMode(_configPath));
+            File.Move(tmpPath, _configPath, overwrite: true);
+        }
+        catch
+        {
+            // The old fixed name was reclaimed by the next run; a unique one would
+            // otherwise accumulate orphans in ~/.abs-cli/.
+            try { File.Delete(tmpPath); } catch { /* best effort */ }
+            throw;
+        }
     }
 
     /// <summary>

@@ -278,4 +278,43 @@ public class ConfigManagerTests
         Assert.Equal("new-token", reloaded.AccessToken);
         Assert.Equal("new-refresh", reloaded.RefreshToken);
     }
+
+    [Fact]
+    public void Save_ConcurrentWriters_NeverLeaveATornFile()
+    {
+        var configPath = Path.Combine(_tempDir, "config.json");
+        var manager = new ConfigManager(configPath);
+        // Alternating sizes are what make a tear visible: a short write over a
+        // long one leaves the long document's tail behind, which is exactly the
+        // trailing-brace corruption reported in #88.
+        var longConfig = new AppConfig
+        {
+            Server = "https://long.example.com",
+            AccessToken = new string('a', 2000),
+            RefreshToken = new string('r', 2000),
+            DefaultLibrary = new string('l', 2000)
+        };
+        var shortConfig = new AppConfig { Server = "https://s.co" };
+        for (int round = 0; round < 20; round++)
+        {
+            Parallel.For(0, 16, i => manager.Save(i % 2 == 0 ? longConfig : shortConfig));
+            // Load() throws InvalidOperationException on a torn file.
+            var loaded = manager.Load();
+            if (loaded.Server == longConfig.Server)
+                Assert.Equal(2000, loaded.AccessToken!.Length);
+            else
+                Assert.Equal(shortConfig.Server, loaded.Server);
+        }
+    }
+
+    [Fact]
+    public void Save_LeavesNoStagingFilesBehind()
+    {
+        var configPath = Path.Combine(_tempDir, "config.json");
+        var manager = new ConfigManager(configPath);
+        manager.Save(new AppConfig { Server = "https://example.com" });
+        manager.Save(new AppConfig { Server = "https://example.com", AccessToken = "tok" });
+        var names = Directory.GetFiles(_tempDir).Select(Path.GetFileName).ToArray();
+        Assert.Equal(new[] { "config.json" }, names);
+    }
 }
