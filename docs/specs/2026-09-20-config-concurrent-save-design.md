@@ -1,7 +1,7 @@
 # Concurrent config saves — design
 
 **Date:** 2026-09-20
-**Status:** approved, not yet implemented
+**Status:** implemented
 **Issue:** [#88](https://github.com/thomaslazar/abs-cli/issues/88)
 
 ## Problem
@@ -112,7 +112,42 @@ string.
   named `Save_ConcurrentWriters_DoNotCorruptTheConfig` for that reason.
 - **No leftovers.** After a save, the config directory contains only `config.json`.
 
-### 4. Correction to a prior spec
+### 4. Serialize the read-modify-write
+
+`UpdateTokens` and `UpdateVersionCheck` (`ConfigManager.cs:67-89`) both `Load()`, mutate
+two fields, and `Save()` the **whole** config. That read-modify-write is not atomic across
+processes, and the consequence is worse than a lost cache entry:
+
+1. Process B calls `UpdateVersionCheck` and loads the config, holding tokens `A`.
+2. Process A refreshes, gets tokens `B`, and persists them.
+3. Process B saves — writing its stale tokens `A` back over them.
+
+The superseded refresh token is only honored inside the 10-minute
+`REFRESH_TOKEN_GRACE_PERIOD`, while the access token still has up to an hour left. So
+nothing attempts a refresh until long after the grace window closes, and when one finally
+happens the server rejects it: `Invalid refresh token` → forced re-login. That is the same
+user-visible breakage #88 reported, from the same concurrency, and the staging-file fix
+does not touch it.
+
+**This requires a lock, and that is not a reversal of the section above.** What was
+rejected there is locking the *token-refresh HTTP call*, because the server converges
+concurrent refreshes on its own. This is a lock around the *local file's* read-modify-write,
+which no server behavior can substitute for — a cross-process read-modify-write cannot be
+made safe without mutual exclusion or a compare-and-swap. Writing "only our own fields" is
+not an alternative: serializing the JSON document requires reading the other fields anyway.
+
+Both helpers acquire an exclusive handle on `<config>.lock` (`FileShare.None`) and hold it
+across `Load` → mutate → `Save`. The shape matters: the OS releases such a handle when the
+holder dies, so unlike a lock file whose mere *existence* is the lock, a killed process
+cannot wedge every later invocation. Acquisition retries briefly and then proceeds without
+the lock rather than hanging a CLI command — the race it protects against is rare, and
+blocking forever is a worse failure than losing it.
+
+`Save` itself is not locked. It is already safe on its own after change 1, and
+`login`/`config set` call it to write a config the operator just specified, where
+last-writer-wins is the intended behavior.
+
+### 5. Correction to a prior spec
 
 `docs/specs/2026-09-18-upload-streaming-design.md` states that ABS access tokens last
 ~12 hours, and uses that to argue the unreplayable-401 path is nearly unreachable. The
@@ -129,7 +164,3 @@ line is corrected there, and the same figure is corrected in issue #89.
   this change eliminates.
 - **A repair tool** for the trailing-brace shape. A recovery path for a bug that will no
   longer occur.
-- **The read-modify-write in `UpdateTokens`/`UpdateVersionCheck`.** Both `Load()` then
-  `Save()`, so two concurrent callers can lose one process's version-check timestamp.
-  Accepted: that field is a cache that self-heals on the next probe, and the tokens
-  converge server-side.
