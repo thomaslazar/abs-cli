@@ -57,15 +57,20 @@ public static class ConfigCommand
             var key = parseResult.GetValue(keyArg)!;
             var value = parseResult.GetValue(valueArg)!;
             var configManager = new ConfigManager();
-            var config = configManager.Load();
-            var error = ApplyConfigSet(config, key, value);
+            // Validate against a real Load() first: Update has no way to abort its
+            // Save, and an unknown key must not rewrite the file. Loading here also
+            // keeps a corrupt config reporting itself ahead of a bad key, as before.
+            var error = ApplyConfigSet(configManager.Load(), key, value);
             if (error != null)
             {
                 _logger.Error(error);
                 Environment.Exit(1);
                 return 1;
             }
-            configManager.Save(config);
+            // Update, not Load/Save: this names one key but carries the other five
+            // fields forward, so an unlocked round trip reverts tokens a concurrent
+            // refresh just wrote (#88).
+            configManager.Update(config => ApplyConfigSet(config, key, value));
             Console.Error.WriteLine($"Set {key} = {value}");
             return 0;
         });

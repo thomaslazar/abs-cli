@@ -115,10 +115,17 @@ non-replayable request the client refreshes the token anyway — leaving the con
 usable so the operator's re-run succeeds immediately — then logs an error saying
 the session expired mid-upload and the command must be re-run, and exits 2.
 
-The path is hard to reach in practice: preflight refreshes anything expiring within
-60 seconds and ABS access tokens last ~12 hours, so an upload would have to run for
-12 hours. It is fixed because the failure mode is a false success, not because it
-is likely.
+The path is more reachable than it looks. Preflight only refreshes tokens expiring
+within 60 seconds, and the ABS access token default is one hour
+(`ACCESS_TOKEN_EXPIRY`, `temp/audiobookshelf/server/auth/TokenManager.js:16-21`), so
+any single request running longer than ~59 minutes can land on it — well within range
+for the multi-GB uploads this change enables. It is fixed because the failure mode is
+a false success, and because a long upload on a slow link is a realistic way to get
+there.
+
+*(Corrected 2026-09-20: this paragraph originally claimed a ~12 hour access-token
+lifetime and concluded the path was nearly unreachable. See
+`docs/specs/2026-09-20-config-concurrent-save-design.md`.)*
 
 ### 4. Test
 
