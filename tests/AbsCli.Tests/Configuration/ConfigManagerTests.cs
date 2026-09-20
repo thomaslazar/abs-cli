@@ -368,6 +368,49 @@ public class ConfigManagerTests
     }
 
     [Fact]
+    public async Task Update_ConcurrentWithUpdateTokens_NeverRevertsTokens()
+    {
+        var configPath = Path.Combine(_tempDir, "config.json");
+        var manager = new ConfigManager(configPath);
+        // The `config set server <url>` shape: it names one key but carries the
+        // other five fields forward from its own Load(), so a token refresh landing
+        // between that Load and the Save is reverted just as a version check would
+        // revert it. Narrower window, identical breakage.
+        for (int round = 0; round < 30; round++)
+        {
+            manager.Save(new AppConfig
+            {
+                Server = "https://old.example.com",
+                AccessToken = "old-access",
+                RefreshToken = "old-refresh"
+            });
+            var start = new Barrier(5);
+            var tasks = new List<Task>
+            {
+                Task.Run(() =>
+                {
+                    start.SignalAndWait();
+                    manager.UpdateTokens("new-access", "new-refresh");
+                })
+            };
+            for (int t = 0; t < 4; t++)
+            {
+                tasks.Add(Task.Run(() =>
+                {
+                    start.SignalAndWait();
+                    for (int i = 0; i < 5; i++)
+                        manager.Update(c => c.Server = "https://new.example.com");
+                }));
+            }
+            await Task.WhenAll(tasks);
+            var loaded = manager.Load();
+            Assert.Equal("new-access", loaded.AccessToken);
+            Assert.Equal("new-refresh", loaded.RefreshToken);
+            Assert.Equal("https://new.example.com", loaded.Server);
+        }
+    }
+
+    [Fact]
     public void UpdateVersionCheck_UnderHeavyContention_CompletesAndLeavesAReadableConfig()
     {
         var configPath = Path.Combine(_tempDir, "config.json");
@@ -397,6 +440,13 @@ public class ConfigManagerTests
         Assert.Equal(
             new[] { "config.json", "config.json.lock" },
             Directory.GetFiles(_tempDir).Select(Path.GetFileName).Order());
+        if (!OperatingSystem.IsWindows())
+        {
+            // Owner-only like the rest of ~/.abs-cli, though it holds nothing.
+            Assert.Equal(
+                UnixFileMode.UserRead | UnixFileMode.UserWrite,
+                File.GetUnixFileMode(configPath + ".lock"));
+        }
         // Save (unlocked by design) still works beside it and still cleans up after
         // itself — the leftover lock file is inert.
         manager.Save(new AppConfig { Server = "https://example.com" });

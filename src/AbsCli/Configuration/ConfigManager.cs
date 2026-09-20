@@ -86,36 +86,40 @@ public class ConfigManager
     }
 
     /// <summary>
-    /// Persist the version-check state by rewriting only the on-disk config.
+    /// Read-modify-write the on-disk config under an exclusive lock.
     /// Deliberately re-reads from disk instead of taking a resolved
     /// <see cref="AppConfig"/>: <see cref="Resolve"/> merges environment
-    /// variables into memory, so saving that would write an ABS_TOKEN the
-    /// operator kept out of the file. Holds the config lock across the whole
-    /// read-modify-write so a concurrent token refresh is not written back stale.
+    /// variables into memory, so saving that would write an ABS_TOKEN or
+    /// ABS_LIBRARY the operator kept out of the file. The lock spans
+    /// Load -> mutate -> Save, so a writer holding a stale copy cannot put its
+    /// tokens back over ones another process refreshed in between (#88).
     /// </summary>
-    public void UpdateVersionCheck(string? serverVersion, DateTimeOffset checkedAt)
+    public void Update(Action<AppConfig> mutate)
     {
         using var configLock = TryAcquireLock();
         var onDisk = Load();
-        onDisk.LastServerVersion = serverVersion;
-        onDisk.LastVersionCheck = checkedAt;
+        mutate(onDisk);
         Save(onDisk);
     }
 
-    /// <summary>
-    /// Persist rotated tokens by rewriting only the on-disk config. Same reason
-    /// as <see cref="UpdateVersionCheck"/>: saving a resolved <see cref="AppConfig"/>
-    /// would write an ABS_TOKEN or ABS_LIBRARY the operator kept out of the file,
-    /// and the same lock, so another writer's read-modify-write cannot revert the
-    /// tokens this call just persisted.
-    /// </summary>
+    /// <summary>Persist the version-check state. See <see cref="Update"/>.</summary>
+    public void UpdateVersionCheck(string? serverVersion, DateTimeOffset checkedAt)
+    {
+        Update(onDisk =>
+        {
+            onDisk.LastServerVersion = serverVersion;
+            onDisk.LastVersionCheck = checkedAt;
+        });
+    }
+
+    /// <summary>Persist rotated tokens. See <see cref="Update"/>.</summary>
     public void UpdateTokens(string? accessToken, string? refreshToken)
     {
-        using var configLock = TryAcquireLock();
-        var onDisk = Load();
-        onDisk.AccessToken = accessToken;
-        onDisk.RefreshToken = refreshToken;
-        Save(onDisk);
+        Update(onDisk =>
+        {
+            onDisk.AccessToken = accessToken;
+            onDisk.RefreshToken = refreshToken;
+        });
     }
 
     /// <summary>
@@ -141,11 +145,21 @@ public class ConfigManager
         // writer would unlink the inode a waiting writer is about to block on, and
         // the next arrival would create a fresh one and hold "the" lock at the same
         // time. So the empty file stays; only Save's staging files are cleaned up.
+        // FileAccess.Read, not ReadWrite: the file is never written, and asking for
+        // write access would need write permission on a pre-existing lock file. One
+        // `sudo abs-cli ...` leaves a root-owned one, and every later non-root run
+        // would then fall back to unlocked forever. Measured on .NET 10: OpenOrCreate
+        // still creates the file with Read access, and FileShare.None still excludes.
+        var options = new FileStreamOptions { Mode = FileMode.OpenOrCreate, Access = FileAccess.Read, Share = FileShare.None };
+        // Owner-only like everything else in the config directory, though this file
+        // is inert: zero bytes, never written, never read.
+        if (!OperatingSystem.IsWindows())
+            options.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
         for (var attempt = 0; attempt < LockAttempts; attempt++)
         {
             try
             {
-                return new FileStream(lockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+                return new FileStream(lockPath, options);
             }
             catch (IOException)
             {
@@ -155,6 +169,10 @@ public class ConfigManager
             }
             catch (UnauthorizedAccessException) { return null; }
         }
+        // ponytail: every fallback here returns null silently, so a degraded lock
+        // looks exactly like a working one and #88 comes back with no diagnostic.
+        // The fix if it ever bites is a debug hook (an Action<string>? the caller
+        // wires to its logger); not worth a dependency on NLog for a rare path.
         return null;
     }
 
