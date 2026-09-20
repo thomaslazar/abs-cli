@@ -312,11 +312,28 @@ mark the smoke as passed in a PR description without having run it.
 
 ## Done when
 
-- `dotnet test tests/AbsCli.Tests/AbsCli.Tests.csproj` passes, including the two new
-  `ConfigManagerTests`.
+- `dotnet test tests/AbsCli.Tests/AbsCli.Tests.csproj` passes, including the new
+  `ConfigManagerTests` (staging file, cleanup path, first-save mode, and the two
+  read-modify-write race guards).
 - `dotnet format AbsCli.sln --verify-no-changes` is clean.
 - `docker/smoke-test.sh` passes against a freshly seeded stack.
 - `grep -n '"\.tmp"' src/AbsCli/Configuration/ConfigManager.cs` finds no fixed staging name.
+
+### Task 5: Serialize the read-modify-write (added mid-execution)
+
+Added after code review found a second bug in #88's family, not present in the original
+plan. `UpdateTokens` and `UpdateVersionCheck` — and, as a follow-up review found,
+`config set` — each did `Load()` → mutate → `Save()` of the whole config, so a writer that
+loaded before a token refresh landed wrote the stale tokens back over the fresh ones.
+
+Implemented as `ConfigManager.Update(Action<AppConfig>)`, which holds an exclusive
+`FileShare.None` handle on `<config>.lock` across the whole read-modify-write; the three
+callers are built on it. See spec section 4 for the full design, including why the lock is
+the open handle rather than the file's existence, why acquisition falls back to running
+unlocked rather than blocking, and why `login` and `Save` stay unlocked.
+
+Both race guards were demonstrated red before their fix
+(`Expected: "new-access" / Actual: "old-access"`).
 
 ## Handled outside this plan (controller, not a task)
 

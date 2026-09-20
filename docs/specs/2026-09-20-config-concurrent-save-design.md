@@ -143,9 +143,34 @@ cannot wedge every later invocation. Acquisition retries briefly and then procee
 the lock rather than hanging a CLI command — the race it protects against is rare, and
 blocking forever is a worse failure than losing it.
 
-`Save` itself is not locked. It is already safe on its own after change 1, and
-`login`/`config set` call it to write a config the operator just specified, where
-last-writer-wins is the intended behavior.
+Every read-modify-write goes through one helper, `ConfigManager.Update(Action<AppConfig>)`,
+which takes the lock and is what `UpdateTokens`, `UpdateVersionCheck` and `config set` are
+built on.
+
+`config set` matters here and an earlier draft of this spec got it wrong. It was listed
+alongside `login` as a caller that "writes a config the operator just specified", where
+last-writer-wins is intended — but `config set server X` specifies `server` and inherits
+the other five fields from its own unlocked `Load()`, tokens included. A refresh landing
+between that read and its write was reverted: #88's symptom exactly, through a narrower
+window. It is now locked like the others.
+
+`login` stays unlocked, and that one is genuinely fine: it replaces the tokens
+deliberately, so there is nothing to clobber. It can still overwrite a concurrently
+written `defaultLibrary`, which is accepted.
+
+`Save` itself stays unlocked too. After change 1 it is safe on its own, and it is the
+primitive the locked helper is built from — locking it as well would be redundant, and on
+a re-entrant path, harmful.
+
+**Lock-file details.** Created owner-only, like the config and its staging files, and
+opened with `FileAccess.Read` rather than `ReadWrite`: `flock(LOCK_EX)` works on a
+read-only descriptor, while requiring write access would mean a single `sudo abs-cli` run
+leaves a root-owned lock file that silently disables locking for every later run. The file
+is never written to and is never deleted.
+
+**Known limit.** `FileShare.None` maps to `flock` on Unix, which is node-local on an
+NFS-mounted home directory with an older or non-Linux client. There the lock protects
+same-host processes only. Acceptable for a CLI.
 
 ### 5. Correction to a prior spec
 
