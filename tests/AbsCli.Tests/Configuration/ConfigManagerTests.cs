@@ -325,6 +325,86 @@ public class ConfigManagerTests
     }
 
     [Fact]
+    public async Task UpdateVersionCheck_ConcurrentWithUpdateTokens_NeverRevertsTokens()
+    {
+        var configPath = Path.Combine(_tempDir, "config.json");
+        var manager = new ConfigManager(configPath);
+        // The read-modify-write hazard: a version-check writer that Load()s before a
+        // token refresh lands and Save()s after it writes the stale tokens back over
+        // the fresh ones. Undetected until the next refresh, which the server then
+        // rejects (the superseded refresh token outlives its 10-minute grace window
+        // long before the ~1h access token expires) — a forced re-login, #88's symptom.
+        for (int round = 0; round < 30; round++)
+        {
+            manager.Save(new AppConfig
+            {
+                Server = "https://example.com",
+                AccessToken = "old-access",
+                RefreshToken = "old-refresh"
+            });
+            var start = new Barrier(5);
+            var tasks = new List<Task>
+            {
+                Task.Run(() =>
+                {
+                    start.SignalAndWait();
+                    manager.UpdateTokens("new-access", "new-refresh");
+                })
+            };
+            for (int t = 0; t < 4; t++)
+            {
+                tasks.Add(Task.Run(() =>
+                {
+                    start.SignalAndWait();
+                    for (int i = 0; i < 5; i++)
+                        manager.UpdateVersionCheck("2.36.0", DateTimeOffset.UtcNow);
+                }));
+            }
+            await Task.WhenAll(tasks);
+            var loaded = manager.Load();
+            Assert.Equal("new-access", loaded.AccessToken);
+            Assert.Equal("new-refresh", loaded.RefreshToken);
+        }
+    }
+
+    [Fact]
+    public void UpdateVersionCheck_UnderHeavyContention_CompletesAndLeavesAReadableConfig()
+    {
+        var configPath = Path.Combine(_tempDir, "config.json");
+        var manager = new ConfigManager(configPath);
+        manager.Save(new AppConfig { Server = "https://example.com", RefreshToken = "keep-me" });
+        var checkedAt = new DateTimeOffset(2026, 8, 12, 10, 0, 0, TimeSpan.Zero);
+        // The lock must not deadlock or starve: every caller returns, and the config
+        // still parses afterwards.
+        Parallel.For(0, 32, i => manager.UpdateVersionCheck("2.36.0", checkedAt));
+        var loaded = manager.Load();
+        Assert.Equal("2.36.0", loaded.LastServerVersion);
+        Assert.Equal(checkedAt, loaded.LastVersionCheck);
+        Assert.Equal("https://example.com", loaded.Server);
+        Assert.Equal("keep-me", loaded.RefreshToken);
+    }
+
+    [Fact]
+    public void UpdateVersionCheck_LeavesTheLockFileInPlace()
+    {
+        var configPath = Path.Combine(_tempDir, "config.json");
+        var manager = new ConfigManager(configPath);
+        manager.UpdateVersionCheck("2.36.0", DateTimeOffset.UtcNow);
+        // The lock is the open handle, not the file's existence, so the empty file
+        // is kept: deleting it on release would let a departing writer unlink the
+        // inode a waiting writer is blocked on, and the next arrival would create a
+        // fresh one and hold "the" lock at the same time. It holds no secrets.
+        Assert.Equal(
+            new[] { "config.json", "config.json.lock" },
+            Directory.GetFiles(_tempDir).Select(Path.GetFileName).Order());
+        // Save (unlocked by design) still works beside it and still cleans up after
+        // itself — the leftover lock file is inert.
+        manager.Save(new AppConfig { Server = "https://example.com" });
+        Assert.Equal("https://example.com", manager.Load().Server);
+        Assert.Empty(Directory.GetFiles(_tempDir, "*.tmp"));
+    }
+
+    [Fact]
     public void Save_CreatesConfigOwnerOnly_OnFirstEverSave()
     {
         if (OperatingSystem.IsWindows()) return;

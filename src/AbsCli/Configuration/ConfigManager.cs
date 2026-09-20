@@ -5,6 +5,10 @@ namespace AbsCli.Configuration;
 
 public class ConfigManager
 {
+    // ~2s total: long enough to outlast a competing read-modify-write, short
+    // enough that giving up is invisible next to a CLI command's own runtime.
+    private const int LockAttempts = 200;
+    private const int LockRetryDelayMs = 10;
     private readonly string _configPath;
 
     public ConfigManager(string configPath)
@@ -86,10 +90,12 @@ public class ConfigManager
     /// Deliberately re-reads from disk instead of taking a resolved
     /// <see cref="AppConfig"/>: <see cref="Resolve"/> merges environment
     /// variables into memory, so saving that would write an ABS_TOKEN the
-    /// operator kept out of the file.
+    /// operator kept out of the file. Holds the config lock across the whole
+    /// read-modify-write so a concurrent token refresh is not written back stale.
     /// </summary>
     public void UpdateVersionCheck(string? serverVersion, DateTimeOffset checkedAt)
     {
+        using var configLock = TryAcquireLock();
         var onDisk = Load();
         onDisk.LastServerVersion = serverVersion;
         onDisk.LastVersionCheck = checkedAt;
@@ -99,14 +105,57 @@ public class ConfigManager
     /// <summary>
     /// Persist rotated tokens by rewriting only the on-disk config. Same reason
     /// as <see cref="UpdateVersionCheck"/>: saving a resolved <see cref="AppConfig"/>
-    /// would write an ABS_TOKEN or ABS_LIBRARY the operator kept out of the file.
+    /// would write an ABS_TOKEN or ABS_LIBRARY the operator kept out of the file,
+    /// and the same lock, so another writer's read-modify-write cannot revert the
+    /// tokens this call just persisted.
     /// </summary>
     public void UpdateTokens(string? accessToken, string? refreshToken)
     {
+        using var configLock = TryAcquireLock();
         var onDisk = Load();
         onDisk.AccessToken = accessToken;
         onDisk.RefreshToken = refreshToken;
         Save(onDisk);
+    }
+
+    /// <summary>
+    /// Exclusive handle on &lt;config&gt;.lock, held for the caller's whole
+    /// read-modify-write. Returns null if it cannot be taken in time: the caller
+    /// then proceeds unlocked, because the race is rare and wedging a CLI command
+    /// is the worse failure.
+    /// </summary>
+    private FileStream? TryAcquireLock()
+    {
+        var lockPath = _configPath + ".lock";
+        var dir = Path.GetDirectoryName(lockPath);
+        try
+        {
+            if (dir != null && !Directory.Exists(dir))
+                Directory.CreateDirectory(dir);
+        }
+        catch (IOException) { return null; }
+        catch (UnauthorizedAccessException) { return null; }
+        // The lock is the open handle, not the file's existence: the OS drops it
+        // when the holder dies, so a killed process cannot wedge every later run.
+        // Deleting the file afterwards would break exactly that — a departing
+        // writer would unlink the inode a waiting writer is about to block on, and
+        // the next arrival would create a fresh one and hold "the" lock at the same
+        // time. So the empty file stays; only Save's staging files are cleaned up.
+        for (var attempt = 0; attempt < LockAttempts; attempt++)
+        {
+            try
+            {
+                return new FileStream(lockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+            }
+            catch (IOException)
+            {
+                // Sharing violation: someone else holds it. Bounded wait, then
+                // give up and run unlocked rather than block the command.
+                Thread.Sleep(LockRetryDelayMs);
+            }
+            catch (UnauthorizedAccessException) { return null; }
+        }
+        return null;
     }
 
     public AppConfig Resolve(
