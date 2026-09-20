@@ -20,20 +20,7 @@ public class UploadService
         IReadOnlyList<(string LocalPath, string UploadName)> files)
     {
         var uploadTitle = sequence != null ? $"{sequence}. - {title}" : title;
-        var content = new MultipartFormDataContent();
-        content.Add(new StringContent(libraryId), "library");
-        content.Add(new StringContent(folderId), "folder");
-        content.Add(new StringContent(uploadTitle), "title");
-        if (author != null)
-            content.Add(new StringContent(author), "author");
-        if (series != null)
-            content.Add(new StringContent(series), "series");
-        for (int i = 0; i < files.Count; i++)
-        {
-            var fileBytes = await File.ReadAllBytesAsync(files[i].LocalPath);
-            var fileContent = new ByteArrayContent(fileBytes);
-            content.Add(fileContent, i.ToString(), files[i].UploadName);
-        }
+        using var content = BuildUploadContent(libraryId, folderId, uploadTitle, author, series, files);
         await _client.PostMultipartAsync(ApiEndpoints.Upload, content, "'upload' permission",
             timeout: Timeout.InfiniteTimeSpan);
 
@@ -52,6 +39,47 @@ public class UploadService
             RelPath = FilenameSanitizer.PredictRelPath(author, series, uploadTitle),
             Files = files.Select(f => f.UploadName).ToList(),
         };
+    }
+
+    /// <summary>
+    /// Build the multipart body for an upload. Separate from <see cref="UploadAsync"/>
+    /// so tests can construct a body without an HTTP server — the 2 GB failure this
+    /// guards against is client-side, thrown while the body is assembled.
+    /// </summary>
+    /// <remarks>
+    /// File parts are <see cref="StreamContent"/>, not <see cref="ByteArrayContent"/>:
+    /// buffering a file into a byte[] caps uploads at .NET's 2 GB array limit, which
+    /// ordinary 35h+ single-file m4b volumes exceed. The caller MUST dispose the
+    /// returned content — that is what closes the open file handles.
+    /// </remarks>
+    internal static MultipartFormDataContent BuildUploadContent(string libraryId, string folderId,
+        string uploadTitle, string? author, string? series,
+        IReadOnlyList<(string LocalPath, string UploadName)> files)
+    {
+        var content = new MultipartFormDataContent();
+        try
+        {
+            content.Add(new StringContent(libraryId), "library");
+            content.Add(new StringContent(folderId), "folder");
+            content.Add(new StringContent(uploadTitle), "title");
+            if (author != null)
+                content.Add(new StringContent(author), "author");
+            if (series != null)
+                content.Add(new StringContent(series), "series");
+            for (int i = 0; i < files.Count; i++)
+            {
+                // No explicit Content-Type: ByteArrayContent sent none either, and the
+                // wire format must not change.
+                var fileContent = new StreamContent(File.OpenRead(files[i].LocalPath));
+                content.Add(fileContent, i.ToString(), files[i].UploadName);
+            }
+            return content;
+        }
+        catch
+        {
+            content.Dispose();
+            throw;
+        }
     }
 
     public async Task<string> ResolveFolderIdAsync(string libraryId)
