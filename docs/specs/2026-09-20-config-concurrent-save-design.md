@@ -102,6 +102,13 @@ string.
   longer tail behind, which is precisely the reported corruption. This test must be shown
   to fail against the current fixed-name code before the fix lands; a green-from-the-start
   concurrency test proves nothing.
+
+  **Observed when run:** the red run failed with `FileNotFoundException`, not torn JSON —
+  in-process, one thread's `File.Move` consumes the shared `config.json.tmp` out from
+  under another before a tear can form. Across processes (#88) the tear is what surfaced.
+  Two symptoms of the same shared staging path; the test covers both, since `Load()`
+  throws on a torn file and `Save()` throws if the staging file vanishes. The test is
+  named `Save_ConcurrentWriters_DoNotCorruptTheConfig` for that reason.
 - **No leftovers.** After a save, the config directory contains only `config.json`.
 
 ### 4. Correction to a prior spec
