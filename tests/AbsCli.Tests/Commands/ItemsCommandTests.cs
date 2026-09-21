@@ -160,6 +160,20 @@ public class ItemsCommandTests
     }
 
     [Fact]
+    public void BatchUpdateBody_NullEntry_RejectedNotNre()
+    {
+        var ex = Assert.Throws<ArgumentException>(() => ItemsCommand.PrepareBatchUpdateBody("[null]"));
+        Assert.Contains("id", ex.Message);
+    }
+
+    [Fact]
+    public void BatchUpdateBody_ValidEntryFollowedByNull_RejectedNotNre()
+    {
+        Assert.Throws<ArgumentException>(
+            () => ItemsCommand.PrepareBatchUpdateBody("[{\"id\":\"li_a\",\"mediaPayload\":{}},null]"));
+    }
+
+    [Fact]
     public void BatchUpdateBody_Malformed_Throws()
     {
         Assert.ThrowsAny<JsonException>(() => ItemsCommand.PrepareBatchUpdateBody("[{"));
