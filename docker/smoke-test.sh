@@ -355,6 +355,19 @@ fi
 # Restore both
 $CLI items batch-update --stdin 2>/dev/null <<< "[{\"id\":\"$FIRST_ITEM_ID\",\"mediaPayload\":{\"metadata\":{\"publisher\":null}}},{\"id\":\"$SECOND_ITEM_ID\",\"mediaPayload\":{\"metadata\":{\"publisher\":null}}}]" > /dev/null
 
+# A body without the mediaPayload wrapper is refused before any HTTP happens.
+# Deliberately aimed at a dead address: PrepareBatchUpdateBody runs before the
+# client is built, so a working guard never connects. If the guard ever regresses
+# this fails on a connection error instead of sending ABS a body that exits it
+# (docs/abs-upstream-bugs.md) — which is why this must never point at the stack.
+guard_out=$(echo "[{\"id\":\"$FIRST_ITEM_ID\",\"metadata\":{\"explicit\":true}}]" \
+    | ABS_SERVER=http://127.0.0.1:9 $CLI items batch-update --stdin 2>&1 || true)
+if echo "$guard_out" | grep -q "mediaPayload"; then
+    pass "batch-update refuses an entry with no mediaPayload"
+else
+    fail "batch-update refuses an entry with no mediaPayload" "${guard_out:0:200}"
+fi
+
 # ============================================================
 echo ""
 echo "=== Item Delete ==="
