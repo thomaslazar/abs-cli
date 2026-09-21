@@ -3,6 +3,68 @@
 All notable changes to abs-cli are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## v1.1.2 — 2026-09-21
+
+Patch release. `items batch-update` documented a request body that Audiobookshelf
+cannot parse — and sending it did not return an error, it took the server down.
+
+### Highlights
+
+- **`items batch-update` now documents the body ABS actually accepts.** Each entry
+  wraps its media payload: `{"id": ..., "mediaPayload": {...}}`. The shape shown by
+  `--help-full` previously omitted that wrapper, so a body written from the help text
+  was rejected by the server in the worst possible way.
+- **A body without the wrapper is now refused before it is sent.** Audiobookshelf
+  does not answer such a body with a 400 — it dereferences the missing payload, and
+  the unhandled rejection exits the process. With a restart policy in place, a client
+  retrying the bad body loops the server indefinitely. `abs-cli` now fails
+  client-side with the offending entry's index and sends nothing.
+- **A `null` entry in the batch array reports a clear error** instead of an
+  unhandled `NullReferenceException`.
+- **Plain `--help` mentions the wrapper**, so callers arriving from `items update` —
+  where the media payload is the whole body — are not caught out by the difference.
+
+### Fixes
+
+- fix: refuse batch-update entries with no media payload
+- fix: reject a null batch-update entry instead of throwing
+- fix: wrap batch-update entry payloads in mediaPayload
+
+### Internal
+
+- test: assert batch-update refuses a payload-less body
+- test: pin the exact guard message in the smoke assertion
+- docs: add batch-update mediaPayload spec and plan
+- docs: correct the batch-update rule citation
+- docs: note the batch-update payload wrapper in help
+- docs: record the ABS batch-update crash as an upstream bug
+- docs: record the corrections found while executing the plan
+- docs: record the observed batch-update crash output
+
+### Upgrading
+
+If you have scripts built against the `--help-full` output from v1.1.0 or v1.1.1,
+they are sending the old shape and will now be rejected client-side with:
+
+```
+batch-update entry 0: "mediaPayload" is missing (nothing to update)
+```
+
+Wrap each entry's payload to fix them:
+
+```json
+[{ "id": "...", "mediaPayload": { "metadata": { "explicit": true } } }]
+```
+
+Those scripts were not working before — they were crashing the server — so nothing
+that previously succeeded stops working.
+
+### Notes
+
+The underlying crash is an Audiobookshelf bug, present through 2.36.0, and is
+recorded in `docs/abs-upstream-bugs.md` with the observed output for an upstream
+report. `abs-cli` cannot fix it; it can only decline to trigger it.
+
 ## v1.1.1 — 2026-09-21
 
 Patch release. Two bugs that broke real workflows: uploads failed outright above
