@@ -290,6 +290,9 @@ public static class ItemsCommand
         var stdinOption = new Option<bool>("--stdin") { Description = "Read the request body from stdin" };
         var command = new Command("batch-update", "Batch update multiple items") { inputOption, stdinOption };
         command.AddPermissionRequired("update");
+        command.AddHelpSection("Notes", HelpSectionPosition.Top,
+            "Each entry wraps its payload: {\"id\":..., \"mediaPayload\":{...}} —",
+            "unlike 'items update', which takes the payload directly.");
         command.AddExamples(
             "abs-cli items batch-update --input updates.json",
             "cat updates.json | abs-cli items batch-update --stdin");
