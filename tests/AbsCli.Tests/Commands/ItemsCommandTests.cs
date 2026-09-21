@@ -135,7 +135,7 @@ public class ItemsCommandTests
     [Fact]
     public void BatchUpdateBody_Valid_IsForwardedUnchanged()
     {
-        const string body = "[{\"id\":\"li_a\",\"tags\":[\"x\"]}]";
+        const string body = "[{\"id\":\"li_a\",\"mediaPayload\":{\"tags\":[\"x\"]}}]";
         Assert.Equal(body, ItemsCommand.PrepareBatchUpdateBody(body));
     }
 
@@ -149,7 +149,8 @@ public class ItemsCommandTests
     public void BatchUpdateBody_DuplicateIds_Rejected()
     {
         Assert.Throws<ArgumentException>(
-            () => ItemsCommand.PrepareBatchUpdateBody("[{\"id\":\"li_a\"},{\"id\":\"li_a\"}]"));
+            () => ItemsCommand.PrepareBatchUpdateBody(
+                "[{\"id\":\"li_a\",\"mediaPayload\":{}},{\"id\":\"li_a\",\"mediaPayload\":{}}]"));
     }
 
     [Fact]
@@ -162,6 +163,49 @@ public class ItemsCommandTests
     public void BatchUpdateBody_Malformed_Throws()
     {
         Assert.ThrowsAny<JsonException>(() => ItemsCommand.PrepareBatchUpdateBody("[{"));
+    }
+
+    [Fact]
+    public void BatchUpdateBody_MissingMediaPayload_Rejected()
+    {
+        var ex = Assert.Throws<ArgumentException>(
+            () => ItemsCommand.PrepareBatchUpdateBody("[{\"id\":\"li_a\",\"metadata\":{\"explicit\":true}}]"));
+        Assert.Contains("entry 0", ex.Message);
+        Assert.Contains("mediaPayload", ex.Message);
+    }
+
+    [Fact]
+    public void BatchUpdateBody_NullMediaPayload_Rejected()
+    {
+        // null dereferences at LibraryItemController.js:675 exactly as a missing
+        // key does, so it is not a way to opt out of the guard.
+        Assert.Throws<ArgumentException>(
+            () => ItemsCommand.PrepareBatchUpdateBody("[{\"id\":\"li_a\",\"mediaPayload\":null}]"));
+    }
+
+    [Fact]
+    public void BatchUpdateBody_NamesTheFirstOffendingEntry()
+    {
+        var ex = Assert.Throws<ArgumentException>(
+            () => ItemsCommand.PrepareBatchUpdateBody(
+                "[{\"id\":\"a\",\"mediaPayload\":{}},{\"id\":\"b\"},{\"id\":\"c\"}]"));
+        Assert.Contains("entry 1", ex.Message);
+    }
+
+    [Fact]
+    public void BatchUpdateBody_EmptyMediaPayload_Accepted()
+    {
+        // {} is a harmless server-side no-op (updateFromRequest returns false).
+        // Refusing a caller's deliberate no-op would be client-side policy.
+        const string body = "[{\"id\":\"li_a\",\"mediaPayload\":{}}]";
+        Assert.Equal(body, ItemsCommand.PrepareBatchUpdateBody(body));
+    }
+
+    [Fact]
+    public void BatchUpdateBody_UnmodelledFields_SurviveVerbatim()
+    {
+        const string body = "[{\"id\":\"li_a\",\"mediaPayload\":{\"autoDownloadSchedule\":\"0 0 * * *\"}}]";
+        Assert.Equal(body, ItemsCommand.PrepareBatchUpdateBody(body));
     }
 
     [Fact]

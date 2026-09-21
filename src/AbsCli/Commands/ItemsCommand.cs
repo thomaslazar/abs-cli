@@ -54,9 +54,12 @@ public static class ItemsCommand
     /// <summary>
     /// Validates a batch-update body and returns it unchanged. ABS requires a
     /// non-empty array whose entries each carry a unique id
-    /// (LibraryItemController.js:633-640); we check exactly that and nothing
-    /// more. The original bytes are what gets sent, so fields this type does not
-    /// model still reach ABS.
+    /// (LibraryItemController.js:632-640), and reads each entry's media payload
+    /// from "mediaPayload" (:665). The payload check is ours, not a mirror of a
+    /// server rule: ABS does not answer a missing payload with a 400, it
+    /// dereferences it unguarded at :675 and exits — see docs/abs-upstream-bugs.md.
+    /// The original bytes are what gets sent, so fields this type does not model
+    /// still reach ABS.
     /// </summary>
     internal static string PrepareBatchUpdateBody(string jsonBody)
     {
@@ -67,6 +70,10 @@ public static class ItemsCommand
             throw new ArgumentException("every batch-update entry needs an \"id\"");
         if (entries.Select(e => e.Id).Distinct().Count() != entries.Count)
             throw new ArgumentException("batch-update entry ids must be unique");
+        var missing = entries.FindIndex(e => e.MediaPayload is null);
+        if (missing >= 0)
+            throw new ArgumentException(
+                $"batch-update entry {missing}: \"mediaPayload\" is missing (nothing to update)");
         return jsonBody;
     }
 
