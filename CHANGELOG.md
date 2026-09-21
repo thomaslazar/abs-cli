@@ -3,6 +3,77 @@
 All notable changes to abs-cli are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## v1.1.1 — 2026-09-21
+
+Patch release. Two bugs that broke real workflows: uploads failed outright above
+2 GB, and running several commands at once could corrupt the config or silently
+revert a freshly refreshed session.
+
+### Highlights
+
+- **Uploads no longer fail at 2 GB.** Files were buffered into memory before the
+  request was built, so anything at or above .NET's 2 GB array limit failed
+  client-side without ever contacting the server — ordinary territory for a 35h+
+  single-file `.m4b`. `upload`, `backup upload` and cover upload now stream from
+  disk, which also drops peak memory from file-sized to buffer-sized.
+- **`backup upload` no longer times out at 10 minutes.** With the size ceiling
+  gone, that cap was the next wall for a multi-GB backup on a slow link.
+- **Concurrent commands no longer corrupt `~/.abs-cli/config.json`.** Every
+  process staged its write through the same temp file and tore the others'
+  bytes there, then renamed the damage into place. Each writer now stages
+  through its own file.
+- **Concurrent commands no longer force a surprise re-login.** `config set`,
+  the token refresh and the version check each read the config, changed a field
+  and wrote the whole thing back, so one could revert tokens another had just
+  refreshed — surfacing an hour later as a rejected session. Those updates are
+  now serialized.
+- **A damaged config suggests repair before deletion.** The old message led with
+  "delete it and run 'abs-cli login'", which throws away a valid 30-day refresh
+  token over what is usually a stray byte.
+
+### Fixes
+
+- fix: create the config staging file owner-only
+- fix: fail loudly when a 401 hits an unreplayable upload body
+- fix: give each config writer its own staging file
+- fix: lead with repair, not deletion, on an unreadable config
+- fix: serialize config read-modify-write against concurrent writers
+- fix: serialize config set against concurrent token refreshes
+- fix: stream backup upload and drop its 10-minute cap
+- fix: stream cover upload instead of buffering it
+- fix: stream upload file parts instead of buffering them
+
+### Internal
+
+- refactor: name the bodyless-retry flag for what it does
+- test: assert upload parts stream and carry no content-type
+- test: cover the staging-file cleanup path
+- test: name the config concurrency test for what it guards
+- test: survive ABS's backup-apply crash and diagnose the help flake
+- docs: add concurrent config save spec and plan
+- docs: add streaming upload spec and plan
+- docs: bring the read-modify-write race into scope
+- docs: correct the ABS access-token lifetime to one hour
+- docs: correct the config set claim and record the locking task
+- docs: match the spec to the implemented cleanup shape
+- docs: record both symptoms of the shared staging path
+- docs: record the ABS backup-apply race as an upstream bug
+- docs: scope the plan's ReadAllBytes check to source files
+
+### Notes
+
+Security-adjacent: the config and its staging files are now created owner-only
+(`0600`). Previously a first-ever save produced a world-readable `config.json`
+containing the refresh token, because there was no existing file to copy a mode
+from.
+
+Known, unchanged: a 401 arriving mid-request still drops the request body on
+retry and returns the 401's own response to the caller
+([#89](https://github.com/thomaslazar/abs-cli/issues/89)). Multipart uploads now
+fail loudly rather than silently reporting success; the other verbs are
+unaffected in practice, since preflight refreshes any token expiring within 60
+seconds.
+
 ## v1.1.0 — 2026-08-14
 
 Minor release. Every command that takes a JSON body now documents that body's
