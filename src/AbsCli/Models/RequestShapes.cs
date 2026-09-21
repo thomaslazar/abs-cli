@@ -119,7 +119,7 @@ public class LibraryItemIdsRequest
 
 /// <summary>
 /// One entry of the bare-array body for POST /api/items/batch/update. ABS requires
-/// every entry to carry a unique "id" (LibraryItemController.js:632-640) and reads
+/// every entry to carry a unique "id" (LibraryItemController.js:632-643) and reads
 /// the media payload from a "mediaPayload" key
 /// (LibraryItemController.js:665 — `updatePayload.mediaPayload`, passed to
 /// media.updateFromRequest at :673). That payload is the same shape as the whole
