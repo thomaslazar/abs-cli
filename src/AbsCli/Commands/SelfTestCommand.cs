@@ -738,14 +738,14 @@ public static class SelfTestCommand
             {
                 var obj = new List<ItemsBatchUpdateEntry>
                 {
-                    new() { Id = "li_a", Metadata = new ItemMediaUpdateMetadata { Title = "T" }, Tags = new List<string> { "tag" } }
+                    new() { Id = "li_a", MediaPayload = new ItemMediaUpdateRequest { Metadata = new ItemMediaUpdateMetadata { Title = "T" }, Tags = new List<string> { "tag" } } }
                 };
                 var json = JsonSerializer.Serialize(obj, AppJsonContext.Default.ListItemsBatchUpdateEntry);
                 var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.ListItemsBatchUpdateEntry)!;
                 Assert(back.Count == 1, $"count: {back.Count}");
                 Assert(back[0].Id == "li_a", $"id: {back[0].Id}");
-                Assert(back[0].Metadata!.Title == "T", $"title: {back[0].Metadata!.Title}");
-                Assert(back[0].Tags![0] == "tag", $"tags: {back[0].Tags![0]}");
+                Assert(back[0].MediaPayload!.Metadata!.Title == "T", $"title: {back[0].MediaPayload!.Metadata!.Title}");
+                Assert(back[0].MediaPayload!.Tags![0] == "tag", $"tags: {back[0].MediaPayload!.Tags![0]}");
             });
 
             Check("ItemsBatchProgressEntry list round-trip", () =>

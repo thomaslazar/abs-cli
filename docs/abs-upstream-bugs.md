@@ -11,6 +11,7 @@ exists only to tolerate it.
 | Bug | Observed on | Reported | Workaround in this repo |
 |---|---|---|---|
 | Backup apply crashes the server (DB disconnect race) | 2.36.0 | not yet | `restart: unless-stopped` + post-apply health wait |
+| Batch update with no `mediaPayload` exits the server | 2.36.0 | not yet | client-side guard in `PrepareBatchUpdateBody` |
 
 ---
 
@@ -96,3 +97,102 @@ Remove both if this is fixed upstream.
   watcher for the duration of the restore, or to have the DB layer reject queries
   gracefully while disconnected rather than throwing an unhandled rejection that
   exits the process.
+
+---
+
+## Batch update with no `mediaPayload` exits the server
+
+**Status:** not reported upstream.
+**Observed:** 2026-09-21, against `advplyr/audiobookshelf:2.36.0` in the dev compose
+stack, by sending the body below with `curl`. Deterministic — unlike the backup-apply
+race above, this reproduces on every attempt.
+
+### Symptom
+
+`POST /api/items/batch/update` with an entry lacking `mediaPayload` kills the server
+mid-request. The client gets no HTTP response at all:
+
+```
+curl: (52) Empty reply from server
+http_code=000
+```
+
+Not a 502 — the dev stack maps the container port directly with no reverse proxy, so
+there is no gateway left to synthesise one. Behind a proxy you would see a 502; bare,
+the connection simply ends.
+
+The container then exits 1 and, with `restart: unless-stopped`, comes back up
+(`docker ps` shows `Up 6 seconds` immediately after). Retrying the same body kills it
+again — a client that doesn't know to stop sending it gets an indefinite crash loop.
+
+Container log at the moment of death:
+
+```
+FATAL: [Server] Unhandled rejection: TypeError: Cannot read properties of undefined (reading 'metadata')
+  <rejected> TypeError: Cannot read properties of undefined (reading 'metadata')
+```
+
+`undefined (reading 'metadata')` is `mediaPayload.metadata` at `:675` — see below.
+
+### Mechanism
+
+In `server/controllers/LibraryItemController.js`, the batch-update handler loop:
+
+- `:665` — `const mediaPayload = updatePayload.mediaPayload`
+- `:668` — `libraryItem.isPodcast && mediaPayload.autoDownloadSchedule && ...` — a
+  podcast item throws here first, since this line has no `?.` at all.
+- `:673` — `await libraryItem.media.updateFromRequest(mediaPayload)` — not where it
+  throws: `Book.updateFromRequest` is itself defensive
+  (`server/models/Book.js:371` is `if (!payload) return false`), so this call
+  returns cleanly.
+- `:675` — `Array.isArray(mediaPayload.metadata?.series)` — where a book item
+  throws. The `?.` guards `.series`, but `.metadata` is dereferenced directly off
+  `mediaPayload` one level above it, so a missing payload throws
+  `TypeError: Cannot read properties of undefined (reading 'metadata')` before the
+  optional chain ever applies.
+
+The throw happens inside an `async` route handler with nothing catching it, so it
+surfaces as an unhandled promise rejection. `server/Server.js:214-216` handles that
+event generically:
+
+```js
+process.on('unhandledRejection', async (reason, promise) => {
+  await Logger.fatal('[Server] Unhandled rejection:', reason, '\npromise:', util.format('%O', promise))
+  process.exit(1)
+})
+```
+
+### Why this is upstream, not abs-cli's
+
+Any client can trigger this — malformed input from any HTTP caller, not just this
+CLI, and a malformed request body should produce a 400, not take the process down.
+
+### Reproduction
+
+```bash
+curl -X POST "$ABS_URL/api/items/batch/update" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '[{"id": "<existing-item-id>"}]'
+```
+
+No `mediaPayload` key on the entry is enough; watch `docker logs` for the unhandled
+rejection and the container exit.
+
+### Workaround in this repo
+
+`PrepareBatchUpdateBody` (added alongside the `mediaPayload` wrapper fix) refuses any
+entry whose `mediaPayload` is absent or null before the request is sent, naming the
+offending index. Combined with correcting the documented request shape so
+`--help-full` shows the wrapper, a caller following the CLI's own help can no longer
+construct the body that trips this.
+
+### What an upstream report should contain
+
+- ABS version (2.36.0) and that it is the Docker image.
+- The exact line references above — `:665`, `:668`, `:673`, `:675` — since the fix is
+  one `?.` deeper than where it currently sits.
+- That the podcast branch (`:668`) and the book branch (`:675`) are two separate
+  throw sites, not one.
+- That a 400 on a malformed body is the expected behavior; `process.exit(1)` on any
+  unhandled rejection is a separate, broader hardening question also worth raising.

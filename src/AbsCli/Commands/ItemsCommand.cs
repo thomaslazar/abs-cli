@@ -54,19 +54,26 @@ public static class ItemsCommand
     /// <summary>
     /// Validates a batch-update body and returns it unchanged. ABS requires a
     /// non-empty array whose entries each carry a unique id
-    /// (LibraryItemController.js:633-640); we check exactly that and nothing
-    /// more. The original bytes are what gets sent, so fields this type does not
-    /// model still reach ABS.
+    /// (LibraryItemController.js:632-643), and reads each entry's media payload
+    /// from "mediaPayload" (:665). The payload check is ours, not a mirror of a
+    /// server rule: ABS does not answer a missing payload with a 400, it
+    /// dereferences it unguarded at :675 and exits — see docs/abs-upstream-bugs.md.
+    /// The original bytes are what gets sent, so fields this type does not model
+    /// still reach ABS.
     /// </summary>
     internal static string PrepareBatchUpdateBody(string jsonBody)
     {
         var entries = JsonSerializer.Deserialize(jsonBody, AppJsonContext.Default.ListItemsBatchUpdateEntry);
         if (entries is null || entries.Count == 0)
             throw new ArgumentException("batch-update requires a non-empty JSON array of update objects");
-        if (entries.Any(e => string.IsNullOrEmpty(e.Id)))
+        if (entries.Any(e => string.IsNullOrEmpty(e?.Id)))
             throw new ArgumentException("every batch-update entry needs an \"id\"");
         if (entries.Select(e => e.Id).Distinct().Count() != entries.Count)
             throw new ArgumentException("batch-update entry ids must be unique");
+        var missing = entries.FindIndex(e => e.MediaPayload is null);
+        if (missing >= 0)
+            throw new ArgumentException(
+                $"batch-update entry {missing}: \"mediaPayload\" is missing (nothing to update)");
         return jsonBody;
     }
 
@@ -283,6 +290,9 @@ public static class ItemsCommand
         var stdinOption = new Option<bool>("--stdin") { Description = "Read the request body from stdin" };
         var command = new Command("batch-update", "Batch update multiple items") { inputOption, stdinOption };
         command.AddPermissionRequired("update");
+        command.AddHelpSection("Notes", HelpSectionPosition.Top,
+            "Each entry wraps its payload: {\"id\":..., \"mediaPayload\":{...}} —",
+            "unlike 'items update', which takes the payload directly.");
         command.AddExamples(
             "abs-cli items batch-update --input updates.json",
             "cat updates.json | abs-cli items batch-update --stdin");
