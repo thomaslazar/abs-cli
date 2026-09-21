@@ -1,7 +1,7 @@
 # `items batch-update` media payload wrapper — design
 
 **Date:** 2026-09-21
-**Status:** approved, not yet implemented
+**Status:** implemented
 **Issue:** [#93](https://github.com/thomaslazar/abs-cli/issues/93)
 **Related:** [#94](https://github.com/thomaslazar/abs-cli/issues/94) (closed as not planned; its one useful guard is folded in here)
 
@@ -96,6 +96,12 @@ Exit 1, matching every other bad-body path in this command
 
 An explicit `null` counts as missing: `null.metadata` throws at `:675` exactly as
 `undefined.metadata` does.
+
+The guard's refusal set is a *superset* of the crash condition, not an exact mirror
+of it. A non-object payload — `"mediaPayload": []`, `"str"`, `0` — is rejected by the
+parse itself, whereas ABS would survive all three (`[].metadata` and friends are
+`undefined`, so `:675` skips). That is inherent to the parse-to-validate approach used
+throughout this codebase, the inputs are nonsense, and the failure is a clean exit 1.
 
 **Emptiness is deliberately not checked.** `mediaPayload: {}` is a verified harmless
 no-op — `updateFromRequest` returns false, then `{}.metadata?.series` is `undefined`

@@ -497,6 +497,37 @@ without having run it.
 
 ---
 
+## Corrections found during execution
+
+The plan was wrong in four places. Recorded here rather than silently edited, since
+the tasks above are what the implementers actually followed.
+
+1. **The generated class is `JsonExamples`, not `ResponseExamples`.** Task 1's test
+   snippet named it after the file. The implementer corrected the call.
+2. **`SelfTestCommand.cs` was missing from the File Structure table.** It constructs
+   `ItemsBatchUpdateEntry` directly, so Task 1's type change broke the build. Fixed
+   mechanically inside Task 1's commit; the self-test now round-trips through the
+   nested shape, so coverage went up rather than down.
+3. **Task 1 Step 5's "the full suite will still have failures" was wrong, twice
+   over.** Before the `SelfTestCommand.cs` fix the suite did not fail, it failed to
+   *compile*. After it, nothing was red: unknown JSON members are ignored, so the
+   old-shape fixtures still parsed. They only break once Task 2's guard lands, which
+   is what Task 2 Step 1 pre-emptively repairs.
+4. **Task 3's "keep it to that one line" reads as a line-count rule.** It is a
+   content rule — one sentence. The shipped note wraps across two display lines for
+   terminal width, which is correct.
+
+Added after review, beyond the original six tasks:
+
+- A `null` array entry threw `NullReferenceException` (exit 2) at the pre-existing id
+  check. ABS handles that input gracefully (`up?.id`, clean 400), so the CLI was
+  worse than the server on an input the server anticipated. Fixed to `e?.Id`.
+- The smoke assertion's `grep` was loosened to the bare word `mediaPayload`; tightened
+  to the exact guard message.
+- `docs/abs-upstream-bugs.md` claimed the crash "returns 502". It does not — there is
+  no reverse proxy in the dev stack. Reproduced deliberately and replaced with the
+  observed `curl: (52) Empty reply from server` and the container's FATAL log line.
+
 ## Done when
 
 - `dotnet test tests/AbsCli.Tests/AbsCli.Tests.csproj` passes, including the new
