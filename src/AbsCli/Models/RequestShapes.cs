@@ -118,21 +118,23 @@ public class LibraryItemIdsRequest
 }
 
 /// <summary>
-/// One entry of the bare-array body for POST /api/items/batch/update
-/// (LibraryItemController.js:632-640). ABS requires every entry to carry
-/// an "id", and every id in the batch to be unique. metadata/tags reuse
-/// the same shape as `items update` (<see cref="ItemMediaUpdateMetadata"/>).
+/// One entry of the bare-array body for POST /api/items/batch/update. ABS requires
+/// every entry to carry a unique "id" (LibraryItemController.js:632-640) and reads
+/// the media payload from a "mediaPayload" key
+/// (LibraryItemController.js:665 — `updatePayload.mediaPayload`, passed to
+/// media.updateFromRequest at :673). That payload is the same shape as the whole
+/// body of `items update`, hence the reuse of <see cref="ItemMediaUpdateRequest"/>.
+/// Omitting the wrapper does not produce a 400: :675 dereferences it unguarded
+/// (`mediaPayload.metadata?.series`) and the resulting unhandled rejection exits the
+/// server — see docs/abs-upstream-bugs.md.
 /// </summary>
 public class ItemsBatchUpdateEntry
 {
     [JsonPropertyName("id")]
     public string Id { get; set; } = "";
 
-    [JsonPropertyName("metadata")]
-    public ItemMediaUpdateMetadata? Metadata { get; set; }
-
-    [JsonPropertyName("tags")]
-    public List<string>? Tags { get; set; }
+    [JsonPropertyName("mediaPayload")]
+    public ItemMediaUpdateRequest? MediaPayload { get; set; }
 }
 
 /// <summary>
