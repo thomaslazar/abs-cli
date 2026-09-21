@@ -103,15 +103,36 @@ Remove both if this is fixed upstream.
 ## Batch update with no `mediaPayload` exits the server
 
 **Status:** not reported upstream.
-**Observed:** 2026-09-21, against `advplyr/audiobookshelf:2.36.0`. Deterministic —
-unlike the backup-apply race above, this reproduces on every attempt.
+**Observed:** 2026-09-21, against `advplyr/audiobookshelf:2.36.0` in the dev compose
+stack, by sending the body below with `curl`. Deterministic — unlike the backup-apply
+race above, this reproduces on every attempt.
 
 ### Symptom
 
-`POST /api/items/batch/update` with an entry lacking `mediaPayload` returns 502 and
-the container exits 1. With `restart: unless-stopped` it restarts, and retrying the
-same body kills it again — a client that doesn't know to stop sending the bad body
-gets an indefinite crash loop.
+`POST /api/items/batch/update` with an entry lacking `mediaPayload` kills the server
+mid-request. The client gets no HTTP response at all:
+
+```
+curl: (52) Empty reply from server
+http_code=000
+```
+
+Not a 502 — the dev stack maps the container port directly with no reverse proxy, so
+there is no gateway left to synthesise one. Behind a proxy you would see a 502; bare,
+the connection simply ends.
+
+The container then exits 1 and, with `restart: unless-stopped`, comes back up
+(`docker ps` shows `Up 6 seconds` immediately after). Retrying the same body kills it
+again — a client that doesn't know to stop sending it gets an indefinite crash loop.
+
+Container log at the moment of death:
+
+```
+FATAL: [Server] Unhandled rejection: TypeError: Cannot read properties of undefined (reading 'metadata')
+  <rejected> TypeError: Cannot read properties of undefined (reading 'metadata')
+```
+
+`undefined (reading 'metadata')` is `mediaPayload.metadata` at `:675` — see below.
 
 ### Mechanism
 
