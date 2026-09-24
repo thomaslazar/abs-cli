@@ -852,6 +852,11 @@ run_drift_case "illegal char stripped" "Pipe|Title" "Sanitize Author Pipe" \
 run_drift_case "whitespace collapsed" "Extra   Spaces   Title" "Sanitize Author WS" \
     "Sanitize Author WS/Extra Spaces Title" "" ""
 
+# NFD title (issue #97): ABS stores the folder NFC; the CLI must predict
+# the same. string.Normalize is a no-op under InvariantGlobalization.
+run_drift_case "NFD title composed" "$(printf 'Die Lo\xcc\x88win')" "Sanitize Author NFD" \
+    "Sanitize Author NFD/Die L$(printf '\xc3\xb6')win" "" ""
+
 # --- Long-title --wait (issue #54) ---
 # A title long enough that ABS truncates the path segment. We cannot predict
 # the exact truncated relPath, so assert --wait still resolves the item (the
