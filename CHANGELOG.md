@@ -3,6 +3,43 @@
 All notable changes to abs-cli are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## v1.1.3 — 2026-09-24
+
+Patch release. `upload --wait` failed on titles, authors or series containing
+decomposed Unicode (NFD), even though the upload itself succeeded.
+
+### Highlights
+
+- **`upload --wait` now confirms items with decomposed accents.** Titles from
+  catalogue sources such as the DNB, or from macOS filenames, often store `ö` as
+  `o` + a combining diaeresis. ABS stores the folder name composed (NFC), so the
+  CLI's predicted path never matched, and it exited 1 with "could not be
+  auto-confirmed". Scripts that key off the exit code skipped the follow-up
+  metadata update for books that had in fact landed.
+- **The receipt's `relPath` now matches what the server stores** for such input.
+- **Root cause:** the CLI is built with invariant globalization (no `libicu`
+  dependency), where .NET's `string.Normalize` silently does nothing for
+  non-ASCII text. `abs-cli` now carries its own NFC composition, checked against
+  ICU for every Unicode code point, so the binary stays self-contained.
+
+### Fixes
+
+- fix: compose NFD upload path segments under invariant globalization
+- fix: compose precomposed bases with reordered marks
+
+### Internal
+
+- feat: add NFC composition table generator
+- feat: add managed NFC composer for invariant globalization
+- fix: make NFC generator ICU guard effective
+- test: add NFD title upload drift case to smoke tests
+- test: escape NFD/NFC literals in sanitizer checks
+- docs: align nfc spec with implementation and list new files
+
+### Upgrading
+
+No action needed. No commands, flags or output shapes changed.
+
 ## v1.1.2 — 2026-09-21
 
 Patch release. `items batch-update` documented a request body that Audiobookshelf
