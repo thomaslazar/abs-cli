@@ -1,4 +1,3 @@
-using System.Text;
 using System.Text.RegularExpressions;
 
 namespace AbsCli.Api;
@@ -45,7 +44,8 @@ public static class FilenameSanitizer
     {
         if (filename == null) throw new ArgumentNullException(nameof(filename));
 
-        var s = filename.Normalize(NormalizationForm.FormC);
+        // string.Normalize is a no-op under InvariantGlobalization (issue #97).
+        var s = UnicodeNfc.Compose(filename);
 
         // JS's String.prototype.replace with a non-regex pattern only replaces the first match.
         var firstColon = s.IndexOf(':');
