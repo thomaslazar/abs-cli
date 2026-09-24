@@ -13,7 +13,8 @@ reflection-based serialization — bugs only surface in the real binary.
 132 tests covering pure logic, help-output assertions, and JSON-shape drift
 guards with no network or binary dependency:
 
-- `Api/` — `FilterEncoderTests`, `TokenHelperTests`, `FilenameSanitizerTests`
+- `Api/` — `FilterEncoderTests`, `TokenHelperTests`, `FilenameSanitizerTests`,
+  `UnicodeNfcTests`
 - `Commands/` — `HelpOutputTests`, `HelpExtensionsTests`, `AuthorsCommandTests`,
   `AuthorsImageCommandTests`, `ChangelogCommandTests`, `ChangelogReaderTests`,
   `ItemsCoverCommandTests`, `ResponseExamplesDriftTest`,

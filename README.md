@@ -338,16 +338,17 @@ docker compose -f docker/docker-compose.yml down -v
 src/AbsCli/
   Commands/       # CLI command definitions (System.CommandLine)
   Services/       # Business logic (API orchestration)
-  Api/            # HTTP client, endpoints, filter encoder, filename sanitizer, token helper
+  Api/            # HTTP client, endpoints, filter encoder, filename sanitizer, NFC composer, token helper
   Models/         # DTOs matching ABS API JSON exactly (all registered in JsonContext for AOT)
   Configuration/  # Config file, env var, flag resolution
   Output/         # JSON stdout, stderr error helpers
 tests/AbsCli.Tests/
-  Api/            # FilterEncoder, TokenHelper, FilenameSanitizer unit tests
+  Api/            # FilterEncoder, TokenHelper, FilenameSanitizer, UnicodeNfc unit tests
   Commands/       # Help output, response-shape drift, command-specific tests
   Configuration/  # ConfigManager unit tests
 tools/
   GenerateResponseExamples/  # Generates ResponseExamples.g.cs (sample JSON per type for --help)
+  GenerateNfcTables/         # Generates UnicodeNfc.g.cs from ICU (run manually)
 docker/
   docker-compose.yml  # Local ABS instance for testing
   seed.sh             # Seed test data (15 audiobooks + 1 multi-ebook fixture, 7 authors, 3 series, 4 users)

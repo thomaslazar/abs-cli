@@ -10,6 +10,8 @@
 
 **Spec:** `docs/specs/2026-09-24-upload-nfc-normalization-design.md`
 
+> **Note:** review fixes during execution superseded parts of the Task 1–2 code below (second-pass pair rule, `IsPairFirst` starter rule, a third pinned gap). The spec and the committed code are authoritative.
+
 **Branch:** `fix/upload-nfc-normalization` (already checked out; spec + this plan are uncommitted and go into the first commit).
 
 ---

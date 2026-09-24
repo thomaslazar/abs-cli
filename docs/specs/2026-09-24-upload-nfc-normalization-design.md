@@ -1,7 +1,7 @@
 # Upload NFC normalization under invariant globalization — design
 
 **Date:** 2026-09-24
-**Status:** approved
+**Status:** implemented
 **Issue:** [#97](https://github.com/thomaslazar/abs-cli/issues/97)
 
 ## Problem
@@ -28,9 +28,9 @@ dependency on Linux) and ship a small managed NFC composer.
 
 **Fidelity: pragmatic, not full UAX #15.** Canonical composition of
 starter + mark pairs, singleton mappings and Hangul — no canonical reordering
-(no combining-class data). Divergence from ICU is limited to inputs whose
-combining marks are not already in canonical order; the consequence is today's
-exit-1 warning, not wrong data. NFD produced by macOS and catalogue sources
+(no combining-class data). Divergence from ICU is limited to marks out of
+canonical order, or an uncomposable mark that ICU treats as blocking (see
+Known divergences); the consequence is today's exit-1 warning, not wrong data. NFD produced by macOS and catalogue sources
 (DNB) is canonically ordered, so it is covered.
 
 Rejected:
@@ -93,7 +93,7 @@ U+0000–U+10FFFF (skipping surrogates):
   pair seconds, if `(X, M)` is not a pair and `NFC(X + M)` is a single rune
   ≠ `X`, add it. Covers precomposed base + lower mark (U+00EA + U+0323 →
   U+1EC7, CP1258 input), which `Compose` cannot reorder into.
-- **Singleton:** `NFC(c) != c` and `c` is not produced by a pair → entry
+- **Singleton:** `NFC(c) != c` → entry
   `c → NFC(c)`.
 - Asserts every pair's second element and every singleton key is ≥ U+0300
   (backs `Compose`'s fast path).
@@ -123,7 +123,7 @@ Test project is not invariant, so ICU `Normalize` is the oracle.
 - Corpus: German, French, Vietnamese (stacked but ordered marks), Hangul
   jamo sequences, the DNB title from #97 — compare against ICU.
 - `Sanitize` regression: NFD `Die Löwin von Neetha` → NFC.
-- Documented gaps: the two divergence examples above — assert the known
+- Documented gaps: the three divergence examples above — assert the known
   outputs so a future change is deliberate.
 - Self-test (AOT binary, invariant mode — the only place the original bug
   reproduces): `Sanitize` of the #97 NFD title yields NFC.
