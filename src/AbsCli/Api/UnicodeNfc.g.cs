@@ -537,5 +537,4 @@ public static partial class UnicodeNfc
         "\u4CED", "\u9D67", "\U0002A0CE", "\u4CF8", "\U0002A105", "\U0002A20E", "\U0002A291", "\u9EBB",
         "\u4D56", "\u9EF9", "\u9EFE", "\u9F05", "\u9F0F", "\u9F16", "\u9F3B", "\U0002A600",
     ];
-
 }

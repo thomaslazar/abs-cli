@@ -9,7 +9,7 @@ if (args.Length != 1)
     Console.Error.WriteLine("usage: GenerateNfcTables <output.g.cs>");
     return 1;
 }
-if ("ö".Normalize(NormalizationForm.FormC) != "ö")
+if ("o\u0308".Normalize(NormalizationForm.FormC) != "\u00f6")
 {
     Console.Error.WriteLine("ICU normalization unavailable (invariant globalization?)");
     return 1;
@@ -22,18 +22,11 @@ for (int cp = 0; cp <= 0x10FFFF; cp++)
     if (cp is >= 0xD800 and <= 0xDFFF) continue;
     // Hangul syllables compose arithmetically in UnicodeNfc.Combine.
     if (cp is >= 0xAC00 and <= 0xD7A3) continue;
+    // U+FFFE rejects FormC on this runtime's ICU binding even though it's a
+    // valid (if reserved) scalar value with no canonical mapping either way.
+    if (cp == 0xFFFE) continue;
     var c = char.ConvertFromUtf32(cp);
-    string nfc;
-    try
-    {
-        // U+FFFE rejects FormC on this runtime's ICU binding even though it's a
-        // valid (if reserved) scalar value with no canonical mapping either way.
-        nfc = c.Normalize(NormalizationForm.FormC);
-    }
-    catch (ArgumentException)
-    {
-        continue;
-    }
+    var nfc = c.Normalize(NormalizationForm.FormC);
     if (nfc != c)
     {
         singletons[cp] = nfc;
@@ -68,8 +61,11 @@ sb.AppendLine();
 sb.AppendLine("public static partial class UnicodeNfc");
 sb.AppendLine("{");
 AppendArray(sb, "ulong", "PairKeys", pairs.Keys.Select(k => $"0x{k:X}UL"));
+sb.AppendLine();
 AppendArray(sb, "int", "PairValues", pairs.Values.Select(v => $"0x{v:X}"));
+sb.AppendLine();
 AppendArray(sb, "int", "SingletonKeys", singletons.Keys.Select(k => $"0x{k:X}"));
+sb.AppendLine();
 AppendArray(sb, "string", "SingletonValues", singletons.Values.Select(Escape));
 sb.AppendLine("}");
 File.WriteAllText(args[0], sb.ToString().TrimEnd() + "\n");
@@ -91,5 +87,4 @@ static void AppendArray(StringBuilder sb, string type, string name, IEnumerable<
         sb.AppendLine("        " + string.Join(", ", chunk) + ",");
     }
     sb.AppendLine("    ];");
-    sb.AppendLine();
 }
