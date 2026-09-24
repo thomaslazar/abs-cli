@@ -58,12 +58,16 @@ Rejected:
 - On failure the rune is appended. If it is a combining mark
   (`UnicodeCategory` NonSpacingMark / SpacingCombiningMark / EnclosingMark)
   the starter stays; later marks may still compose with it (no ccc-based
-  blocking). Otherwise the rune becomes the new starter. Hangul composition
+  blocking). Otherwise — or if the rune is a pair first element, e.g. Indic
+  Mc vowel signs like U+09C7 — it becomes the new starter
+  (`!IsMark || IsPairFirst`). Hangul composition
   only applies when the starter is the last output rune (UAX #15 adjacency).
 - Known divergences (all need marks that do not compose with the base):
   out-of-canonical-order marks (`a` + U+0301 + U+0323), and an uncomposable
   mark blocking a later mark of equal combining class (`a` + U+0310 +
-  U+0301 — ICU keeps it decomposed, `Compose` yields `á` + U+0310).
+  U+0301 — ICU keeps it decomposed, `Compose` yields `á` + U+0310), and a
+  class-0 mark not blocking (`a` + U+034F CGJ + U+0301 — ICU keeps it,
+  `Compose` yields `á` + U+034F).
   Skipping blocking is the better guess: the common failing-mark case is a
   lower-class below-mark followed by an above-mark, which ICU does compose.
 
@@ -85,6 +89,10 @@ U+0000–U+10FFFF (skipping surrogates):
   stacked ones via their intermediate (`ạ` + U+0302 → `ậ`). Hangul syllables
   are skipped (handled arithmetically); composition exclusions fall out
   naturally because `NFC(...) != c` for them.
+- **Pair, second pass:** for every `X` in pair firsts ∪ composites and `M` in
+  pair seconds, if `(X, M)` is not a pair and `NFC(X + M)` is a single rune
+  ≠ `X`, add it. Covers precomposed base + lower mark (U+00EA + U+0323 →
+  U+1EC7, CP1258 input), which `Compose` cannot reorder into.
 - **Singleton:** `NFC(c) != c` and `c` is not produced by a pair → entry
   `c → NFC(c)`.
 - Asserts every pair's second element and every singleton key is ≥ U+0300

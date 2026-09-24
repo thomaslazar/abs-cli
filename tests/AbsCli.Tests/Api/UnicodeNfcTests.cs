@@ -40,9 +40,11 @@ public class UnicodeNfcTests
     [Theory]
     [InlineData("Die Lo\u0308win von Neetha")]          // issue #97 (DNB)
     [InlineData("Franc\u0327ois Mauriac")]
-    [InlineData("Tie\u0302\u0301ng Vie\u0323\u0302t")]  // stacked, canonically ordered
+    [InlineData("Tie\u0302\u0301ng Vie\u0323\u0302t")]  // stacked marks, NFD order
+    [InlineData("Vi\u00EA\u0323t")]                     // precomposed base + lower mark (CP1258)
+    [InlineData("\u00E2\u0323")]                        // precomposed base + lower mark
     [InlineData("\u1112\u1161\u11AB\u1100\u1173\u11AF")] // Hangul jamo
-    [InlineData("\u212B + \u0301")]                      // singleton
+    [InlineData("\u212B\u0301")]                         // singleton, then composes
     [InlineData("A\u030A\u0301")]                        // composes twice
     [InlineData("\u0958 test")]                          // composition exclusion
     [InlineData("\u0301 leading mark")]
@@ -67,5 +69,12 @@ public class UnicodeNfcTests
     {
         Assert.Equal("a\u0310\u0301", "a\u0310\u0301".Normalize(NormalizationForm.FormC));
         Assert.Equal("\u00E1\u0310", UnicodeNfc.Compose("a\u0310\u0301"));
+    }
+
+    [Fact]
+    public void KnownGap_ClassZeroMarkDoesNotBlock()
+    {
+        Assert.Equal("a\u034F\u0301", "a\u034F\u0301".Normalize(NormalizationForm.FormC));
+        Assert.Equal("\u00E1\u034F", UnicodeNfc.Compose("a\u034F\u0301"));
     }
 }

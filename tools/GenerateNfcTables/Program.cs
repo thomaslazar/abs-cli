@@ -41,6 +41,24 @@ for (int cp = 0; cp <= 0x10FFFF; cp++)
     pairs[((ulong)char.ConvertToUtf32(prefix[0], 0) << 21) | (uint)char.ConvertToUtf32(last, 0)] = cp;
 }
 
+// Second pass: a composite plus a mark that sorts before its last mark
+// (e.g. U+00EA + U+0323 -> U+1EC7) is not a primary pair but must compose,
+// since Compose does no reordering.
+var bases = pairs.Keys.Select(k => (int)(k >> 21)).Concat(pairs.Values).Distinct().ToList();
+var marks = pairs.Keys.Select(k => (int)(k & 0x1FFFFF)).Distinct().ToList();
+foreach (var x in bases)
+{
+    foreach (var m in marks)
+    {
+        var key = ((ulong)x << 21) | (uint)m;
+        if (pairs.ContainsKey(key)) continue;
+        var r = Runes((char.ConvertFromUtf32(x) + char.ConvertFromUtf32(m)).Normalize(NormalizationForm.FormC));
+        if (r.Count != 1) continue;
+        var v = char.ConvertToUtf32(r[0], 0);
+        if (v != x) pairs[key] = v;
+    }
+}
+
 // Backs UnicodeNfc.Compose's fast path (every char < U+0300 is left alone).
 foreach (var key in pairs.Keys)
 {
