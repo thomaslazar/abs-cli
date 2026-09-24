@@ -143,6 +143,6 @@ public class FilenameSanitizerTests
     public void NfdInput_IsComposed()
     {
         // Issue #97: DNB titles arrive decomposed; ABS stores NFC.
-        Assert.Equal("Die Löwin von Neetha", FilenameSanitizer.Sanitize("Die Löwin von Neetha"));
+        Assert.Equal("Die L\u00f6win von Neetha", FilenameSanitizer.Sanitize("Die Lo\u0308win von Neetha"));
     }
 }
