@@ -138,4 +138,11 @@ public class FilenameSanitizerTests
         Assert.Equal("Author/Title",
             FilenameSanitizer.PredictRelPath("Author", "...", "Title"));
     }
+
+    [Fact]
+    public void NfdInput_IsComposed()
+    {
+        // Issue #97: DNB titles arrive decomposed; ABS stores NFC.
+        Assert.Equal("Die L\u00f6win von Neetha", FilenameSanitizer.Sanitize("Die Lo\u0308win von Neetha"));
+    }
 }

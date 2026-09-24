@@ -1,0 +1,466 @@
+# Upload NFC Normalization Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Make `upload --wait` match items whose `--title`/`--author`/`--series` contain NFD Unicode (issue #97) by replacing the no-op `string.Normalize` (under `InvariantGlobalization`) with a managed NFC composer.
+
+**Architecture:** `tools/GenerateNfcTables` uses live ICU to emit composition-pair and singleton tables into a checked-in `src/AbsCli/Api/UnicodeNfc.g.cs`. `src/AbsCli/Api/UnicodeNfc.cs` composes with those tables plus Hangul arithmetic. `FilenameSanitizer.Sanitize` calls it. Unit tests use ICU (live in the test project) as the reference; `self-test` guards the AOT/invariant path.
+
+**Tech Stack:** C# / .NET 10, xunit v3, Native AOT, bash smoke tests.
+
+**Spec:** `docs/specs/2026-09-24-upload-nfc-normalization-design.md`
+
+> **Note:** review fixes during execution superseded parts of the Task 1–2 code below (second-pass pair rule, `IsPairFirst` starter rule, a third pinned gap). The spec and the committed code are authoritative.
+
+**Branch:** `fix/upload-nfc-normalization` (already checked out; spec + this plan are uncommitted and go into the first commit).
+
+---
+
+## File structure
+
+- Create `tools/GenerateNfcTables/GenerateNfcTables.csproj`, `tools/GenerateNfcTables/Program.cs` — table generator, run manually.
+- Create `src/AbsCli/Api/UnicodeNfc.g.cs` — generated tables (checked in).
+- Create `src/AbsCli/Api/UnicodeNfc.cs` — `Compose` algorithm.
+- Create `tests/AbsCli.Tests/Api/UnicodeNfcTests.cs`.
+- Modify `src/AbsCli/Api/FilenameSanitizer.cs:48` — call `UnicodeNfc.Compose`.
+- Modify `tests/AbsCli.Tests/Api/FilenameSanitizerTests.cs` — NFD regression.
+- Modify `src/AbsCli/Commands/SelfTestCommand.cs` — invariant-mode check.
+- Modify `docker/smoke-test.sh` — NFD drift case.
+- Modify `AbsCli.sln` — add generator under `tools`.
+
+---
+
+### Task 1: Table generator and generated tables
+
+**Files:**
+- Create: `tools/GenerateNfcTables/GenerateNfcTables.csproj`
+- Create: `tools/GenerateNfcTables/Program.cs`
+- Create: `src/AbsCli/Api/UnicodeNfc.g.cs` (generated)
+- Modify: `AbsCli.sln`
+
+- [ ] **Step 1: Create the project file**
+
+`tools/GenerateNfcTables/GenerateNfcTables.csproj` (must NOT set `InvariantGlobalization` — the tool needs ICU):
+
+```xml
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>AbsCli.Tools.GenerateNfcTables</RootNamespace>
+    <AssemblyName>GenerateNfcTables</AssemblyName>
+    <IsPackable>false</IsPackable>
+    <IsPublishable>false</IsPublishable>
+  </PropertyGroup>
+</Project>
+```
+
+- [ ] **Step 2: Write the generator**
+
+`tools/GenerateNfcTables/Program.cs`:
+
+```csharp
+// Emits src/AbsCli/Api/UnicodeNfc.g.cs from the host's ICU. Run manually:
+//   dotnet run --project tools/GenerateNfcTables -- src/AbsCli/Api/UnicodeNfc.g.cs
+// Not wired into the build: output depends on the host ICU's Unicode version.
+using System.Globalization;
+using System.Text;
+
+if (args.Length != 1)
+{
+    Console.Error.WriteLine("usage: GenerateNfcTables <output.g.cs>");
+    return 1;
+}
+if ("ö".Normalize(NormalizationForm.FormC) != "ö")
+{
+    Console.Error.WriteLine("ICU normalization unavailable (invariant globalization?)");
+    return 1;
+}
+
+var pairs = new SortedDictionary<ulong, int>();
+var singletons = new SortedDictionary<int, string>();
+for (int cp = 0; cp <= 0x10FFFF; cp++)
+{
+    if (cp is >= 0xD800 and <= 0xDFFF) continue;
+    // Hangul syllables compose arithmetically in UnicodeNfc.Combine.
+    if (cp is >= 0xAC00 and <= 0xD7A3) continue;
+    var c = char.ConvertFromUtf32(cp);
+    var nfc = c.Normalize(NormalizationForm.FormC);
+    if (nfc != c)
+    {
+        singletons[cp] = nfc;
+        continue;
+    }
+    var d = Runes(c.Normalize(NormalizationForm.FormD));
+    if (d.Count < 2) continue;
+    var last = d[^1];
+    var prefix = Runes(string.Concat(d.Take(d.Count - 1)).Normalize(NormalizationForm.FormC));
+    if (prefix.Count != 1) continue;
+    if ((prefix[0] + last).Normalize(NormalizationForm.FormC) != c) continue;
+    pairs[((ulong)char.ConvertToUtf32(prefix[0], 0) << 21) | (uint)char.ConvertToUtf32(last, 0)] = cp;
+}
+
+// Backs UnicodeNfc.Compose's fast path (every char < U+0300 is left alone).
+foreach (var key in pairs.Keys)
+{
+    if ((key & 0x1FFFFF) < 0x300) throw new InvalidOperationException($"pair second element below U+0300: {key:X}");
+}
+foreach (var key in singletons.Keys)
+{
+    if (key < 0x300) throw new InvalidOperationException($"singleton below U+0300: {key:X4}");
+}
+
+var sb = new StringBuilder();
+sb.AppendLine("// <auto-generated>");
+sb.AppendLine("// Generated by tools/GenerateNfcTables from ICU. Do not edit by hand.");
+sb.AppendLine("// </auto-generated>");
+sb.AppendLine();
+sb.AppendLine("namespace AbsCli.Api;");
+sb.AppendLine();
+sb.AppendLine("public static partial class UnicodeNfc");
+sb.AppendLine("{");
+AppendArray(sb, "ulong", "PairKeys", pairs.Keys.Select(k => $"0x{k:X}UL"));
+AppendArray(sb, "int", "PairValues", pairs.Values.Select(v => $"0x{v:X}"));
+AppendArray(sb, "int", "SingletonKeys", singletons.Keys.Select(k => $"0x{k:X}"));
+AppendArray(sb, "string", "SingletonValues", singletons.Values.Select(Escape));
+sb.AppendLine("}");
+File.WriteAllText(args[0], sb.ToString().TrimEnd() + "\n");
+Console.Error.WriteLine($"{pairs.Count} pairs, {singletons.Count} singletons -> {args[0]}");
+return 0;
+
+static List<string> Runes(string s) => s.EnumerateRunes().Select(r => r.ToString()).ToList();
+
+static string Escape(string s) =>
+    "\"" + string.Concat(s.EnumerateRunes().Select(r =>
+        r.Value > 0xFFFF ? $"\\U{r.Value:X8}" : $"\\u{r.Value:X4}")) + "\"";
+
+static void AppendArray(StringBuilder sb, string type, string name, IEnumerable<string> items)
+{
+    sb.AppendLine($"    private static readonly {type}[] {name} =");
+    sb.AppendLine("    [");
+    foreach (var chunk in items.Chunk(8))
+    {
+        sb.AppendLine("        " + string.Join(", ", chunk) + ",");
+    }
+    sb.AppendLine("    ];");
+    sb.AppendLine();
+}
+```
+
+Note: `private static readonly` in the generated partial is read by `UnicodeNfc.cs` (Task 2). `SortedDictionary` key order equals `Array.BinarySearch` order for `ulong`/`int`.
+
+- [ ] **Step 3: Add the tool to the solution**
+
+Run: `dotnet sln AbsCli.sln add --solution-folder tools tools/GenerateNfcTables/GenerateNfcTables.csproj`
+Expected: `Project ... added to the solution.` Then `git diff AbsCli.sln` should show it nested under the existing `tools` folder (GUID `{C51BD391-03B0-456A-A01B-41957DBD0425}`). If `dotnet sln` created a second `tools` folder instead, hand-edit the `NestedProjects` entry to point at the existing folder GUID and delete the duplicate folder.
+
+- [ ] **Step 4: Generate the tables**
+
+Run: `dotnet run --project tools/GenerateNfcTables -- src/AbsCli/Api/UnicodeNfc.g.cs`
+Expected stderr: `<N> pairs, <M> singletons -> src/AbsCli/Api/UnicodeNfc.g.cs` with N roughly 900–1000 and M roughly 1000–1100. Spot-check the `o` + U+0308 pair (key `0x6F << 21 | 0x308` = `0xDE00308`): `grep -o '0xDE00308UL' src/AbsCli/Api/UnicodeNfc.g.cs` → one match.
+
+The partial compiles on its own (unused-field warnings are acceptable until Task 2). Verify: `dotnet build src/AbsCli/AbsCli.csproj` → succeeds (warnings OK; errors not).
+
+- [ ] **Step 5: Format and commit**
+
+Run: `dotnet format AbsCli.sln` then `git status` (the generated file may be reformatted — re-running the generator must be idempotent with the formatter; if `dotnet format` changes `UnicodeNfc.g.cs`, adjust the generator's output format to match and regenerate until `dotnet format --verify-no-changes AbsCli.sln` passes on a fresh generation).
+
+```bash
+git add docs/specs/2026-09-24-upload-nfc-normalization-design.md docs/plans/2026-09-24-upload-nfc-normalization.md \
+  tools/GenerateNfcTables AbsCli.sln src/AbsCli/Api/UnicodeNfc.g.cs
+git commit -m "feat: add NFC composition table generator"
+```
+
+(Make sure `tools/GenerateNfcTables/bin` and `obj` are gitignored — `git status` must not show them.)
+
+---
+
+### Task 2: `UnicodeNfc.Compose`
+
+**Files:**
+- Create: `src/AbsCli/Api/UnicodeNfc.cs`
+- Test: `tests/AbsCli.Tests/Api/UnicodeNfcTests.cs`
+
+- [ ] **Step 1: Write the failing tests**
+
+`tests/AbsCli.Tests/Api/UnicodeNfcTests.cs`:
+
+```csharp
+using System.Text;
+using AbsCli.Api;
+
+namespace AbsCli.Tests.Api;
+
+// The test project does not use InvariantGlobalization, so ICU's
+// string.Normalize is live and serves as the reference implementation.
+public class UnicodeNfcTests
+{
+    [Fact]
+    public void IcuReference_IsLive()
+    {
+        Assert.Equal("ö", "ö".Normalize(NormalizationForm.FormC));
+    }
+
+    [Fact]
+    public void Ascii_ReturnsSameInstance()
+    {
+        var s = "Plain Title";
+        Assert.Same(s, UnicodeNfc.Compose(s));
+    }
+
+    [Fact]
+    public void EveryScalar_MatchesIcu()
+    {
+        var failures = new List<string>();
+        for (int cp = 0; cp <= 0x10FFFF; cp++)
+        {
+            if (cp is >= 0xD800 and <= 0xDFFF) continue;
+            var c = char.ConvertFromUtf32(cp);
+            var expected = c.Normalize(NormalizationForm.FormC);
+            if (UnicodeNfc.Compose(c) != expected) failures.Add($"U+{cp:X4}");
+            if (UnicodeNfc.Compose(c.Normalize(NormalizationForm.FormD)) != expected) failures.Add($"NFD(U+{cp:X4})");
+        }
+        Assert.True(failures.Count == 0, $"{failures.Count} mismatches: {string.Join(", ", failures.Take(20))}");
+    }
+
+    [Theory]
+    [InlineData("Die Löwin von Neetha")]          // issue #97 (DNB)
+    [InlineData("François Mauriac")]
+    [InlineData("Tiếng Việt")]  // stacked, canonically ordered
+    [InlineData("한글")] // Hangul jamo
+    [InlineData("Å + ́")]                      // singleton
+    [InlineData("Ǻ")]                        // composes twice
+    [InlineData("क़ test")]                          // composition exclusion
+    [InlineData("́ leading mark")]
+    public void Corpus_MatchesIcu(string input)
+    {
+        Assert.Equal(input.Normalize(NormalizationForm.FormC), UnicodeNfc.Compose(input));
+        var nfd = input.Normalize(NormalizationForm.FormD);
+        Assert.Equal(nfd.Normalize(NormalizationForm.FormC), UnicodeNfc.Compose(nfd));
+    }
+
+    // Accepted divergences (no canonical reordering, no ccc-based blocking).
+    // Pinned so a future change to either is deliberate.
+    [Fact]
+    public void KnownGap_OutOfOrderMarks()
+    {
+        Assert.Equal("ạ́", "ạ́".Normalize(NormalizationForm.FormC));
+        Assert.Equal("ạ́", UnicodeNfc.Compose("ạ́"));
+    }
+
+    [Fact]
+    public void KnownGap_EqualClassBlocking()
+    {
+        Assert.Equal("a̐́", "a̐́".Normalize(NormalizationForm.FormC));
+        Assert.Equal("á̐", UnicodeNfc.Compose("a̐́"));
+    }
+}
+```
+
+- [ ] **Step 2: Run tests to verify they fail**
+
+Run: `dotnet test tests/AbsCli.Tests --filter "FullyQualifiedName~UnicodeNfcTests"`
+Expected: build error — `UnicodeNfc` does not contain a definition for `Compose`.
+
+- [ ] **Step 3: Implement**
+
+`src/AbsCli/Api/UnicodeNfc.cs`:
+
+```csharp
+using System.Globalization;
+using System.Text;
+
+namespace AbsCli.Api;
+
+/// <summary>
+/// Managed NFC composition. <c>string.Normalize</c> is a silent no-op for
+/// non-ASCII input under <c>InvariantGlobalization</c> (issue #97), so the
+/// CLI cannot rely on it. Pragmatic subset of UAX #15: singleton mappings,
+/// pairwise canonical composition and Hangul — no canonical reordering and
+/// no combining-class blocking (.NET exposes no ccc data). Exact for
+/// canonically ordered input whose marks all compose; see UnicodeNfcTests
+/// for the pinned divergences. Tables live in UnicodeNfc.g.cs, generated by
+/// tools/GenerateNfcTables.
+/// </summary>
+public static partial class UnicodeNfc
+{
+    private const int SBase = 0xAC00, LBase = 0x1100, VBase = 0x1161, TBase = 0x11A7;
+    private const int LCount = 19, VCount = 21, TCount = 28, SCount = LCount * VCount * TCount;
+
+    public static string Compose(string s)
+    {
+        // Nothing below U+0300 composes or maps (asserted by the generator).
+        if (!s.Any(ch => ch >= '̀')) return s;
+        var output = new List<int>(s.Length);
+        int starter = -1;
+        foreach (var rune in s.EnumerateRunes())
+        {
+            var mapped = Singleton(rune.Value);
+            if (mapped == null)
+            {
+                Append(output, ref starter, rune.Value);
+                continue;
+            }
+            foreach (var r in mapped.EnumerateRunes()) Append(output, ref starter, r.Value);
+        }
+        var sb = new StringBuilder(s.Length);
+        foreach (var cp in output) sb.Append(char.ConvertFromUtf32(cp));
+        return sb.ToString();
+    }
+
+    private static void Append(List<int> output, ref int starter, int cp)
+    {
+        if (starter >= 0)
+        {
+            var composed = Combine(output[starter], cp, adjacent: starter == output.Count - 1);
+            if (composed >= 0)
+            {
+                output[starter] = composed;
+                return;
+            }
+        }
+        output.Add(cp);
+        if (!IsMark(cp)) starter = output.Count - 1;
+    }
+
+    private static int Combine(int a, int b, bool adjacent)
+    {
+        if (adjacent)
+        {
+            if (a >= LBase && a < LBase + LCount && b >= VBase && b < VBase + VCount)
+                return SBase + ((a - LBase) * VCount + (b - VBase)) * TCount;
+            if (a >= SBase && a < SBase + SCount && (a - SBase) % TCount == 0 && b > TBase && b < TBase + TCount)
+                return a + (b - TBase);
+        }
+        var i = Array.BinarySearch(PairKeys, ((ulong)a << 21) | (uint)b);
+        return i >= 0 ? PairValues[i] : -1;
+    }
+
+    private static string? Singleton(int cp)
+    {
+        var i = Array.BinarySearch(SingletonKeys, cp);
+        return i >= 0 ? SingletonValues[i] : null;
+    }
+
+    private static bool IsMark(int cp) =>
+        Rune.GetUnicodeCategory(new Rune(cp)) is UnicodeCategory.NonSpacingMark
+            or UnicodeCategory.SpacingCombiningMark or UnicodeCategory.EnclosingMark;
+}
+```
+
+- [ ] **Step 4: Run tests to verify they pass**
+
+Run: `dotnet test tests/AbsCli.Tests --filter "FullyQualifiedName~UnicodeNfcTests"`
+Expected: all PASS.
+
+If `EveryScalar_MatchesIcu` fails: inspect the listed code points with ICU (`c.Normalize(FormD)` runes, and NFC of prefixes). The fix belongs in the generator's pair derivation (Task 1 Program.cs) or `Compose` — never in the test. Regenerate the `.g.cs` after generator changes. If a mismatch is genuinely a reordering/blocking case (needs ccc), stop and report it rather than widening scope.
+
+- [ ] **Step 5: Format and commit**
+
+```bash
+dotnet format AbsCli.sln
+git add src/AbsCli/Api/UnicodeNfc.cs tests/AbsCli.Tests/Api/UnicodeNfcTests.cs
+git commit -m "feat: add managed NFC composer for invariant globalization"
+```
+
+---
+
+### Task 3: Wire into `FilenameSanitizer` and `self-test`
+
+**Files:**
+- Modify: `src/AbsCli/Api/FilenameSanitizer.cs:48`
+- Modify: `src/AbsCli/Commands/SelfTestCommand.cs` (new section before `=== Build stamp ===`, ~line 987)
+- Test: `tests/AbsCli.Tests/Api/FilenameSanitizerTests.cs`
+
+- [ ] **Step 1: Add the self-test check (the red test — only invariant mode reproduces the bug)**
+
+In `SelfTestCommand.cs`, insert immediately before the line `Console.Error.WriteLine("=== Build stamp ===");`:
+
+```csharp
+            Console.Error.WriteLine("=== Unicode NFC (invariant globalization) ===");
+            Check("Sanitize composes NFD input (issue #97)", () =>
+            {
+                var got = FilenameSanitizer.Sanitize("Die Löwin von Neetha");
+                Assert(got == "Die Löwin von Neetha", $"expected NFC, got {got.Length} chars");
+            });
+```
+
+Add `using AbsCli.Api;` at the top if not already present.
+
+Add the unit regression to `FilenameSanitizerTests.cs` (inside the class):
+
+```csharp
+    [Fact]
+    public void NfdInput_IsComposed()
+    {
+        // Issue #97: DNB titles arrive decomposed; ABS stores NFC.
+        Assert.Equal("Die Löwin von Neetha", FilenameSanitizer.Sanitize("Die Löwin von Neetha"));
+    }
+```
+
+- [ ] **Step 2: Verify the self-test fails**
+
+Run: `dotnet run --project src/AbsCli -- self-test 2>&1 | grep -A0 "issue #97"`
+Expected: `FAIL: Sanitize composes NFD input (issue #97) — expected NFC, got 21 chars` (`dotnet run` honors the project's `InvariantGlobalization=true`). The unit test passes already (ICU is live in the test host) — that is expected; it guards the non-invariant path.
+
+- [ ] **Step 3: Implement**
+
+In `FilenameSanitizer.cs` replace
+
+```csharp
+        var s = filename.Normalize(NormalizationForm.FormC);
+```
+
+with
+
+```csharp
+        // string.Normalize is a no-op under InvariantGlobalization (issue #97).
+        var s = UnicodeNfc.Compose(filename);
+```
+
+If `using System.Text;` is now unused in that file (check for `Encoding` / `StringBuilder` / `NormalizationForm`), remove it.
+
+- [ ] **Step 4: Verify**
+
+Run: `dotnet run --project src/AbsCli -- self-test 2>&1 | grep "issue #97"` → `PASS: ...`
+Run: `dotnet run --project src/AbsCli -- self-test; echo rc=$?` → `rc=0`
+Run: `dotnet test` → all pass.
+
+- [ ] **Step 5: Format and commit**
+
+```bash
+dotnet format AbsCli.sln
+git add src/AbsCli/Api/FilenameSanitizer.cs src/AbsCli/Commands/SelfTestCommand.cs tests/AbsCli.Tests/Api/FilenameSanitizerTests.cs
+git commit -m "fix: compose NFD upload path segments under invariant globalization"
+```
+
+---
+
+### Task 4: Smoke drift case
+
+**Files:**
+- Modify: `docker/smoke-test.sh` (after the "Whitespace run collapsed" `run_drift_case`, ~line 850)
+
+- [ ] **Step 1: Add the case**
+
+```bash
+# NFD title (issue #97): ABS stores the folder NFC; the CLI must predict
+# the same. string.Normalize is a no-op under InvariantGlobalization.
+run_drift_case "NFD title composed" "$(printf 'Die Lo\xcc\x88win')" "Sanitize Author NFD" \
+    "Sanitize Author NFD/Die L$(printf '\xc3\xb6')win" "" ""
+```
+
+- [ ] **Step 2: Check syntax**
+
+Run: `bash -n docker/smoke-test.sh` → no output.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add docker/smoke-test.sh
+git commit -m "test: add NFD title upload drift case to smoke tests"
+```
+
+(Full smoke run against a fresh stack happens in pre-PR verification, done by the controller.)

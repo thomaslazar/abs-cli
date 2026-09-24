@@ -984,6 +984,14 @@ public static class SelfTestCommand
             });
 
             Console.Error.WriteLine();
+            Console.Error.WriteLine("=== Unicode NFC (invariant globalization) ===");
+            Check("Sanitize composes NFD input (issue #97)", () =>
+            {
+                var got = FilenameSanitizer.Sanitize("Die Lo\u0308win von Neetha");
+                Assert(got == "Die L\u00f6win von Neetha", $"expected NFC, got {got.Length} chars");
+            });
+
+            Console.Error.WriteLine();
             Console.Error.WriteLine("=== Build stamp ===");
 
             Check("Informational version resolves", () =>
