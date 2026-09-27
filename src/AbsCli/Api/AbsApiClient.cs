@@ -338,7 +338,7 @@ public class AbsApiClient
     // the 'update' permission this CLI documents for `items batch-update` is not
     // actually enforced. Everything else passed at 2.33.1 (336/338).
     private static readonly string MinSupportedVersion = "2.34.0";
-    private static readonly string MaxTestedVersion = "2.36.0";
+    private static readonly string MaxTestedVersion = "2.36.1";
 
     internal static readonly TimeSpan VersionCheckInterval = TimeSpan.FromHours(24);
 
