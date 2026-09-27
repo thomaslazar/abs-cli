@@ -3,6 +3,34 @@
 All notable changes to abs-cli are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## v1.1.4 — 2026-09-27
+
+Patch release. Compatibility bump for Audiobookshelf 2.36.1; no CLI changes.
+
+### Highlights
+
+- **Tested against Audiobookshelf 2.36.1.** The supported range is now
+  2.34.0 — 2.36.1, so logging in to a 2.36.1 server no longer prints the
+  "tested up to 2.36.0" warning.
+- **No commands, flags or output shapes changed.** 2.36.1 changes no response
+  shapes or permissions for the endpoints abs-cli uses.
+- **Server behavior worth knowing about:**
+  - `narrators rename`/`delete` now affect only the library you name. Older
+    servers also changed the narrator in other libraries.
+  - Media updates (`items update`, `items batch-update`) now ignore
+    `ebookFile`, `chapters` and `audioFiles` in the body. abs-cli never
+    documented these fields; use `items chapters set` for chapters.
+  - Author endpoints now return 404 to users without access to the author's
+    library.
+
+### Internal
+
+- chore: raise MaxTestedVersion to 2.36.1
+
+### Upgrading
+
+No action needed.
+
 ## v1.1.3 — 2026-09-24
 
 Patch release. `upload --wait` failed on titles, authors or series containing
