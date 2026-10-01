@@ -91,6 +91,7 @@ abs_login() {
 
 # --- Authenticate via the CLI (dogfoods non-interactive login) ---
 echo "Setting up test context..."
+# Test: log in as root; expect the login to succeed.
 if abs_login root root; then
     pass "login: root non-interactive login succeeds"
 else
@@ -114,6 +115,7 @@ echo "=== Help Screens ==="
 # ============================================================
 
 # Parent commands and self-test don't need examples (they just list subcommands)
+# Test: run --help on each parent command; expect help text (Description: or Usage:).
 for cmd in "" "config" "libraries" "items" "series" "authors" "tags" "genres" "narrators" "backup" "metadata" "tasks" "self-test"; do
     label="help: abs-cli $cmd --help"
     output=$($CLI $cmd --help 2>&1) || true
@@ -125,6 +127,7 @@ for cmd in "" "config" "libraries" "items" "series" "authors" "tags" "genres" "n
 done
 
 # Leaf commands must have at least 2 examples (for AI agent usability)
+# Test: run --help on each leaf command; expect help text and at least 2 usage examples.
 for cmd in "login" "config get" "config set" \
            "libraries list" "libraries get" "libraries scan" \
            "libraries create" "libraries update" "libraries delete" "libraries reorder" \
@@ -167,6 +170,7 @@ for cmd in "login" "config get" "config set" \
 done
 
 # items list must have filter groups and sort fields reference
+# Test: items list --help; expect Filter groups and Sort fields sections, listing genres and title.
 output=$($CLI items list --help 2>&1)
 if echo "$output" | grep -q "Filter groups:"; then
     pass "items list help has Filter groups section"
@@ -194,11 +198,13 @@ echo ""
 echo "=== Config Commands ==="
 # ============================================================
 
+# Test: config get; expect JSON with server and configPath keys.
 output=$($CLI config get 2>/dev/null)
 assert_json_key "config get returns JSON" "server" "$output"
 assert_json_key "config get has configPath" "configPath" "$output"
 
 # config set + get roundtrip
+# Test: config set server then config get; expect the new value to round-trip.
 $CLI config set server "http://smoke-test.example.com" 2>&1
 output=$($CLI config get 2>/dev/null)
 assert_json_expr "config set/get roundtrip" "d['server']=='http://smoke-test.example.com'" "$output"
@@ -211,10 +217,12 @@ echo ""
 echo "=== Libraries Commands ==="
 # ============================================================
 
+# Test: libraries list; expect exactly 1 library.
 output=$($CLI libraries list 2>/dev/null)
 assert_json_key "libraries list returns JSON" "libraries" "$output"
 assert_json_expr "libraries list has 1 library" "len(d['libraries'])==1" "$output"
 
+# Test: libraries get by id; expect matching id and name 'Test Library'.
 output=$($CLI libraries get --id "$LIB_ID" 2>/dev/null)
 assert_json_key "libraries get has name" "name" "$output"
 assert_json_expr "libraries get correct id" "d['id']=='$LIB_ID'" "$output"
@@ -226,20 +234,23 @@ echo "=== Library CRUD (admin) ==="
 # ============================================================
 
 # create a throwaway library (server creates /tmp/smoke-crud-lib)
+# Test: libraries create; expect response id and name set to 'Smoke CRUD Lib'.
 output=$($CLI libraries create --name "Smoke CRUD Lib" --folder /tmp/smoke-crud-lib --media-type book 2>&1)
 assert_json_key "libraries create returns id" "id" "$output"
 NEW_LIB_ID=$(json_get "$output" "['id']")
 assert_json_expr "libraries create set name" "d['name']=='Smoke CRUD Lib'" "$output"
 
 # update its name
+# Test: libraries update name; expect name changed to 'Smoke CRUD Renamed'.
 output=$($CLI libraries update --id "$NEW_LIB_ID" --name "Smoke CRUD Renamed" 2>&1)
 assert_json_expr "libraries update changed name" "d['name']=='Smoke CRUD Renamed'" "$output"
 
-# reorder (send the new lib to a high display order)
+# Test: libraries reorder with newOrder 99; expect response to include a libraries key.
 output=$(echo "[{\"id\":\"$NEW_LIB_ID\",\"newOrder\":99}]" | $CLI libraries reorder --stdin 2>&1)
 assert_json_key "libraries reorder returns libraries" "libraries" "$output"
 
 # delete is gated: wrong confirmation name must abort (library survives)
+# Test: libraries delete with the wrong confirmation name; expect the library to still be listed.
 echo "Not The Name" | $CLI libraries delete --id "$NEW_LIB_ID" > /dev/null 2>&1 || true
 output=$($CLI libraries list 2>&1)
 if echo "$output" | python3 -c "import sys,json; d=json.load(sys.stdin); sys.exit(0 if '$NEW_LIB_ID' in [l['id'] for l in d['libraries']] else 1)"; then
@@ -250,10 +261,11 @@ fi
 
 # delete it for real by piping the exact (current) name; returns the deleted library
 # capture stdout only — the confirmation prompt goes to stderr
+# Test: libraries delete with the correct confirmation name; expect response id to match the deleted library.
 output=$(echo "Smoke CRUD Renamed" | $CLI libraries delete --id "$NEW_LIB_ID" 2>/dev/null)
 assert_json_expr "libraries delete (confirmed) returns deleted id" "d['id']=='$NEW_LIB_ID'" "$output"
 
-# confirm it's gone from the list
+# Test: libraries list after delete; expect the deleted library's id to be absent.
 output=$($CLI libraries list 2>&1)
 assert_json_expr "libraries list no longer has the deleted lib" "'$NEW_LIB_ID' not in [l['id'] for l in d['libraries']]" "$output"
 
@@ -262,25 +274,25 @@ echo ""
 echo "=== Items Commands ==="
 # ============================================================
 
-# List all items
+# Test: items list; expect results and total keys with total 16.
 output=$($CLI items list 2>/dev/null)
 assert_json_key "items list has results" "results" "$output"
 assert_json_key "items list has total" "total" "$output"
 assert_json_expr "items list has 16 items" "d['total']==16" "$output"
 
-# Pagination
+# Test: items list with --limit 5 --page 0; expect 5 results and total still 16.
 output=$($CLI items list --limit 5 --page 0 2>/dev/null)
 assert_json_expr "items list pagination: 5 results" "len(d['results'])==5" "$output"
 assert_json_expr "items list pagination: total still 16" "d['total']==16" "$output"
 
-# Get single item
+# Test: items get by id; expect matching id and a media key.
 FIRST_ITEM_ID=$(json_get "$output" "['results'][0]['id']")
 output=$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)
 assert_json_key "items get has id" "id" "$output"
 assert_json_expr "items get correct id" "d['id']=='$FIRST_ITEM_ID'" "$output"
 assert_json_key "items get has media" "media" "$output"
 
-# Update metadata — change title, verify it sticks
+# Test: items update sets the title via stdin; expect the libraryItem key, then the get to show the new title.
 ORIGINAL_TITLE=$(json_get "$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)" "['media']['metadata']['title']")
 output=$(echo '{"metadata":{"title":"Smoke Test Updated Title"}}' | $CLI items update --id "$FIRST_ITEM_ID" --stdin 2>/dev/null)
 assert_json_key "items update returns updated item" "libraryItem" "$output"
@@ -289,13 +301,13 @@ output=$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)
 assert_json_expr "items update persisted new title" \
     "d['media']['metadata']['title']=='Smoke Test Updated Title'" "$output"
 
-# Restore original title
+# Test: items update restores the original title; expect the get to reflect it again.
 echo "{\"metadata\":{\"title\":\"$ORIGINAL_TITLE\"}}" | $CLI items update --id "$FIRST_ITEM_ID" --stdin 2>/dev/null > /dev/null
 output=$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)
 assert_json_expr "items update restored original title" \
     "d['media']['metadata']['title']=='$ORIGINAL_TITLE'" "$output"
 
-# Update multiple fields at once
+# Test: items update sets description and genres together; expect libraryItem key, then both fields on get.
 output=$(echo '{"metadata":{"description":"Smoke test description","genres":["Fantasy","Epic"]}}' \
     | $CLI items update --id "$FIRST_ITEM_ID" --stdin 2>/dev/null)
 assert_json_key "items multi-field update returns item" "libraryItem" "$output"
@@ -310,7 +322,7 @@ assert_json_expr "items multi-field update: genres set" \
 echo '{"metadata":{"description":null,"genres":[]}}' \
     | $CLI items update --id "$FIRST_ITEM_ID" --stdin 2>/dev/null > /dev/null
 
-# Update from file
+# Test: items update --input from a JSON file sets publisher; expect libraryItem key, then publisher on get.
 TMPFILE=$(mktemp)
 echo '{"metadata":{"publisher":"Smoke Test Press"}}' > "$TMPFILE"
 output=$($CLI items update --id "$FIRST_ITEM_ID" --input "$TMPFILE" 2>/dev/null)
@@ -325,7 +337,7 @@ rm -f "$TMPFILE"
 echo '{"metadata":{"publisher":null}}' \
     | $CLI items update --id "$FIRST_ITEM_ID" --stdin 2>/dev/null > /dev/null
 
-# Batch get — fetch two items by ID
+# Test: items batch-get for two item ids; expect libraryItems to contain exactly 2 items.
 SECOND_ITEM_ID=$(json_get "$($CLI items list --limit 5 --page 0 2>/dev/null)" "['results'][1]['id']")
 output=$(echo "{\"libraryItemIds\":[\"$FIRST_ITEM_ID\",\"$SECOND_ITEM_ID\"]}" \
     | $CLI items batch-get --stdin 2>/dev/null)
@@ -334,6 +346,7 @@ assert_json_expr "batch-get returns 2 items" "len(d.get('libraryItems',[]))==2" 
 # Batch update — update two items in one call. Guards against the bug
 # where the CLI issued PATCH /api/items/batch/update while ABS only
 # registers POST for that route (which 404s as "Cannot PATCH ...").
+# Test: items batch-update for two items; expect success true, then both items show the new publisher on get.
 BATCH_PAYLOAD="[{\"id\":\"$FIRST_ITEM_ID\",\"mediaPayload\":{\"metadata\":{\"publisher\":\"Smoke Batch Press A\"}}},{\"id\":\"$SECOND_ITEM_ID\",\"mediaPayload\":{\"metadata\":{\"publisher\":\"Smoke Batch Press B\"}}}]"
 output=$(echo "$BATCH_PAYLOAD" | $CLI items batch-update --stdin 2>&1)
 rc=$?
@@ -360,6 +373,7 @@ $CLI items batch-update --stdin 2>/dev/null <<< "[{\"id\":\"$FIRST_ITEM_ID\",\"m
 # client is built, so a working guard never connects. If the guard ever regresses
 # this fails on a connection error instead of sending ABS a body that exits it
 # (docs/abs-upstream-bugs.md) — which is why this must never point at the stack.
+# Test: batch-update with an entry missing mediaPayload; expect a client-side error before any HTTP call.
 guard_out=$(echo "[{\"id\":\"$FIRST_ITEM_ID\",\"metadata\":{\"explicit\":true}}]" \
     | ABS_SERVER=http://127.0.0.1:9 $CLI items batch-update --stdin 2>&1 || true)
 if echo "$guard_out" | grep -q 'entry 0: "mediaPayload" is missing'; then
@@ -386,7 +400,7 @@ DEL_ITEM_1=""; DEL_ITEM_2=""; DEL_ITEM_3=""
 delete_cleanup() { cleanup_items "${DELETE_TMP:-}" "${DEL_ITEM_1:-}" "${DEL_ITEM_2:-}" "${DEL_ITEM_3:-}"; }
 trap delete_cleanup EXIT
 
-# Single soft delete
+# Test: upload then soft-delete an item; expect delete success, then get to report not found.
 out=$($CLI upload --library "$LIB_ID" --folder "$DELETE_FOLDER_ID" --title "DELETE_SOFT" --author "Del Author" --wait --files "$DELETE_TMP/d.mp3" 2>/dev/null)
 DEL_ITEM_1=$(json_get "$out" ".get('id','')")
 out=$($CLI items delete --id "$DEL_ITEM_1" 2>/dev/null)
@@ -395,7 +409,7 @@ out=$($CLI items get --id "$DEL_ITEM_1" 2>&1 || true)
 if echo "$out" | grep -qi "not found"; then pass "soft-deleted item is gone"; else fail "soft-deleted item is gone" "got: ${out:0:160}"; fi
 DEL_ITEM_1=""
 
-# Batch hard delete (two items)
+# Test: upload two items then batch hard-delete them; expect success, then both gets to report not found.
 out=$($CLI upload --library "$LIB_ID" --folder "$DELETE_FOLDER_ID" --title "DELETE_B1" --author "Del Author" --wait --files "$DELETE_TMP/d.mp3" 2>/dev/null)
 DEL_ITEM_2=$(json_get "$out" ".get('id','')")
 out=$($CLI upload --library "$LIB_ID" --folder "$DELETE_FOLDER_ID" --title "DELETE_B2" --author "Del Author" --wait --files "$DELETE_TMP/d.mp3" 2>/dev/null)
@@ -409,6 +423,7 @@ if echo "$out" | grep -qi "not found"; then pass "batch-hard-deleted item 2 gone
 DEL_ITEM_2=""; DEL_ITEM_3=""
 
 # Permission denial: readonlyuser lacks delete (part E)
+# Test: delete the item as readonlyuser; expect a 403 'permission denied' error mentioning delete.
 out=$($CLI upload --library "$LIB_ID" --folder "$DELETE_FOLDER_ID" --title "DELETE_DENY" --author "Del Author" --wait --files "$DELETE_TMP/d.mp3" 2>/dev/null)
 DEL_ITEM_1=$(json_get "$out" ".get('id','')")
 abs_login readonlyuser readonlypass
@@ -425,13 +440,14 @@ echo ""
 echo "=== Series Commands ==="
 # ============================================================
 
+# Test: series list --limit 10; expect results and total keys with 3 series.
 output=$($CLI series list --limit 10 2>/dev/null)
 assert_json_key "series list has results" "results" "$output"
 assert_json_key "series list has total" "total" "$output"
 assert_json_expr "series list has 3 series" "d['total']==3" "$output"
 assert_json_expr "series list returns results" "len(d['results'])==3" "$output"
 
-# Get a specific series
+# Test: series get by id; expect id and name keys present.
 FIRST_SERIES_ID=$(json_get "$output" "['results'][0]['id']")
 output=$($CLI series get --id "$FIRST_SERIES_ID" 2>/dev/null)
 assert_json_key "series get has id" "id" "$output"
@@ -439,13 +455,14 @@ assert_json_key "series get has name" "name" "$output"
 
 # Update a series description (set, then clear). SERIES_ID is a shell global
 # so the Permission Errors section can reuse it for the 403 assertion.
+# Test: series update sets a description; expect it reflected and the same id, then cleared back to empty.
 SERIES_ID=$(json_get "$($CLI series list 2>/dev/null)" "['results'][0]['id']")
 output=$($CLI series update --id "$SERIES_ID" --description "Smoke test series desc" 2>&1)
 assert_json_expr "series update sets description" "d['description']=='Smoke test series desc'" "$output"
 assert_json_expr "series update returns same id" "d['id']=='$SERIES_ID'" "$output"
 $CLI series update --id "$SERIES_ID" --description "" 2>/dev/null > /dev/null
 
-# Update the series name (rename, then rename back to the original).
+# Test: series update renames then renames back; expect the name set then restored to the original.
 ORIGINAL_SERIES_NAME=$(json_get "$($CLI series get --id "$SERIES_ID" 2>/dev/null)" "['name']")
 output=$($CLI series update --id "$SERIES_ID" --name "Smoke Renamed Series" 2>&1)
 assert_json_expr "series update sets name" "d['name']=='Smoke Renamed Series'" "$output"
@@ -457,6 +474,7 @@ echo ""
 echo "=== Authors Commands ==="
 # ============================================================
 
+# Test: list authors; expect paginated shape (results/total) with 7 authors including Brandon Sanderson.
 output=$($CLI authors list 2>/dev/null)
 assert_json_key "authors list returns paginated shape (results)" "results" "$output"
 assert_json_key "authors list returns paginated shape (total)" "total" "$output"
@@ -471,17 +489,19 @@ bs = next(a for a in authors if a['name']=='Brandon Sanderson')
 print(bs['id'])
 ")
 
-# Pagination round-trip
+# Test: list authors page 0 (limit 3); expect 3 results and total 7.
 output=$($CLI authors list --limit 3 --page 0 2>/dev/null)
 assert_json_expr "authors list page 0 returns 3 results" "len(d['results'])==3" "$output"
 assert_json_expr "authors list page 0 reports total 7" "d['total']==7" "$output"
 PAGE0_NAMES=$(echo "$output" | python3 -c "import sys,json; print(','.join(sorted(a['name'] for a in json.load(sys.stdin)['results'])))")
 
+# Test: list authors page 1 (limit 3); expect 3 results and total 7.
 output=$($CLI authors list --limit 3 --page 1 2>/dev/null)
 assert_json_expr "authors list page 1 returns 3 results" "len(d['results'])==3" "$output"
 assert_json_expr "authors list page 1 reports total 7" "d['total']==7" "$output"
 PAGE1_NAMES=$(echo "$output" | python3 -c "import sys,json; print(','.join(sorted(a['name'] for a in json.load(sys.stdin)['results'])))")
 
+# Test: compare page 0 and page 1 author names; expect no overlap between pages.
 if [ "$PAGE0_NAMES" != "$PAGE1_NAMES" ]; then
     pass "authors list pages do not overlap"
 else
@@ -489,6 +509,7 @@ else
 fi
 
 # Reverse sort by name — first result should NOT be the alphabetically-first name
+# Test: list authors sorted by name desc; expect first result to not be the alphabetically-first name.
 output=$($CLI authors list --sort name --desc 2>/dev/null)
 FIRST_NAME=$(json_get "$output" "['results'][0]['name']")
 ALPHA_FIRST=$(echo "$output" | python3 -c "import sys,json; print(sorted(a['name'] for a in json.load(sys.stdin)['results'])[0])")
@@ -498,31 +519,37 @@ else
     fail "authors list --sort name --desc starts with last name alphabetically" "first result was the alphabetically-first name"
 fi
 
+# Test: get author by id; expect 'id' field and name 'Brandon Sanderson'.
 output=$($CLI authors get --id "$AUTHOR_ID" 2>/dev/null)
 assert_json_key "authors get has id" "id" "$output"
 assert_json_expr "authors get is Brandon Sanderson" "d['name']=='Brandon Sanderson'" "$output"
 
 # --- lookup ---
+# Test: lookup author by exact name 'Brandon Sanderson'; expect a matching author object.
 output=$($CLI authors lookup --name "Brandon Sanderson" 2>/dev/null)
 assert_json_expr "authors lookup returns object for known author" \
     "isinstance(d, dict) and d.get('name')" "$output"
 
+# Test: lookup author by a name with no match; expect null (Python None).
 output=$($CLI authors lookup --name "ZzzNotARealAuthorXyz" 2>/dev/null)
 # null body deserialises to Python None
 assert_json_expr "authors lookup returns null for missing author" \
     "d is None" "$output"
 
 # --- match ---
+# Test: match author by id and name; expect 'updated' and 'author' keys in response.
 output=$($CLI authors match --id "$AUTHOR_ID" --name "Brandon Sanderson" 2>/dev/null)
 assert_json_key "authors match returns updated key" "updated" "$output"
 assert_json_key "authors match returns author key" "author" "$output"
 
 # --- update (description set, then clear) ---
+# Test: set author description; expect 'updated' key and the description field updated.
 output=$($CLI authors update --id "$AUTHOR_ID" --description "Smoke-test description" 2>/dev/null)
 assert_json_key "authors update returns updated key" "updated" "$output"
 assert_json_expr "authors update set description" \
     "d['author']['description']=='Smoke-test description'" "$output"
 
+# Test: clear author description (empty string); expect the description to become empty/null.
 output=$($CLI authors update --id "$AUTHOR_ID" --description "" 2>/dev/null)
 assert_json_expr "authors update cleared description" \
     "d['author'].get('description') in (None, '')" "$output"
@@ -542,6 +569,7 @@ print(json.dumps({'metadata': {'authors': authors}}))
 ")
 echo "$THROWAWAY_PAYLOAD" | $CLI items update --id "$FIRST_ITEM_ID" --stdin 2>/dev/null > /dev/null
 
+# Test: list authors after adding a throwaway co-author; expect it present in results.
 output=$($CLI authors list 2>/dev/null)
 assert_json_expr "authors update added throwaway author" \
     "any(a['name']=='Smoke Test Throwaway' for a in d['results'])" "$output"
@@ -550,9 +578,11 @@ import sys,json
 print(next(a['id'] for a in json.load(sys.stdin)['results'] if a['name']=='Smoke Test Throwaway'))
 ")
 
+# Test: delete the throwaway author; expect success:'true'.
 output=$($CLI authors delete --id "$THROWAWAY_ID" 2>/dev/null)
 assert_json_expr "authors delete returns success" "d.get('success')=='true'" "$output"
 
+# Test: list authors after delete; expect the throwaway gone and count back to 7.
 output=$($CLI authors list 2>/dev/null)
 assert_json_expr "authors delete removed throwaway" \
     "not any(a['name']=='Smoke Test Throwaway' for a in d['results'])" "$output"
@@ -579,12 +609,14 @@ import sys,json
 print(next(a['id'] for a in json.load(sys.stdin)['results'] if a['name']=='Smoke Test Mergee'))
 ")
 
+# Test: rename the throwaway author to an existing name ('Jim Butcher'); expect merged:true into that author.
 output=$($CLI authors update --id "$MERGEE_ID" --name "Jim Butcher" 2>/dev/null)
 assert_json_expr "authors update rename-into-existing returned merged:true" \
     "d.get('merged')==True" "$output"
 assert_json_expr "authors update merge response carries the existing author" \
     "d['author']['name']=='Jim Butcher'" "$output"
 
+# Test: list authors after the merge; expect the throwaway gone and count still 7.
 output=$($CLI authors list 2>/dev/null)
 assert_json_expr "authors update merge removed throwaway" \
     "not any(a['name']=='Smoke Test Mergee' for a in d['results'])" "$output"
@@ -594,11 +626,13 @@ assert_json_expr "authors list still 7 after merge" "len(d['results'])==7" "$out
 echo "$RESTORE_PAYLOAD" | $CLI items update --id "$FIRST_ITEM_ID" --stdin 2>/dev/null > /dev/null
 
 # --- image set/get/remove ---
+# Test: set author image from a URL; expect 'author' key with imagePath populated.
 output=$($CLI authors image set --id "$AUTHOR_ID" --url "https://placehold.co/64x64.png" 2>/dev/null)
 assert_json_key "authors image set returns author" "author" "$output"
 assert_json_expr "authors image set populated imagePath" \
     "d['author'].get('imagePath') is not None and d['author']['imagePath']!=''" "$output"
 
+# Test: get author image to a file; expect bytes>0 reported and a non-empty file written.
 IMG_TMP=$(mktemp --suffix=.png)
 output=$($CLI authors image get --id "$AUTHOR_ID" --output "$IMG_TMP" 2>/dev/null)
 assert_json_expr "authors image get descriptor reports bytes" "d['bytes']>0" "$output"
@@ -609,6 +643,7 @@ else
 fi
 rm -f "$IMG_TMP"
 
+# Test: get author image to a file with --raw; expect bytes>0 reported and a non-empty file written.
 IMG_TMP_RAW=$(mktemp --suffix=.png)
 output=$($CLI authors image get --id "$AUTHOR_ID" --output "$IMG_TMP_RAW" --raw 2>/dev/null)
 assert_json_expr "authors image get --raw descriptor reports bytes" "d['bytes']>0" "$output"
@@ -619,12 +654,14 @@ else
 fi
 rm -f "$IMG_TMP_RAW"
 
+# Test: remove author image; expect 'author' key with imagePath cleared.
 output=$($CLI authors image remove --id "$AUTHOR_ID" 2>/dev/null)
 assert_json_key "authors image remove returns author" "author" "$output"
 assert_json_expr "authors image remove cleared imagePath" \
     "d['author'].get('imagePath') is None" "$output"
 
 # Removing again should fail with 400 (the documented quirk)
+# Test: remove author image again (no image left); expect a 400 'Bad request' error.
 error_output=$($CLI authors image remove --id "$AUTHOR_ID" 2>&1 || true)
 if echo "$error_output" | grep -q "Bad request"; then
     pass "authors image remove on no-image surfaces as 400"
@@ -637,29 +674,36 @@ echo ""
 echo "=== Tags & Genres (admin) ==="
 # ============================================================
 
+# Test: list tags; expect a non-empty 'tags' array.
 output=$($CLI tags list 2>&1)
 assert_json_key "tags list returns JSON" "tags" "$output"
 assert_json_expr "tags list non-empty" "len(d['tags'])>0" "$output"
 
+# Test: list genres; expect a non-empty 'genres' array.
 output=$($CLI genres list 2>&1)
 assert_json_key "genres list returns JSON" "genres" "$output"
 assert_json_expr "genres list non-empty" "len(d['genres'])>0" "$output"
 
 # rename roundtrip on the throwaway tag (rename, then rename back)
+# Test: rename tag smoke-temp-tag to smoke-temp-tag-renamed; expect 'numItemsUpdated' key.
 output=$($CLI tags rename smoke-temp-tag smoke-temp-tag-renamed 2>&1)
 assert_json_key "tags rename returns numItemsUpdated" "numItemsUpdated" "$output"
+# Test: rename tag back to smoke-temp-tag; expect 'numItemsUpdated' key.
 output=$($CLI tags rename smoke-temp-tag-renamed smoke-temp-tag 2>&1)
 assert_json_key "tags rename back returns numItemsUpdated" "numItemsUpdated" "$output"
 
 # rename roundtrip on the throwaway genre (rename, then rename back)
+# Test: rename genre smoke-temp-genre to smoke-temp-genre-renamed; expect 'numItemsUpdated' key.
 output=$($CLI genres rename smoke-temp-genre smoke-temp-genre-renamed 2>&1)
 assert_json_key "genres rename returns numItemsUpdated" "numItemsUpdated" "$output"
+# Test: rename genre back to smoke-temp-genre; expect 'numItemsUpdated' key.
 output=$($CLI genres rename smoke-temp-genre-renamed smoke-temp-genre 2>&1)
 assert_json_key "genres rename back returns numItemsUpdated" "numItemsUpdated" "$output"
 
-# delete the throwaway tag & genre
+# Test: delete tag smoke-temp-tag; expect 'numItemsUpdated' key.
 output=$($CLI tags delete smoke-temp-tag 2>&1)
 assert_json_key "tags delete returns numItemsUpdated" "numItemsUpdated" "$output"
+# Test: delete genre smoke-temp-genre; expect 'numItemsUpdated' key.
 output=$($CLI genres delete smoke-temp-genre 2>&1)
 assert_json_key "genres delete returns numItemsUpdated" "numItemsUpdated" "$output"
 
@@ -667,14 +711,18 @@ assert_json_key "genres delete returns numItemsUpdated" "numItemsUpdated" "$outp
 echo ""
 echo "=== Narrators ==="
 # ============================================================
+# Test: list narrators; expect a non-empty array with name and numBooks fields.
 output=$($CLI narrators list 2>&1)
 assert_json_key "narrators list returns JSON" "narrators" "$output"
 assert_json_expr "narrators list non-empty" "len(d['narrators'])>0" "$output"
 assert_json_expr "narrators list items have name+numBooks" "'name' in d['narrators'][0] and 'numBooks' in d['narrators'][0]" "$output"
+# Test: rename narrator smoke-temp-narrator to smoke-temp-narrator-renamed; expect 'updated' key.
 output=$($CLI narrators rename smoke-temp-narrator smoke-temp-narrator-renamed 2>&1)
 assert_json_key "narrators rename returns updated" "updated" "$output"
+# Test: rename narrator back to smoke-temp-narrator; expect 'updated' key.
 output=$($CLI narrators rename smoke-temp-narrator-renamed smoke-temp-narrator 2>&1)
 assert_json_key "narrators rename back returns updated" "updated" "$output"
+# Test: delete narrator smoke-temp-narrator; expect 'updated' key.
 output=$($CLI narrators delete smoke-temp-narrator 2>&1)
 assert_json_key "narrators delete returns updated" "updated" "$output"
 
@@ -683,12 +731,14 @@ echo ""
 echo "=== Search Command (top-level) ==="
 # ============================================================
 
+# Test: search for 'Storm Front'; expect book/authors/series keys and a matching book result.
 output=$($CLI search --query "Storm Front" 2>/dev/null)
 assert_json_key "search has book key" "book" "$output"
 assert_json_key "search has authors key" "authors" "$output"
 assert_json_key "search has series key" "series" "$output"
 assert_json_expr "search finds Storm Front" "len(d.get('book',[]))>0" "$output"
 
+# Test: search for 'Mistborn'; expect at least one matching series result.
 output=$($CLI search --query "Mistborn" 2>/dev/null)
 assert_json_expr "search finds Mistborn series" "len(d.get('series',[]))>0" "$output"
 
@@ -697,18 +747,21 @@ echo ""
 echo "=== Backup Commands ==="
 # ============================================================
 
+# Test: create a backup; expect a 'backups' array with at least 1 entry.
 output=$($CLI backup create 2>/dev/null)
 assert_json_key "backup create returns backups" "backups" "$output"
 assert_json_expr "backup create has at least 1 backup" "len(d['backups'])>=1" "$output"
 
 BACKUP_ID=$(json_get "$output" "['backups'][-1]['id']")
 
+# Test: list backups; expect 'backups'/'backupLocation' keys and our created backup present.
 output=$($CLI backup list 2>/dev/null)
 assert_json_key "backup list has backups" "backups" "$output"
 assert_json_key "backup list has backupLocation" "backupLocation" "$output"
 assert_json_expr "backup list finds our backup" \
     "any(b['id']=='$BACKUP_ID' for b in d['backups'])" "$output"
 
+# Test: download the backup to a file; expect a non-empty file written.
 BACKUP_DL=$(mktemp --suffix=.audiobookshelf)
 $CLI backup download --id "$BACKUP_ID" --output "$BACKUP_DL" 2>/dev/null
 if [ -s "$BACKUP_DL" ]; then
@@ -717,10 +770,12 @@ else
     fail "backup download wrote file" "file is empty"
 fi
 
+# Test: upload the downloaded backup file back; expect a 'backups' array in response.
 output=$($CLI backup upload --file "$BACKUP_DL" 2>/dev/null)
 assert_json_key "backup upload returns backups" "backups" "$output"
 rm -f "$BACKUP_DL"
 
+# Test: apply (restore) the backup; expect exit code 0.
 output=$($CLI backup apply --id "$BACKUP_ID" 2>/dev/null) && apply_rc=0 || apply_rc=$?
 if [ "$apply_rc" = "0" ]; then
     pass "backup apply completed (exit 0)"
@@ -735,6 +790,7 @@ fi
 # is why the stack has a restart policy). Wait for the server to answer again
 # before continuing, so one upstream race cannot cascade into every later
 # assertion.
+# Test: poll /healthcheck after the backup apply; expect the server to respond within 60s.
 apply_wait_ok=0
 for i in $(seq 1 60); do
     if curl -sf -m 3 "$ABS_URL/healthcheck" >/dev/null 2>&1; then
@@ -750,6 +806,7 @@ else
     fail "server responsive after backup apply" "no healthcheck response within 60s"
 fi
 
+# Test: delete the backup; expect a 'backups' array in response.
 output=$($CLI backup delete --id "$BACKUP_ID" 2>/dev/null)
 assert_json_key "backup delete returns backups" "backups" "$output"
 
@@ -758,9 +815,11 @@ echo ""
 echo "=== Cache Commands ==="
 # ============================================================
 
+# Test: run cache purge-items; expect it to exit 0 (script aborts on failure via set -e).
 $CLI cache purge-items 2>/dev/null
 pass "cache purge-items completes (exit 0)"
 
+# Test: run cache purge; expect it to exit 0 (script aborts on failure via set -e).
 $CLI cache purge 2>/dev/null
 pass "cache purge completes (exit 0)"
 
@@ -780,6 +839,7 @@ with open('$UPLOAD_TMP/test.mp3', 'wb') as f:
         f.write(frame)
 "
 
+# Test: upload 1 item as uploaduser; expect --wait to return the item's id.
 abs_login uploaduser uploadpass
 
 output=$($CLI upload --title "Smoke Test Upload" --author "Test Author" \
@@ -823,11 +883,11 @@ run_drift_case() {
     fi
 }
 
-# Colon in title: first ':' replaced with ' - '
+# Test: upload title "Alien: 3" as uploaduser; expect first colon replaced with ' - ' in relPath.
 run_drift_case "colon in title" "Alien: 3" "Sanitize Author" \
     "Sanitize Author/Alien - 3" "" ""
 
-# Trailing dot in author
+# Test: upload with author name "J.R.R. Tolkien." as uploaduser; expect trailing dot stripped in relPath.
 run_drift_case "trailing dot in author" "Plain Title One" "J.R.R. Tolkien." \
     "J.R.R. Tolkien/Plain Title One" "" ""
 
@@ -835,25 +895,28 @@ run_drift_case "trailing dot in author" "Plain Title One" "J.R.R. Tolkien." \
 # it only strips the prefix when deriving media.metadata.title. This is
 # why title-substring search failed pre-fix — the title-metadata lost the
 # prefix but the search query we built included it.
+# Test: upload with --sequence 1 --series Dwarves as uploaduser; expect the "1. -" prefix kept in relPath.
 run_drift_case "sequence prefix kept in relPath" "Hobbit Draft" "Sanitize Author Seq" \
     "Sanitize Author Seq/Dwarves/1. - Hobbit Draft" "--sequence 1" "--series Dwarves"
 
 # Decimal sequence: ABS stores BookSeries.sequence as STRING, so "1.5" must
 # flow through the CLI unchanged. Regression test for the old int-only typing
 # that rejected decimal series positions at the CLI boundary.
+# Test: upload with --sequence 1.5 --series Dwarves as uploaduser; expect "1.5." kept unchanged in relPath.
 run_drift_case "decimal sequence kept in relPath" "Hobbit Decimal" "Sanitize Author Dec" \
     "Sanitize Author Dec/Dwarves/1.5. - Hobbit Decimal" "--sequence 1.5" "--series Dwarves"
 
-# Illegal char (pipe) stripped
+# Test: upload title "Pipe|Title" as uploaduser; expect the pipe stripped from relPath.
 run_drift_case "illegal char stripped" "Pipe|Title" "Sanitize Author Pipe" \
     "Sanitize Author Pipe/PipeTitle" "" ""
 
-# Whitespace run collapsed
+# Test: upload title with repeated spaces as uploaduser; expect whitespace runs collapsed in relPath.
 run_drift_case "whitespace collapsed" "Extra   Spaces   Title" "Sanitize Author WS" \
     "Sanitize Author WS/Extra Spaces Title" "" ""
 
 # NFD title (issue #97): ABS stores the folder NFC; the CLI must predict
 # the same. string.Normalize is a no-op under InvariantGlobalization.
+# Test: upload an NFD-normalized title as uploaduser; expect relPath to use NFC-composed characters.
 run_drift_case "NFD title composed" "$(printf 'Die Lo\xcc\x88win')" "Sanitize Author NFD" \
     "Sanitize Author NFD/Die L$(printf '\xc3\xb6')win" "" ""
 
@@ -861,6 +924,7 @@ run_drift_case "NFD title composed" "$(printf 'Die Lo\xcc\x88win')" "Sanitize Au
 # A title long enough that ABS truncates the path segment. We cannot predict
 # the exact truncated relPath, so assert --wait still resolves the item (the
 # per-segment matcher tolerates the tail divergence). Pre-fix this timed out.
+# Test: upload with a very long title as uploaduser; expect --wait to still resolve the item.
 LONG_TITLE="Ich täuschte Amnesie vor um meinen Verlobten loszuwerden da behauptete er Vor deinem Gedächtnisverlust warst du in mich verliebt und das ist die ganze lange Geschichte"
 abs_login uploaduser uploadpass
 long_out=$($CLI upload --title "$LONG_TITLE" --author "Long Title Author" \
@@ -895,7 +959,7 @@ for d in ['$COLLIDE_TMP/Part1', '$COLLIDE_TMP/Part2']:
 
 abs_login uploaduser uploadpass
 
-# Default: collision detected, error, no upload
+# Test: upload files from 2 dirs sharing basenames as uploaduser; expect a 'Duplicate filenames' error.
 collide_out=$($CLI upload --title "Collision Default" --author "Collide Author" \
     --folder "$FOLDER_ID" --files "$COLLIDE_TMP"/Part1/*.mp3 "$COLLIDE_TMP"/Part2/*.mp3 2>&1 || true)
 if echo "$collide_out" | grep -qi "Duplicate filenames"; then
@@ -904,7 +968,7 @@ else
     fail "upload errors on duplicate basenames by default" "got: ${collide_out:0:200}"
 fi
 
-# --prefix-source-dir: succeeds, all 4 files land on server with prefixed names
+# Test: upload the same colliding files with --prefix-source-dir as uploaduser; expect it to create an item.
 prefix_out=$($CLI upload --title "Collision Prefix" --author "Collide Author Prefix" \
     --folder "$FOLDER_ID" --prefix-source-dir --wait \
     --files "$COLLIDE_TMP"/Part1/*.mp3 "$COLLIDE_TMP"/Part2/*.mp3 2>/dev/null)
@@ -918,7 +982,7 @@ else
     fail "upload --prefix-source-dir created item" "item not found in library"
 fi
 
-# --files-manifest: succeeds with explicit per-file naming
+# Test: upload the same colliding files via --files-manifest as uploaduser; expect it to create an item.
 cat > "$COLLIDE_TMP/manifest.json" <<EOF
 [
   {"src": "$COLLIDE_TMP/Part1/01.mp3", "as": "001-track.mp3"},
@@ -949,6 +1013,7 @@ echo "=== Permission Errors ==="
 
 abs_login testuser testpass
 
+# Test: upload as testuser (no upload permission); expect a 'permission denied' error.
 UPLOAD_TMP2=$(mktemp -d)
 python3 -c "
 with open('$UPLOAD_TMP2/test.mp3', 'wb') as f:
@@ -964,6 +1029,7 @@ else
 fi
 rm -rf "$UPLOAD_TMP2"
 
+# Test: list backups as testuser; expect a 'permission denied'/admin error.
 error_output=$($CLI backup list 2>&1 || true)
 if echo "$error_output" | grep -qi "permission denied\|admin"; then
     pass "backup list as testuser shows permission denied"
@@ -971,6 +1037,7 @@ else
     fail "backup list as testuser shows permission denied" "got: ${error_output:0:200}"
 fi
 
+# Test: create a library as testuser; expect a 'permission denied'/admin error.
 error_output=$($CLI libraries create --name "Nope" --folder /tmp/nope 2>&1 || true)
 if echo "$error_output" | grep -qi "permission denied\|admin"; then
     pass "libraries create as testuser shows admin permission denied"
@@ -978,6 +1045,7 @@ else
     fail "libraries create as testuser shows admin permission denied" "got: ${error_output:0:200}"
 fi
 
+# Test: list tags as testuser; expect a 'permission denied'/admin error.
 error_output=$($CLI tags list 2>&1 || true)
 if echo "$error_output" | grep -qi "permission denied\|admin"; then
     pass "tags list as testuser shows admin permission denied"
@@ -985,6 +1053,7 @@ else
     fail "tags list as testuser shows admin permission denied" "got: ${error_output:0:200}"
 fi
 
+# Test: list genres as testuser; expect a 'permission denied'/admin error.
 error_output=$($CLI genres list 2>&1 || true)
 if echo "$error_output" | grep -qi "permission denied\|admin"; then
     pass "genres list as testuser shows admin permission denied"
@@ -998,6 +1067,7 @@ abs_login root root
 # so they can't exercise these paths. readonlyuser has update=false.
 abs_login readonlyuser readonlypass
 
+# Test: update an item's title as readonlyuser; expect a 403 'update' permission error.
 error_output=$(echo '{"metadata":{"title":"Should Fail"}}' \
     | $CLI items update --id "$FIRST_ITEM_ID" --stdin 2>&1 || true)
 if echo "$error_output" | grep -q "'update' permission"; then
@@ -1010,6 +1080,7 @@ fi
 # (LibraryItemController batch routes). Pre-2.34 servers do not 403 here
 # and this assertion will fail against them — the CLI claims support down
 # to 2.33.1, but the smoke runs against the dev stack image only.
+# Test: batch-update an item's title as readonlyuser; expect a 403 'update' permission error.
 error_output=$(echo "[{\"id\":\"$FIRST_ITEM_ID\",\"mediaPayload\":{\"metadata\":{\"title\":\"Should Fail\"}}}]" \
     | $CLI items batch-update --stdin 2>&1 || true)
 if echo "$error_output" | grep -q "'update' permission"; then
@@ -1018,6 +1089,7 @@ else
     fail "items batch-update as readonlyuser hits 'update' permission denial" "got: ${error_output:0:200}"
 fi
 
+# Test: update an author's description as readonlyuser; expect a 403 'update' permission error.
 error_output=$($CLI authors update --id "$AUTHOR_ID" --description "Should Fail" 2>&1 || true)
 if echo "$error_output" | grep -q "'update' permission"; then
     pass "authors update as readonlyuser hits 'update' permission denial"
@@ -1025,6 +1097,7 @@ else
     fail "authors update as readonlyuser hits 'update' permission denial" "got: ${error_output:0:200}"
 fi
 
+# Test: set an item's chapters as readonlyuser; expect a 403 'update' permission error.
 error_output=$(echo '{"chapters":[{"title":"x","start":0,"end":1}]}' \
     | $CLI items chapters set --id "$FIRST_ITEM_ID" --stdin 2>&1 || true)
 if echo "$error_output" | grep -q "'update' permission"; then
@@ -1033,6 +1106,7 @@ else
     fail "items chapters set as readonlyuser hits 'update' permission denial" "got: ${error_output:0:200}"
 fi
 
+# Test: update a series' description as readonlyuser; expect a 403 'update' permission error.
 error_output=$($CLI series update --id "$SERIES_ID" --description x 2>&1 || true)
 if echo "$error_output" | grep -q "'update' permission"; then
     pass "series update as readonlyuser hits 'update' permission denial"
@@ -1040,6 +1114,7 @@ else
     fail "series update as readonlyuser hits 'update' permission denial" "got: ${error_output:0:200}"
 fi
 
+# Test: rename a narrator as readonlyuser; expect a 403 'update' permission error.
 error_output=$($CLI narrators rename smoke-temp-narrator whatever 2>&1 || true)
 if echo "$error_output" | grep -q "'update' permission"; then
     pass "narrators rename as readonlyuser hits 'update' permission denial"
@@ -1047,6 +1122,7 @@ else
     fail "narrators rename as readonlyuser hits 'update' permission denial" "got: ${error_output:0:200}"
 fi
 
+# Test: purge item cache as readonlyuser; expect a 403 admin permission error.
 error_output=$($CLI cache purge-items 2>&1 || true)
 if echo "$error_output" | grep -q "admin permission"; then
     pass "cache purge-items as readonlyuser hits 'admin permission' denial"
@@ -1054,6 +1130,7 @@ else
     fail "cache purge-items as readonlyuser hits 'admin permission' denial" "got: ${error_output:0:200}"
 fi
 
+# Test: purge cache as readonlyuser; expect a 403 admin permission error.
 error_output=$($CLI cache purge 2>&1 || true)
 if echo "$error_output" | grep -q "admin permission"; then
     pass "cache purge as readonlyuser hits 'admin permission' denial"
@@ -1068,13 +1145,14 @@ echo ""
 echo "=== Me + Progress ==="
 # ============================================================
 
-# 1. me — assert username and permissions are present
+# Test: call me; expect username and permissions keys present.
 output=$($CLI me 2>/dev/null)
 assert_json_key "me has username" "username" "$output"
 assert_json_key "me has permissions" "permissions" "$output"
 
 # Pick a seeded library item to operate on (independent fetch — the
 # Collections block also does this but runs AFTER this one).
+# Test: fetch a seeded library item id; expect at least one to exist.
 progress_items_json=$($CLI items list --limit 1 2>/dev/null)
 PROGRESS_LID=$(json_get "$progress_items_json" ".get('results',[{}])[0].get('id','')")
 if [ -z "$PROGRESS_LID" ]; then
@@ -1091,7 +1169,7 @@ progress_cleanup() {
 }
 trap progress_cleanup EXIT
 
-# 2. progress get on item with no progress yet → 404 exit 2
+# Test: get progress for an item with no progress yet; expect a 404 'not found' error.
 output=$($CLI items progress get --library-item "$PROGRESS_LID" 2>&1 || true)
 if echo "$output" | grep -qi "not found"; then
     pass "progress get: 404 surfaces when no progress recorded"
@@ -1099,30 +1177,30 @@ else
     fail "progress get: 404 surfaces when no progress recorded" "got: ${output:0:200}"
 fi
 
-# 3. progress set --is-finished true
+# Test: progress set --is-finished true; expect isFinished:true in the response.
 output=$($CLI items progress set --library-item "$PROGRESS_LID" --is-finished true 2>/dev/null)
 assert_json_expr "progress set persisted isFinished:true" "d['isFinished']==True" "$output"
 
-# 4. progress get returns isFinished:true
+# Test: get progress; expect isFinished:true to have persisted.
 output=$($CLI items progress get --library-item "$PROGRESS_LID" 2>/dev/null)
 assert_json_expr "progress get sees isFinished:true" "d['isFinished']==True" "$output"
 
-# 5. items get --include progress returns userMediaProgress with the same state
+# Test: get item with --include progress; expect userMediaProgress.isFinished:true.
 output=$($CLI items get --id "$PROGRESS_LID" --include progress 2>/dev/null)
 assert_json_expr "items get --include progress decorates with progress" \
     "d.get('userMediaProgress',{}).get('isFinished')==True" "$output"
 
-# 6. batch-update-progress flips isFinished back to false
+# Test: batch-update-progress sets isFinished:false; expect progress get to reflect false.
 echo "[{\"libraryItemId\":\"$PROGRESS_LID\",\"isFinished\":false}]" \
     | $CLI items batch-update-progress --stdin >/dev/null 2>&1
 output=$($CLI items progress get --library-item "$PROGRESS_LID" 2>/dev/null)
 assert_json_expr "batch-update-progress flipped isFinished to false" "d['isFinished']==False" "$output"
 
-# 7. progress remove clears the record
+# Test: remove progress; expect success:true.
 output=$($CLI items progress remove --library-item "$PROGRESS_LID" 2>/dev/null)
 assert_json_expr "progress remove returns success:true" "d['success']=='true'" "$output"
 
-# 8. follow-up progress get returns 404
+# Test: get progress after remove; expect a 404 'not found' error.
 output=$($CLI items progress get --library-item "$PROGRESS_LID" 2>&1 || true)
 if echo "$output" | grep -qi "not found"; then
     pass "progress get after remove surfaces 404"
@@ -1134,6 +1212,7 @@ fi
 # ABS types ebookLocation as STRING but stores/echoes bare numbers written to
 # it (SQLite type affinity). The CLI only ever SENDS strings, so the numeric
 # shape is injected here via the raw API to exercise the tolerant read path.
+# Test: PATCH a numeric ebookLocation via the raw API; expect `me` to survive and progress get to return it as string "24".
 ABS_TOKEN=$(curl -fsS -X POST "$ABS_URL/login" -H 'Content-Type: application/json' \
     -d '{"username":"root","password":"root"}' 2>/dev/null \
     | python3 -c "import sys,json; u=json.load(sys.stdin).get('user',{}); print(u.get('accessToken') or u.get('token') or '')")
@@ -1154,7 +1233,7 @@ else
     $CLI items progress remove --library-item "$PROGRESS_LID" >/dev/null 2>&1 || true
 fi
 
-# 9. progress set with no body flags → exit 1
+# Test: progress set with no body flags; expect a 'Specify at least one' error.
 output=$($CLI items progress set --library-item "$PROGRESS_LID" 2>&1 || true)
 if echo "$output" | grep -qi "Specify at least one"; then
     pass "progress set rejects empty body flags"
@@ -1162,7 +1241,7 @@ else
     fail "progress set rejects empty body flags" "got: ${output:0:200}"
 fi
 
-# 10. --finished-at without --is-finished true → exit 1
+# Test: progress set --finished-at without --is-finished true; expect a 'finished-at only applies' error.
 output=$($CLI items progress set --library-item "$PROGRESS_LID" --finished-at "2026-05-28T12:00:00Z" 2>&1 || true)
 if echo "$output" | grep -qi "finished-at only applies"; then
     pass "progress set rejects --finished-at without --is-finished true"
@@ -1186,7 +1265,7 @@ collections_cleanup() {
 }
 trap collections_cleanup EXIT
 
-# Grab three seeded book library item IDs for the smoke flow.
+# Test: fetch 3 seeded library item ids; expect all three to be present.
 items_json=$($CLI items list --limit 3 2>/dev/null)
 LID1=$(json_get "$items_json" ".get('results',[{}])[0].get('id','')")
 LID2=$(json_get "$items_json" ".get('results',[{},{}])[1].get('id','')")
@@ -1197,12 +1276,12 @@ else
     pass "collections: 3 library items available"
 fi
 
-# 1. list — works whether empty or populated; just check the shape.
+# Test: list collections; expect results and total keys in response.
 output=$($CLI collections list 2>/dev/null)
 assert_json_key "collections list has results" "results" "$output"
 assert_json_key "collections list has total" "total" "$output"
 
-# 2. create with two books (via --stdin)
+# Test: create a collection with 2 books; expect an id, 2 books, and name 'smoke test'.
 output=$(echo "{\"books\":[\"$LID1\",\"$LID2\"]}" \
     | $CLI collections create --name "smoke test" --stdin 2>/dev/null)
 COLLECTION_ID=$(json_get "$output" ".get('id','')")
@@ -1214,21 +1293,21 @@ fi
 assert_json_expr "create has 2 books" "len(d['books'])==2" "$output"
 assert_json_expr "create persisted name" "d['name']=='smoke test'" "$output"
 
-# 3. get
+# Test: get the collection; expect 2 books and name 'smoke test'.
 output=$($CLI collections get --id "$COLLECTION_ID" 2>/dev/null)
 assert_json_expr "get returns 2 books" "len(d['books'])==2" "$output"
 assert_json_expr "get returns correct name" "d['name']=='smoke test'" "$output"
 
-# 4. update name + description
+# Test: update name and description; expect both to persist in response.
 output=$($CLI collections update --id "$COLLECTION_ID" --name "renamed" --description "desc" 2>/dev/null)
 assert_json_expr "update applies name" "d['name']=='renamed'" "$output"
 assert_json_expr "update applies description" "d['description']=='desc'" "$output"
 
-# 5. add a third book
+# Test: add a third book; expect the collection to have 3 books.
 output=$($CLI collections add --id "$COLLECTION_ID" --book "$LID3" 2>/dev/null)
 assert_json_expr "add yields 3 books" "len(d['books'])==3" "$output"
 
-# 6. duplicate add → 400 → exit 2
+# Test: add the same book again; expect a 400 'already in collection' error.
 output=$($CLI collections add --id "$COLLECTION_ID" --book "$LID3" 2>&1 || true)
 if echo "$output" | grep -qi "already in collection\|bad request"; then
     pass "duplicate add surfaces a 400 message"
@@ -1236,7 +1315,7 @@ else
     fail "duplicate add surfaces a 400 message" "got: ${output:0:200}"
 fi
 
-# 7. reorder (put LID3 first)
+# Test: reorder books with LID3 first; expect the first book id to be LID3.
 output=$(echo "{\"books\":[\"$LID3\",\"$LID2\",\"$LID1\"]}" \
     | $CLI collections reorder --id "$COLLECTION_ID" --stdin 2>/dev/null)
 FIRST_ID=$(json_get "$output" ".get('books',[{}])[0].get('id','')")
@@ -1246,31 +1325,32 @@ else
     fail "reorder put LID3 first" "got first id: $FIRST_ID"
 fi
 
-# 8. batch-remove all three
+# Test: batch-remove all 3 books; expect the collection to have 0 books.
 output=$(echo "{\"books\":[\"$LID1\",\"$LID2\",\"$LID3\"]}" \
     | $CLI collections batch-remove --id "$COLLECTION_ID" --stdin 2>/dev/null)
 assert_json_expr "batch-remove empties collection" "len(d['books'])==0" "$output"
 
-# 8b. batch-add two books back into the empty collection
+# Test: batch-add 2 books into the empty collection; expect 2 books restored.
 output=$(echo "{\"books\":[\"$LID1\",\"$LID2\"]}" \
     | $CLI collections batch-add --id "$COLLECTION_ID" --stdin 2>/dev/null)
 assert_json_expr "batch-add restored 2 books" "len(d['books'])==2" "$output"
 
 # 8c. batch-add is idempotent for duplicates: re-adding LID1 alongside a new LID3
 # should yield 3 (skips LID1, adds LID3), unlike single `add` which 400s on dupes
+# Test: batch-add LID1 (dup) and LID3 (new); expect 3 books, duplicate silently skipped.
 output=$(echo "{\"books\":[\"$LID1\",\"$LID3\"]}" \
     | $CLI collections batch-add --id "$COLLECTION_ID" --stdin 2>/dev/null)
 assert_json_expr "batch-add silently skips existing books" "len(d['books'])==3" "$output"
 
-# 8d. single remove drops one book
+# Test: remove one book; expect the collection to drop to 2 books.
 output=$($CLI collections remove --id "$COLLECTION_ID" --book "$LID2" 2>/dev/null)
 assert_json_expr "remove drops the book" "len(d['books'])==2" "$output"
 
-# 9. delete
+# Test: delete the collection; expect success:true.
 output=$($CLI collections delete --id "$COLLECTION_ID" 2>/dev/null)
 assert_json_expr "delete returns success:true" "d['success']=='true'" "$output"
 
-# 10. get on deleted → 404 → CLI exits non-zero
+# Test: get the deleted collection; expect a 404 'not found' error.
 output=$($CLI collections get --id "$COLLECTION_ID" 2>&1 || true)
 if echo "$output" | grep -qi "not found"; then
     pass "get on deleted collection surfaces 404"
@@ -1279,6 +1359,7 @@ else
 fi
 
 # 11. permission denied as readonlyuser (no `update` perm — seeded by docker/seed.sh)
+# Test: create a collection as readonlyuser; expect a 403 'permission denied' update-permission error.
 abs_login readonlyuser readonlypass
 output=$(echo "{\"books\":[\"$LID1\"]}" \
     | $CLI collections create --name "denied" --stdin 2>&1 || true)
@@ -1316,11 +1397,13 @@ trap playlists_cleanup EXIT
 # LID1/LID2/LID3 were grabbed for the Collections block above and are reused here.
 
 # 1. list — paginated envelope shape (per-library; --library falls back to defaultLibrary)
+# Test: list playlists; expect results and total keys in response.
 output=$($CLI playlists list 2>/dev/null)
 assert_json_key "playlists list has results" "results" "$output"
 assert_json_key "playlists list has total" "total" "$output"
 
 # 2. create empty — books are optional; ABS allows an empty playlist
+# Test: create a playlist with no books; expect an id and 0 items.
 output=$($CLI playlists create --name "smoke empty" 2>/dev/null)
 EMPTY_PID=$(json_get "$output" ".get('id','')")
 if [ -n "$EMPTY_PID" ]; then
@@ -1331,7 +1414,7 @@ fi
 assert_json_expr "empty create has 0 items" "len(d['items'])==0" "$output"
 $CLI playlists delete --id "$EMPTY_PID" >/dev/null 2>&1 || true
 
-# 3. create with two books via --stdin
+# Test: create a playlist with 2 books; expect an id, 2 items, and name 'smoke test'.
 output=$(echo "{\"books\":[\"$LID1\",\"$LID2\"]}" \
     | $CLI playlists create --name "smoke test" --stdin 2>/dev/null)
 PLAYLIST_ID=$(json_get "$output" ".get('id','')")
@@ -1343,20 +1426,21 @@ fi
 assert_json_expr "create has 2 items" "len(d['items'])==2" "$output"
 assert_json_expr "create persisted name" "d['name']=='smoke test'" "$output"
 
-# 4. get
+# Test: get the playlist; expect 2 items.
 output=$($CLI playlists get --id "$PLAYLIST_ID" 2>/dev/null)
 assert_json_expr "get returns 2 items" "len(d['items'])==2" "$output"
 
-# 5. update name + description
+# Test: update name and description; expect both to persist in response.
 output=$($CLI playlists update --id "$PLAYLIST_ID" --name "renamed" --description "desc" 2>/dev/null)
 assert_json_expr "update applies name" "d['name']=='renamed'" "$output"
 assert_json_expr "update applies description" "d['description']=='desc'" "$output"
 
-# 6. add a third book
+# Test: add a third book; expect the playlist to have 3 items.
 output=$($CLI playlists add --id "$PLAYLIST_ID" --book "$LID3" 2>/dev/null)
 assert_json_expr "add yields 3 items" "len(d['items'])==3" "$output"
 
 # 7. reorder (put LID3 first) — pass the FULL ordered membership
+# Test: reorder items with LID3 first; expect the first item's libraryItemId to be LID3.
 output=$(echo "{\"books\":[\"$LID3\",\"$LID2\",\"$LID1\"]}" \
     | $CLI playlists reorder --id "$PLAYLIST_ID" --stdin 2>/dev/null)
 FIRST_ID=$(json_get "$output" ".get('items',[{}])[0].get('libraryItemId','')")
@@ -1366,17 +1450,17 @@ else
     fail "reorder put LID3 first" "got first id: $FIRST_ID"
 fi
 
-# 8. batch-add silently skips a book already in the playlist (stays 3)
+# Test: batch-add LID1 (already a member); expect items to stay at 3 (silently skipped).
 output=$(echo "{\"books\":[\"$LID1\"]}" \
     | $CLI playlists batch-add --id "$PLAYLIST_ID" --stdin 2>/dev/null)
 assert_json_expr "batch-add skips existing books" "len(d['items'])==3" "$output"
 
-# 9. batch-remove two of the three
+# Test: batch-remove LID2 and LID3; expect the playlist to drop to 1 item.
 output=$(echo "{\"books\":[\"$LID2\",\"$LID3\"]}" \
     | $CLI playlists batch-remove --id "$PLAYLIST_ID" --stdin 2>/dev/null)
 assert_json_expr "batch-remove drops to 1 item" "len(d['items'])==1" "$output"
 
-# 10. remove the LAST item → playlist auto-deletes; a subsequent get 404s
+# Test: remove the last item; expect the playlist to auto-delete (get → 404).
 $CLI playlists remove --id "$PLAYLIST_ID" --book "$LID1" >/dev/null 2>&1
 output=$($CLI playlists get --id "$PLAYLIST_ID" 2>&1 || true)
 if echo "$output" | grep -qi "not found"; then
@@ -1386,7 +1470,7 @@ else
 fi
 PLAYLIST_ID=""
 
-# 11. create-from-collection — snapshot a collection's books into a new playlist
+# Test: create a playlist from a collection; expect name and 2 books copied over.
 output=$(echo "{\"books\":[\"$LID1\",\"$LID2\"]}" \
     | $CLI collections create --name "pl source" --stdin 2>/dev/null)
 PL_COLLECTION_ID=$(json_get "$output" ".get('id','')")
@@ -1401,6 +1485,7 @@ PL_COLLECTION_ID=""
 
 # 12. user-owned model: readonlyuser (no `update` perm) CAN create/manage its own
 # playlist — unlike collections, playlists require no permission flag.
+# Test: create a playlist as readonlyuser; expect success (no permission required).
 abs_login readonlyuser readonlypass
 output=$($CLI playlists create --name "readonly owns this" 2>&1 || true)
 RO_PID=$(json_get "$output" ".get('id','')" 2>/dev/null || echo "")
@@ -1420,14 +1505,17 @@ echo ""
 echo "=== Scan Commands ==="
 # ============================================================
 
+# Test: trigger a library scan; expect exit 0.
 $CLI libraries scan 2>/dev/null
 pass "libraries scan completed (exit 0)"
 
 sleep 2
 
+# Test: list tasks; expect a tasks key in the response.
 output=$($CLI tasks list 2>/dev/null)
 assert_json_key "tasks list has tasks" "tasks" "$output"
 
+# Test: scan a single item; expect a result key in the response.
 output=$($CLI items scan --id "$FIRST_ITEM_ID" 2>/dev/null)
 assert_json_key "items scan has result" "result" "$output"
 
@@ -1436,6 +1524,7 @@ echo ""
 echo "=== Metadata Commands ==="
 # ============================================================
 
+# Test: list metadata providers; expect a non-empty books list including google.
 output=$($CLI metadata providers 2>/dev/null)
 assert_json_key "metadata providers has providers" "providers" "$output"
 assert_json_expr "metadata providers has books" "len(d['providers']['books'])>0" "$output"
@@ -1444,8 +1533,10 @@ assert_json_expr "metadata providers has google" \
 
 if [ "${SMOKE_TEST_EXTERNAL:-}" = "1" ]; then
     echo "  (external provider tests enabled)"
+    # Test: search metadata via google for a known title; expect at least one result.
     output=$($CLI metadata search --provider google --title "Storm Front" --author "Jim Butcher" 2>/dev/null)
     assert_json_expr "metadata search returns results" "len(d)>0" "$output"
+    # Test: fetch covers via google for a known title; expect a results key.
     output=$($CLI metadata covers --provider google --title "Storm Front" 2>/dev/null)
     assert_json_key "metadata covers has results" "results" "$output"
 else
@@ -1473,14 +1564,16 @@ with open('$COVER_FILE', 'wb') as f:
 "
 
 # --- Mode 1: --file (multipart upload) ---
+# Test: upload a cover via --file; expect success=True and a cover path returned.
 output=$($CLI items cover set --id "$FIRST_ITEM_ID" --file "$COVER_FILE" 2>/dev/null)
 assert_json_expr "items cover set --file applied cover" "d['success']==True and d['cover']" "$output"
 SERVER_COVER_PATH=$(json_get "$output" "['cover']" || echo "")
 
+# Test: get the item; expect a non-null coverPath after the --file cover set.
 output=$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)
 assert_json_expr "items get reports non-null coverPath after --file set" "d['media'].get('coverPath')" "$output"
 
-# Download cover to file
+# Test: download the cover to a file; expect a matching path/bytes descriptor and a non-empty file.
 DOWNLOAD_FILE="$COVER_TMP/downloaded.bin"
 output=$($CLI items cover get --id "$FIRST_ITEM_ID" --output "$DOWNLOAD_FILE" 2>/dev/null)
 assert_json_expr "items cover get --output writes file and reports descriptor" "d['path']=='$DOWNLOAD_FILE' and d['bytes']>0" "$output"
@@ -1490,7 +1583,7 @@ else
     fail "downloaded cover file is non-empty" "file missing or zero-byte"
 fi
 
-# Stream cover bytes to stdout (capture via wc -c)
+# Test: stream the cover to stdout via --output -; expect a non-zero byte count.
 bytes=$($CLI items cover get --id "$FIRST_ITEM_ID" --output - 2>/dev/null | wc -c)
 if [ "$bytes" -gt 0 ]; then
     pass "items cover get --output - streams non-zero bytes to stdout"
@@ -1498,10 +1591,11 @@ else
     fail "items cover get --output - streams non-zero bytes to stdout" "zero bytes"
 fi
 
-# Remove cover
+# Test: remove the cover; expect success=True in the response.
 output=$($CLI items cover remove --id "$FIRST_ITEM_ID" 2>/dev/null)
 assert_json_expr "items cover remove returns success" "d['success']" "$output"
 
+# Test: get the item; expect a null coverPath after the cover removal.
 output=$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)
 assert_json_expr "items get reports null coverPath after remove" "d['media'].get('coverPath') is None" "$output"
 
@@ -1509,6 +1603,7 @@ assert_json_expr "items get reports null coverPath after remove" "d['media'].get
 # ABS (>= 2.37) only accepts a path among the item's scanned libraryFiles.
 # Build one: upload the PNG into FIRST_ITEM's existing folder (ABS ensureDirs
 # it), rescan the item, then read the PNG's path back from libraryFiles.
+# Test: parse the item's relPath, then upload the cover image as uploaduser into its existing folder; expect the returned relPath to match.
 item_rel=$(json_get "$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)" "['relPath'].lstrip('/')" || echo "")
 IFS='/' read -r -a rel_parts <<<"$item_rel"
 case ${#rel_parts[@]} in
@@ -1520,6 +1615,7 @@ abs_login uploaduser uploadpass
 up_out=$($CLI upload "${up_args[@]}" --library "$LIB_ID" --folder "$FOLDER_ID" --files "$COVER_FILE" 2>/dev/null || echo "{}")
 abs_login root root
 assert_json_expr "upload adds cover image into existing item folder" "d.get('relPath','').lstrip('/')=='$item_rel'" "$up_out"
+# Test: rescan the item; expect the uploaded cover.png to appear in libraryFiles.
 $CLI items scan --id "$FIRST_ITEM_ID" >/dev/null 2>&1 || true
 LIBFILE_COVER_PATH=$($CLI items get --id "$FIRST_ITEM_ID" --expanded 2>/dev/null | python3 -c "
 import sys,json
@@ -1535,14 +1631,17 @@ fi
 $CLI items cover remove --id "$FIRST_ITEM_ID" > /dev/null 2>&1 || true
 if [ -n "$LIBFILE_COVER_PATH" ]; then
     # Assumes default storeCoverWithItem=false: ABS copies images from outside the cover dir to /metadata/items/<id>/.
+    # Test: set the cover via --server-path to the scanned libraryFile; expect success=True and the copied /metadata/items path.
     output=$($CLI items cover set --id "$FIRST_ITEM_ID" --server-path "$LIBFILE_COVER_PATH" 2>/dev/null || echo "{}")
     assert_json_expr "items cover set --server-path applied library-file cover" "d['success']==True and d['cover']=='/metadata/items/$FIRST_ITEM_ID/cover.png'" "$output"
     APPLIED_COVER_PATH=$(json_get "$output" "['cover']" || echo "")
+    # Test: get the item; expect coverPath to match the applied --server-path cover.
     output=$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)
     assert_json_expr "items get coverPath matches applied --server-path cover" "d['media'].get('coverPath')=='$APPLIED_COVER_PATH'" "$output"
     $CLI items cover remove --id "$FIRST_ITEM_ID" > /dev/null 2>&1 || true
 fi
 # A path outside the item's libraryFiles (the --file cover under /metadata) is rejected.
+# Test: set the cover via --server-path outside the item's libraryFiles; expect failure with an 'Invalid cover path' error.
 if [ -n "$SERVER_COVER_PATH" ]; then
     neg_err=$($CLI items cover set --id "$FIRST_ITEM_ID" --server-path "$SERVER_COVER_PATH" 2>&1 >/dev/null) && neg_rc=0 || neg_rc=$?
     if [ "$neg_rc" -ne 0 ] && echo "$neg_err" | grep -q "Invalid cover path"; then
@@ -1559,6 +1658,7 @@ fi
 # Google, FantLab, Amazon, etc., which is far more reliable than pinning
 # to any single provider (e.g. Google returns no covers at all for some
 # seeded titles like "Rivers of London").
+# Test: read the item's title/author then query metadata covers (provider best); expect at least one cover URL back.
 item_json=$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)
 item_title=$(json_get "$item_json" "['media']['metadata'].get('title') or ''")
 item_author=$(json_get "$item_json" "['media']['metadata'].get('authorName') or ''")
@@ -1570,9 +1670,11 @@ if [ -n "$item_title" ]; then
     if [ -n "$cover_url" ]; then
         pass "metadata covers returned a URL for seeded book"
 
+        # Test: set the cover via --url using the found metadata-provider URL; expect success=True and a cover path.
         output=$($CLI items cover set --id "$FIRST_ITEM_ID" --url "$cover_url" 2>/dev/null)
         assert_json_expr "items cover set --url applied cover from metadata-provider URL" "d['success']==True and d['cover']" "$output"
 
+        # Test: get the item; expect a non-null coverPath after the --url cover set.
         output=$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)
         assert_json_expr "items get reports non-null coverPath after --url set" "d['media'].get('coverPath')" "$output"
 
@@ -1601,6 +1703,7 @@ trap encode_cleanup EXIT
 # cancel assertions need the merge task to still be in flight when the next
 # request lands, and ABS clears the pending task as soon as it finishes. Six
 # minutes of audio keeps even a codec=copy remux observable.
+# Test: generate two tone MP3 fixtures via ffmpeg; expect both files non-empty.
 ffmpeg -y -f lavfi -i "sine=frequency=440:duration=180" -ac 2 -c:a libmp3lame -b:a 128k \
     "$ENCODE_TMP/track1.mp3" > /dev/null 2>&1
 ffmpeg -y -f lavfi -i "sine=frequency=523:duration=180" -ac 2 -c:a libmp3lame -b:a 128k \
@@ -1612,7 +1715,7 @@ else
     fail "encode-m4b: ffmpeg generated two non-empty MP3 fixtures" "one or both empty"
 fi
 
-# Upload as a multi-file audiobook.
+# Test: upload two MP3s as one multi-file audiobook; expect the response id to be set.
 output=$($CLI upload --library "$LIB_ID" --folder "$FOLDER_ID" \
     --title "ENCODE_M4B_TEST" --author "Smoke Author" \
     --wait --files "$ENCODE_TMP/track1.mp3" "$ENCODE_TMP/track2.mp3" 2>/dev/null)
@@ -1624,11 +1727,11 @@ else
     echo "    response: ${output:0:200}"
 fi
 
-# Assert the freshly-uploaded item has two audio files.
+# Test: get the uploaded item; expect exactly 2 audioFiles.
 output=$($CLI items get --id "$ENCODE_ITEM_ID" 2>/dev/null)
 assert_json_expr "encode-m4b: item starts with 2 audioFiles" "len(d['media']['audioFiles'])==2" "$output"
 
-# Run encode-m4b start --codec copy.
+# Test: start encode-m4b with --codec copy; expect a receipt with started=true, codec=copy, no bitrate/channels defaults.
 output=$($CLI items encode-m4b start --id "$ENCODE_ITEM_ID" --codec copy 2>/dev/null)
 if echo "$output" | python3 -c "
 import sys, json
@@ -1652,6 +1755,7 @@ fi
 # still in flight before asserting on the guard. Without this check a merge that
 # finished first looks identical to a broken guard: the second start simply
 # succeeds and returns a normal receipt.
+# Test: start encode-m4b again while the first merge is pending; expect a 400 'already processing' error (skipped if merge finished first).
 encode_pending=0
 for i in $(seq 1 20); do
     if $CLI tasks list 2>/dev/null | python3 -c "
@@ -1685,6 +1789,7 @@ fi
 # quickly (especially with codec=copy), but ABS then fires a watcher-scan that
 # updates the item record in the DB. We must wait for that scan to finish too,
 # so we poll for zero tasks total rather than filtering by action.
+# Test: poll tasks list until empty; expect the encode and watcher-scan to clear within 90s.
 poll_ok=0
 for i in $(seq 1 90); do
     tasks=$($CLI tasks list 2>/dev/null)
@@ -1708,6 +1813,7 @@ fi
 # Verify post-encode state: one audio file, named *.m4b.
 # The watcher-scan task clears from the tasks list before ABS finishes writing
 # the updated item to the DB, so poll the item directly until it converges.
+# Test: poll the item until converged; expect exactly 1 audioFile ending in .m4b within 30s.
 item_poll_ok=0
 for i in $(seq 1 30); do
     output=$($CLI items get --id "$ENCODE_ITEM_ID" 2>/dev/null)
@@ -1730,7 +1836,7 @@ else
     echo "    response: ${output:0:300}"
 fi
 
-# Cancel 404: cancel on a nonexistent item must surface the combined message.
+# Test: cancel encode-m4b for a nonexistent item id; expect a 404 with the combined notFoundHint message.
 output=$($CLI items encode-m4b cancel --id "li_does_not_exist_$$" 2>&1 || true)
 if echo "$output" | grep -q "no pending encode-m4b task for item"; then
     pass "encode-m4b cancel: 404 surfaces combined notFoundHint message"
@@ -1743,6 +1849,7 @@ fi
 # than copy/remux), cancel mid-flight, verify the item was NOT merged. The
 # 180s fixtures + aac@192k re-encoding gives enough headroom for the cancel to
 # arrive before the task finishes on typical hardware.
+# Test: upload a second item for the cancel scenario; expect the response id to be set.
 output=$($CLI upload --library "$LIB_ID" --folder "$FOLDER_ID" \
     --title "ENCODE_M4B_CANCEL_TEST" --author "Smoke Author" \
     --wait --files "$ENCODE_TMP/track1.mp3" "$ENCODE_TMP/track2.mp3" 2>/dev/null)
@@ -1753,7 +1860,7 @@ else
     fail "encode-m4b cancel: upload created cancel-test item" "no id in upload response"
 fi
 
-# Start a slow-ish aac re-encode and immediately fire cancel.
+# Test: start a slow aac re-encode then immediately cancel it; expect cancel to exit 0 with empty output.
 $CLI items encode-m4b start --id "$CANCEL_TEST_ITEM_ID" \
     --codec aac --bitrate 192k --channels 2 > /dev/null 2>&1
 cancel_output=$($CLI items encode-m4b cancel --id "$CANCEL_TEST_ITEM_ID" 2>&1)
@@ -1764,7 +1871,7 @@ else
     fail "encode-m4b cancel: happy path exits 0 with empty stdout" "exit=$cancel_exit, output=${cancel_output:0:200}"
 fi
 
-# Poll tasks list until all tasks are gone (cancel + any trailing watcher-scan).
+# Test: poll tasks list after cancel; expect it to clear within 30s.
 cancel_poll_ok=0
 for i in $(seq 1 30); do
     tasks=$($CLI tasks list 2>/dev/null)
@@ -1788,6 +1895,7 @@ fi
 # Verify the item still has 2 audioFiles (cancel prevented the merge). If the
 # encode finished before cancel landed, this assertion will fail with the item
 # at audioFiles.length == 1 (single .m4b) — diagnose-able.
+# Test: get the cancelled item; expect it to retain 2 audioFiles (merge did not complete).
 output=$($CLI items get --id "$CANCEL_TEST_ITEM_ID" 2>/dev/null)
 if echo "$output" | python3 -c "
 import sys, json
@@ -1801,7 +1909,7 @@ else
     echo "    response: ${output:0:300}"
 fi
 
-# Enum-validation rejection (no HTTP call).
+# Test: start encode-m4b with an invalid --codec; expect a client-side enum validation error, no HTTP call.
 output=$($CLI items encode-m4b start --id "$ENCODE_ITEM_ID" --codec wmv 2>&1 || true)
 if echo "$output" | grep -q "must be one of: copy, aac, opus"; then
     pass "encode-m4b start: --codec wmv rejected client-side"
@@ -1810,7 +1918,7 @@ else
     echo "    response: ${output:0:200}"
 fi
 
-# Permission denial: non-admin user attempting start should 403.
+# Test: start encode-m4b as uploaduser; expect a 403 admin-permission error.
 abs_login uploaduser uploadpass
 output=$($CLI items encode-m4b start --id "$ENCODE_ITEM_ID" --codec copy 2>&1 || true)
 abs_login root root
@@ -1840,6 +1948,7 @@ trap chapters_cleanup EXIT
 ffmpeg -y -f lavfi -i "sine=frequency=440:duration=5" -ac 2 -c:a libmp3lame -b:a 128k \
     "$CHAPTERS_TMP/test.mp3" > /dev/null 2>&1
 
+# Test: upload 1 item as uploaduser; expect --wait to return its id.
 abs_login uploaduser uploadpass
 output=$($CLI upload --folder "$FOLDER_ID" \
     --title "CHAPTERS_TEST" --author "Smoke Author" \
@@ -1859,7 +1968,7 @@ cat > "$CHAPTERS_TMP/chapters.json" <<EOF
 ]}
 EOF
 
-# Happy path: set returns success/updated=true.
+# Test: set chapters on the uploaded item; expect success=true and updated=true.
 output=$($CLI items chapters set --id "$CHAPTERS_ITEM_ID" --input "$CHAPTERS_TMP/chapters.json" 2>/dev/null)
 if echo "$output" | python3 -c "
 import sys, json
@@ -1873,7 +1982,7 @@ else
     echo "    response: ${output:0:200}"
 fi
 
-# Idempotence: same body again returns updated=false.
+# Test: set the same chapters body again; expect success=true but updated=false (no-op).
 output=$($CLI items chapters set --id "$CHAPTERS_ITEM_ID" --input "$CHAPTERS_TMP/chapters.json" 2>/dev/null)
 if echo "$output" | python3 -c "
 import sys, json
@@ -1887,7 +1996,7 @@ else
     echo "    response: ${output:0:200}"
 fi
 
-# Chapters visible on items get.
+# Test: get the item; expect 2 chapters in media.chapters matching the values just set.
 output=$($CLI items get --id "$CHAPTERS_ITEM_ID" 2>/dev/null)
 if echo "$output" | python3 -c "
 import sys, json
@@ -1905,7 +2014,7 @@ else
     echo "    response: ${output:0:300}"
 fi
 
-# Stdin input path.
+# Test: set chapters via --stdin; expect success=true and updated=true.
 output=$(echo '{"chapters":[{"title":"Stdin Ch","start":0,"end":0.7}]}' \
     | $CLI items chapters set --id "$CHAPTERS_ITEM_ID" --stdin 2>/dev/null)
 if echo "$output" | python3 -c "
@@ -1919,7 +2028,7 @@ else
     fail "chapters set: --stdin path writes successfully" "unexpected response"
 fi
 
-# Mutual-exclusion: both --input and --stdin.
+# Test: pass both --input and --stdin to chapters set; expect an 'exactly one' error.
 output=$($CLI items chapters set --id "$CHAPTERS_ITEM_ID" \
     --input "$CHAPTERS_TMP/chapters.json" --stdin <<< '{"chapters":[]}' 2>&1 || true)
 if echo "$output" | grep -q "exactly one"; then
@@ -1928,7 +2037,7 @@ else
     fail "chapters set: rejects both --input and --stdin" "missing error string"
 fi
 
-# Mutual-exclusion: neither --input nor --stdin.
+# Test: call chapters set with neither --input nor --stdin; expect a 'Provide --input' error.
 output=$($CLI items chapters set --id "$CHAPTERS_ITEM_ID" 2>&1 || true)
 if echo "$output" | grep -q "Provide --input"; then
     pass "chapters set: rejects when neither --input nor --stdin given"
@@ -1936,7 +2045,7 @@ else
     fail "chapters set: rejects when neither --input nor --stdin given" "missing error string"
 fi
 
-# Malformed JSON: wrong type for start.
+# Test: set chapters with start as a string instead of a number; expect an 'Invalid chapters JSON' error.
 output=$(echo '{"chapters":[{"title":"x","start":"not-a-number","end":1.0}]}' \
     | $CLI items chapters set --id "$CHAPTERS_ITEM_ID" --stdin 2>&1 || true)
 if echo "$output" | grep -q "Invalid chapters JSON"; then
@@ -1945,7 +2054,7 @@ else
     fail "chapters set: wrong-typed start rejected client-side" "missing error string"
 fi
 
-# 500 quirk on missing item.
+# Test: set chapters on a nonexistent item id; expect a non-empty error response (ABS 500 quirk).
 output=$($CLI items chapters set --id "li_does_not_exist_$$" \
     --input "$CHAPTERS_TMP/chapters.json" 2>&1 || true)
 if [ -n "$output" ]; then
@@ -1969,6 +2078,7 @@ fi
 # --author "Brandon Sanderson"` and confirm it via
 # `items chapters lookup` before swapping. Do NOT change the test to
 # expect failure.
+# Test: look up chapters for a known-good ASIN via Audnexus; expect asin, chapters, and isAccurate fields.
 output=$($CLI items chapters lookup --asin "B002V0QCYU" 2>/dev/null || true)
 if echo "$output" | python3 -c "
 import sys, json
@@ -1983,7 +2093,7 @@ else
     echo "    response: ${output:0:200}"
 fi
 
-# Well-formed but unknown ASIN → exit 2 with "Chapters not found".
+# Test: look up chapters for a well-formed but unknown ASIN; expect a 'Chapters not found' error.
 output=$($CLI items chapters lookup --asin "B000000000" 2>&1 || true)
 if echo "$output" | grep -q "Chapters not found"; then
     pass "chapters lookup: unknown ASIN surfaces 'Chapters not found'"
@@ -1995,6 +2105,7 @@ fi
 # Malformed ASIN → exit 2 with "Invalid ASIN". Server-side ABS rejects
 # at `isValidASIN` before any Audnexus call, so this case has zero
 # external dependency.
+# Test: look up chapters with a malformed ASIN; expect an 'Invalid ASIN' error.
 output=$($CLI items chapters lookup --asin "not-an-asin" 2>&1 || true)
 if echo "$output" | grep -q "Invalid ASIN"; then
     pass "chapters lookup: invalid ASIN surfaces 'Invalid ASIN'"
@@ -2023,6 +2134,7 @@ ffmpeg -y -f lavfi -i "sine=frequency=440:duration=5" -ac 2 -c:a libmp3lame -b:a
 ffmpeg -y -f lavfi -i "sine=frequency=523:duration=5" -ac 2 -c:a libmp3lame -b:a 128k \
     "$EMBED_TMP/track2.mp3" > /dev/null 2>&1
 
+# Test: upload 2 items as uploaduser; expect both uploads to return ids.
 abs_login uploaduser uploadpass
 
 output=$($CLI upload --folder "$FOLDER_ID" \
@@ -2043,7 +2155,7 @@ else
     fail "embed-metadata: uploaded two test items" "missing one or both upload IDs"
 fi
 
-# --- Single happy path with --wait ---
+# Test: embed-metadata --wait; expect started=true with backup=true, forceEmbedChapters=false defaults.
 output=$($CLI items embed-metadata --id "$EMBED_ITEM_ID" --wait 2>/dev/null)
 exit_code=$?
 if [ "$exit_code" = "0" ] && echo "$output" | python3 -c "
@@ -2064,6 +2176,7 @@ fi
 # check is omitted: docker-compose vs GitHub Actions service container
 # expose the ABS metadata mount under different paths, so reaching into
 # the container is not portable. The receipt is the contract we ship.)
+# Test: embed-metadata --no-backup --wait; expect the receipt to show backup=false.
 output=$($CLI items embed-metadata --id "$EMBED_ITEM_ID_2" --no-backup --wait 2>/dev/null)
 if echo "$output" | python3 -c "
 import sys, json
@@ -2075,7 +2188,7 @@ else
     fail "embed-metadata --no-backup: receipt reflects backup=false" "unexpected response"
 fi
 
-# --- Batch happy path with --wait ---
+# Test: batch-embed-metadata --wait on 2 items; expect started=true, backup=true, and both ids listed.
 output=$(echo "{\"libraryItemIds\":[\"$EMBED_ITEM_ID\",\"$EMBED_ITEM_ID_2\"]}" \
     | $CLI items batch-embed-metadata --stdin --wait 2>/dev/null)
 if echo "$output" | python3 -c "
@@ -2092,6 +2205,7 @@ else
 fi
 
 # --- Negatives ---
+# Test: embed-metadata on a nonexistent item id; expect a 'Not found'/'Bad request' error.
 output=$($CLI items embed-metadata --id "li_does_not_exist_$$" 2>&1 || true)
 if echo "$output" | grep -qE "(Not found|Bad request)"; then
     pass "embed-metadata: nonexistent item exits 2"
@@ -2099,6 +2213,7 @@ else
     fail "embed-metadata: nonexistent item exits 2" "unexpected: ${output:0:200}"
 fi
 
+# Test: batch-embed-metadata with an empty libraryItemIds list; expect a 'non-empty array' client-side error.
 output=$(echo '{"libraryItemIds":[]}' | $CLI items batch-embed-metadata --stdin 2>&1 || true)
 if echo "$output" | grep -qE "non-empty .*array"; then
     pass "batch-embed-metadata: empty list rejected client-side"
@@ -2106,6 +2221,7 @@ else
     fail "batch-embed-metadata: empty list rejected client-side" "unexpected: ${output:0:200}"
 fi
 
+# Test: batch-embed-metadata with one bad id mixed in; expect the batch to fail with 'Not found'/'Bad request'.
 output=$(echo "{\"libraryItemIds\":[\"$EMBED_ITEM_ID\",\"li_nonexistent_$$\"]}" \
     | $CLI items batch-embed-metadata --stdin 2>&1 || true)
 if echo "$output" | grep -qE "(Not found|Bad request)"; then
@@ -2114,6 +2230,7 @@ else
     fail "batch-embed-metadata: bad ID in list aborts the whole batch" "unexpected: ${output:0:200}"
 fi
 
+# Test: batch-embed-metadata with both --input and --stdin; expect an 'exactly one' error.
 output=$($CLI items batch-embed-metadata --input /dev/null --stdin <<< '{}' 2>&1 || true)
 if echo "$output" | grep -q "exactly one"; then
     pass "batch-embed-metadata: rejects both --input and --stdin"
@@ -2121,6 +2238,7 @@ else
     fail "batch-embed-metadata: rejects both --input and --stdin" "missing error string"
 fi
 
+# Test: batch-embed-metadata with neither --input nor --stdin; expect a 'Provide --input' error.
 output=$($CLI items batch-embed-metadata 2>&1 || true)
 if echo "$output" | grep -q "Provide --input"; then
     pass "batch-embed-metadata: rejects when neither --input nor --stdin given"
@@ -2128,6 +2246,7 @@ else
     fail "batch-embed-metadata: rejects when neither --input nor --stdin given" "missing error string"
 fi
 
+# Test: batch-embed-metadata with libraryItemIds as a string; expect an 'Invalid ... JSON' error.
 output=$(echo '{"libraryItemIds":"not-an-array"}' | $CLI items batch-embed-metadata --stdin 2>&1 || true)
 if echo "$output" | grep -qE "Invalid .*JSON"; then
     pass "batch-embed-metadata: wrong-typed libraryItemIds rejected client-side"
@@ -2135,7 +2254,7 @@ else
     fail "batch-embed-metadata: wrong-typed libraryItemIds rejected client-side" "unexpected: ${output:0:200}"
 fi
 
-# Permission denial: uploaduser is non-admin.
+# Test: embed-metadata as uploaduser; expect an 'admin permission' denial.
 abs_login uploaduser uploadpass
 output=$($CLI items embed-metadata --id "$EMBED_ITEM_ID" 2>&1 || true)
 abs_login root root
@@ -2157,6 +2276,7 @@ echo "=== Items Get Expanded ==="
 # The seeded "Multi Ebook Test" item is the natural fixture — it has
 # two ebook files (.epub + .pdf), and the libraryFiles[] array is the
 # main reason --expanded exists.
+# Test: list items and find 'Multi Ebook Test' by title; expect to locate its item id.
 EXPANDED_ITEM_ID=$($CLI items list --library "$LIB_ID" --limit 100 2>/dev/null \
     | python3 -c "
 import sys, json
@@ -2172,7 +2292,7 @@ else
     fail "items get --expanded: located seeded multi-ebook item" "Multi Ebook Test not found"
 fi
 
-# Default (minified) — must NOT contain libraryFiles.
+# Test: get the item without --expanded; expect the minified response to omit libraryFiles.
 output=$($CLI items get --id "$EXPANDED_ITEM_ID" 2>/dev/null)
 if echo "$output" | python3 -c "
 import sys, json
@@ -2185,7 +2305,7 @@ else
     fail "items get (default): minified shape has no libraryFiles" "unexpected shape"
 fi
 
-# --expanded — must contain libraryFiles with the two ebook entries.
+# Test: get item with --expanded; expect libraryFiles with 1 primary and 1 supplementary ebook entry.
 output=$($CLI items get --id "$EXPANDED_ITEM_ID" --expanded 2>/dev/null)
 if echo "$output" | python3 -c "
 import sys, json
@@ -2205,7 +2325,7 @@ else
     echo "    response: ${output:0:300}"
 fi
 
-# Sanity: --expanded also surfaces the bonus fields.
+# Test: get the item with --expanded; expect lastScan and scanVersion fields to be present.
 output=$($CLI items get --id "$EXPANDED_ITEM_ID" --expanded 2>/dev/null)
 if echo "$output" | python3 -c "
 import sys, json
@@ -2222,7 +2342,7 @@ fi
 echo ""
 echo "=== Toggle Ebook Status ==="
 
-# Find the seeded multi-ebook item by title.
+# Test: list items and find 'Multi Ebook Test' by title; expect to locate its item id.
 EBOOK_ITEM_ID=$($CLI items list --library "$LIB_ID" --limit 100 2>/dev/null \
     | python3 -c "
 import sys, json
@@ -2241,6 +2361,7 @@ fi
 # Read initial state. `items get --expanded` returns the full shape
 # including libraryFiles[]. Both the primary's ino and the
 # supplementary's ino come from one CLI call.
+# Test: read primary and supplementary ebook inos via items get --expanded; expect both inos to be found.
 EBOOK_STATE=$($CLI items get --id "$EBOOK_ITEM_ID" --expanded 2>/dev/null \
     | python3 -c "
 import sys, json
@@ -2260,7 +2381,7 @@ else
     fail "toggle-ebook-status: read initial state" "primary=$PRIMARY_INO supplementary=$SUPP_INO"
 fi
 
-# Toggle the supplementary file → becomes primary.
+# Test: toggle-ebook-status on the supplementary ino; expect a receipt with toggled=true.
 output=$($CLI items toggle-ebook-status --id "$EBOOK_ITEM_ID" --ino "$SUPP_INO" 2>/dev/null)
 if echo "$output" | python3 -c "
 import sys, json
@@ -2275,7 +2396,7 @@ else
     fail "toggle-ebook-status: receipt shape valid" "unexpected: ${output:0:200}"
 fi
 
-# Verify state flipped: previously-supplementary is now primary.
+# Test: get the item again; expect the primary ebookFile ino to equal the former supplementary ino.
 new_primary=$($CLI items get --id "$EBOOK_ITEM_ID" 2>/dev/null \
     | python3 -c "
 import sys, json
@@ -2288,7 +2409,7 @@ else
     fail "toggle-ebook-status: supplementary file is now primary" "expected $SUPP_INO, got $new_primary"
 fi
 
-# Recovery toggle: re-target the original primary → restore.
+# Test: toggle-ebook-status back to the original primary ino; expect the item's primary ino to be restored.
 $CLI items toggle-ebook-status --id "$EBOOK_ITEM_ID" --ino "$PRIMARY_INO" > /dev/null 2>&1
 restored_primary=$($CLI items get --id "$EBOOK_ITEM_ID" 2>/dev/null \
     | python3 -c "
@@ -2302,7 +2423,7 @@ else
     fail "toggle-ebook-status: recovery toggle restored original primary" "expected $PRIMARY_INO, got $restored_primary"
 fi
 
-# Negative: bogus --ino returns 404 with ABS message.
+# Test: toggle-ebook-status with a bogus --ino; expect a 'Not found'/'does not exist' error.
 output=$($CLI items toggle-ebook-status --id "$EBOOK_ITEM_ID" --ino "99999999" 2>&1 || true)
 if echo "$output" | grep -qE "(Not found|does not exist)"; then
     pass "toggle-ebook-status: bogus --ino exits 2 with 404 passthrough"
@@ -2310,7 +2431,7 @@ else
     fail "toggle-ebook-status: bogus --ino exits 2 with 404 passthrough" "unexpected: ${output:0:200}"
 fi
 
-# Permission denial: readonlyuser (no canUpdate) → 403.
+# Test: toggle-ebook-status as readonlyuser; expect a 403 with the 'update' permission message.
 abs_login readonlyuser readonlypass
 output=$($CLI items toggle-ebook-status --id "$EBOOK_ITEM_ID" --ino "$PRIMARY_INO" 2>&1 || true)
 abs_login root root
@@ -2325,7 +2446,7 @@ echo ""
 echo "=== Item File Management ==="
 # ============================================================
 
-# Pick a seeded audiobook and one of its audio-file inodes.
+# Test: find a non-ebook audiobook and read one audio-file ino via --expanded; expect both to be found.
 AUDIO_ITEM_ID=$($CLI items list --library "$LIB_ID" --limit 100 2>/dev/null \
     | python3 -c "
 import sys, json
@@ -2348,18 +2469,18 @@ else
     fail "items file: located audiobook + audio inode" "item=$AUDIO_ITEM_ID ino=$AUDIO_INO"
 fi
 
-# download to a temp file, assert non-empty
+# Test: download the audio file by ino; expect a non-empty output file.
 DL_TMP=$(mktemp)
 $CLI items file download --id "$AUDIO_ITEM_ID" --ino "$AUDIO_INO" --output "$DL_TMP" 2>/dev/null > /dev/null
 if [ -s "$DL_TMP" ]; then pass "items file download: wrote non-empty file"; else fail "items file download: wrote non-empty file" "empty/missing"; fi
 rm -f "$DL_TMP"
 
-# ffprobe the same audio file, assert streams + format
+# Test: ffprobe the same audio file by ino; expect JSON with streams and format keys.
 output=$($CLI items file ffprobe --id "$AUDIO_ITEM_ID" --ino "$AUDIO_INO" 2>&1)
 assert_json_key "items file ffprobe returns streams" "streams" "$output"
 assert_json_key "items file ffprobe returns format" "format" "$output"
 
-# delete a throwaway: the supplementary ebook file of the multi-ebook fixture.
+# Test: delete the multi-ebook fixture's supplementary ebook file by ino; expect success=true.
 FIX_ITEM_ID=$($CLI items list --library "$LIB_ID" --limit 100 2>/dev/null \
     | python3 -c "
 import sys, json
@@ -2384,6 +2505,7 @@ assert_json_expr "items file delete returns success" "d.get('success')=='true'" 
 # id would surface "not found" instead of the permission denial. The earlier
 # Permission Errors / Item Delete groups run before this section, hence the
 # checks live here (each toggles its own login, then restores root).
+# Test: delete an audio file as readonlyuser; expect a 403 with the 'delete' permission message.
 abs_login readonlyuser readonlypass
 error_output=$($CLI items file delete --id "$AUDIO_ITEM_ID" --ino "$AUDIO_INO" 2>&1 || true)
 if echo "$error_output" | grep -q "'delete' permission"; then
@@ -2391,6 +2513,7 @@ if echo "$error_output" | grep -q "'delete' permission"; then
 else
     fail "items file delete as readonlyuser hits 'delete' permission denial" "got: ${error_output:0:200}"
 fi
+# Test: ffprobe an audio file as testuser; expect an admin permission denial.
 abs_login testuser testpass
 error_output=$($CLI items file ffprobe --id "$AUDIO_ITEM_ID" --ino "$AUDIO_INO" 2>&1 || true)
 if echo "$error_output" | grep -qi "permission denied\|admin"; then
@@ -2405,7 +2528,7 @@ echo ""
 echo "=== Diagnostic Logging ==="
 # ============================================================
 
-# Debug on via ABS_DEBUG=1 emits at least one DEBUG line to stderr.
+# Test: run libraries list with ABS_DEBUG=1; expect at least one DEBUG-prefixed line on stderr.
 debug_output=$(ABS_DEBUG=1 $CLI libraries list 2>&1 >/dev/null)
 if echo "$debug_output" | grep -qE '^[0-9TZ:.\-]+ DEBUG '; then
     pass "ABS_DEBUG=1 libraries list emits DEBUG lines"
@@ -2413,7 +2536,7 @@ else
     fail "ABS_DEBUG=1 libraries list emits DEBUG lines" "got: ${debug_output:0:200}"
 fi
 
-# Default level (no --debug, no ABS_DEBUG) emits no DEBUG lines.
+# Test: run libraries list with no debug flags; expect no DEBUG lines on stderr.
 default_output=$($CLI libraries list 2>&1 >/dev/null)
 if echo "$default_output" | grep -qE ' DEBUG '; then
     fail "default libraries list does not emit DEBUG lines" "got: ${default_output:0:200}"
@@ -2421,7 +2544,7 @@ else
     pass "default libraries list does not emit DEBUG lines"
 fi
 
-# --log-json combined with ABS_DEBUG=1 emits parseable JSON with the three expected fields.
+# Test: run libraries list with ABS_DEBUG=1 --log-json; expect JSON stderr with timestamp/level/message.
 json_first_line=$(ABS_DEBUG=1 $CLI --log-json libraries list 2>&1 >/dev/null | head -1)
 assert_json_expr "ABS_DEBUG=1 --log-json libraries list emits JSON with timestamp/level/message" "'timestamp' in d and 'level' in d and 'message' in d" "$json_first_line"
 
@@ -2431,7 +2554,7 @@ echo "=== Runtime Version Check ==="
 VC_HOME=$(mktemp -d)
 VC_CONFIG="$VC_HOME/.abs-cli/config.json"
 
-# Login records the version it already has, without probing.
+# Test: log in with a fresh config; expect lastServerVersion and lastVersionCheck to be recorded.
 HOME="$VC_HOME" $CLI login --server "$ABS_URL" --username root --password-stdin <<<"root" >/dev/null 2>&1
 if python3 -c "import json,sys; d=json.load(open('$VC_CONFIG')); sys.exit(0 if d.get('lastServerVersion') and d.get('lastVersionCheck') else 1)" 2>/dev/null; then
     pass "version check: login records version and timestamp"
@@ -2439,7 +2562,7 @@ else
     fail "version check: login records version and timestamp" "lastServerVersion/lastVersionCheck missing from $VC_CONFIG"
 fi
 
-# Immediately afterwards the check is inside the window, so no probe.
+# Test: run libraries list right after login; expect a 24h-window skip debug line and no '/status' probe.
 vc_fresh=$(HOME="$VC_HOME" ABS_DEBUG=1 $CLI libraries list 2>&1 >/dev/null || true)
 if echo "$vc_fresh" | grep -q "inside the 24h window"; then
     pass "version check: skipped inside the 24h window"
@@ -2452,7 +2575,7 @@ else
     pass "version check: no probe inside the window"
 fi
 
-# Backdate the timestamp two days: the next command must probe.
+# Test: backdate lastVersionCheck 2 days then run libraries list; expect a '/status' probe and timestamp advance.
 python3 -c "
 import json
 p = '$VC_CONFIG'
