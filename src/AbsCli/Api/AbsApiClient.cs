@@ -335,7 +335,7 @@ public class AbsApiClient
     // Raised from 2.34.0 after verifying the band empirically: ABS 2.37.0
     // restricts PATCH /api/items/:id/cover to paths among the item's
     // libraryFiles; 2.36.1 still accepts any existing file, so the
-    // `items cover set --server-path` behavior this CLI documents does not
+    // `items cover link` behavior this CLI documents does not
     // hold below 2.37.0. Everything else passed at 2.36.1 (343/344).
     private static readonly string MinSupportedVersion = "2.37.0";
     private static readonly string MaxTestedVersion = "2.37.1";

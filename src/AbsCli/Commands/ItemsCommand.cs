@@ -599,7 +599,7 @@ public static class ItemsCommand
         var command = new Command("link", "Use an image already among the item's files as its cover") { idOption, pathOption };
         command.AddPermissionRequired("update");
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
-            "--path outside the item's libraryFiles → 500 \"Invalid cover path\" (e.g. a --file cover under /metadata).",
+            "Path not in libraryFiles → 500 \"Invalid cover path\" (e.g. a cover applied via cover set --file, stored under /metadata).",
             "The image is copied to /metadata/items/<id>/ (unless storeCoverWithItem); response cover is the copy.");
         command.AddExamples(
             "abs-cli items cover link --id \"li_abc123\" --path \"/audiobooks/Author/Title/cover.jpg\"");
