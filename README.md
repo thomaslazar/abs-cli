@@ -204,7 +204,7 @@ abs-cli config set defaultLibrary <library-id>
 | `items batch-update` | Batch update items (`--input <file>` or `--stdin`) |
 | `items batch-get` | Batch get items by ID (`--input <file>` or `--stdin`) |
 | `items scan --id <id>` | Scan a single item (admin, sync) |
-| `items cover set --id <id> [--url \| --file]` | Apply a cover image (requires update + upload) |
+| `items cover set --id <id> [--url \| --file]` | Apply a cover image (requires update and upload) |
 | `items cover link --id <id> --path <path>` | Use an image among the item's files as its cover (requires update) |
 | `items cover get --id <id> --output <path>` | Download the cover image |
 | `items cover remove --id <id>` | Remove the cover |

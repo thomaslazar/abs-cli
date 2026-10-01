@@ -1,7 +1,7 @@
 # Cover permissions and `items cover link` — design
 
 **Date:** 2026-10-01
-**Status:** approved
+**Status:** implemented
 
 ## Problem
 
@@ -50,7 +50,7 @@ their rendered output are unchanged (`Permission required:\n  upload`).
 - `items cover link --id --path` (both required) — tag `update`;
   `LinkExistingAsync` hint `"'update' permission"`. Carries the two Notes
   lines currently on `set`: path must be among the item's libraryFiles, else
-  500 "Invalid cover path" (e.g. a `--file` cover under /metadata); the image
+  500 "Invalid cover path" (e.g. a cover applied via cover set --file, stored under /metadata); the image
   is copied to /metadata/items/<id>/ (unless storeCoverWithItem) and the
   response cover is the copy. Example:
   `--path "/audiobooks/Author/Title/cover.jpg"`. Response shape
