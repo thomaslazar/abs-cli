@@ -140,4 +140,14 @@ public class HelpExtensionsTests
         Assert.Contains("--help-full", output);
         Assert.Contains("request", output, StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public void PermissionRequired_MultipleTokens_RenderCommaSeparated()
+    {
+        var cmd = new Command("demo", "Demo command");
+        cmd.AddPermissionRequired("update", "upload");
+        var output = RenderHelp(cmd);
+        Assert.Contains("Permission required:", output);
+        Assert.Contains("update, upload", output);
+    }
 }

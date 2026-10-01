@@ -25,8 +25,8 @@ public static class HelpExtensions
     public static void AddHelpSection(this Command command, string title, params string[] lines)
         => command.AddHelpSection(title, HelpSectionPosition.Bottom, lines);
 
-    public static void AddPermissionRequired(this Command command, string permission)
-        => command.AddHelpSection("Permission required", HelpSectionPosition.Top, permission);
+    public static void AddPermissionRequired(this Command command, params string[] permissions)
+        => command.AddHelpSection("Permission required", HelpSectionPosition.Top, string.Join(", ", permissions));
 
     public static void AddHelpSection(this Command command, string title, HelpSectionPosition position, params string[] lines)
     {
