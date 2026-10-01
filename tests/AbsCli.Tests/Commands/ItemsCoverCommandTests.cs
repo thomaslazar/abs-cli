@@ -19,29 +19,48 @@ public class ItemsCoverCommandTests
     }
 
     [Fact]
-    public void Cover_TopLevel_Help_ListsThreeVerbs()
+    public void Cover_TopLevel_Help_ListsFourVerbs()
     {
         var output = RenderHelp("items", "cover");
         Assert.Contains("set", output);
+        Assert.Contains("link", output);
         Assert.Contains("get", output);
         Assert.Contains("remove", output);
     }
 
     [Fact]
-    public void CoverSet_Help_ListsAllThreeSourceFlags()
+    public void CoverSet_Help_ListsUrlAndFileOnly()
     {
         var output = RenderHelp("items", "cover", "set");
         Assert.Contains("--url", output);
         Assert.Contains("--file", output);
-        Assert.Contains("--server-path", output);
+        Assert.DoesNotContain("--server-path", output);
     }
 
     [Fact]
-    public void CoverSet_Help_DocumentsServerPathRestriction()
+    public void CoverSet_Help_RequiresUpdateAndUpload()
     {
-        var output = RenderHelp("items", "cover", "set");
+        Assert.Contains("Permission required:\n  update, upload", RenderHelp("items", "cover", "set").Replace("\r\n", "\n"));
+    }
+
+    [Fact]
+    public void CoverLink_Help_RequiresUpdateAndDocumentsPathRules()
+    {
+        var output = RenderHelp("items", "cover", "link").Replace("\r\n", "\n");
+        Assert.Contains("Permission required:\n  update", output);
+        Assert.DoesNotContain("upload", output.Split("Options:")[0]);
+        Assert.Contains("--path", output);
         Assert.Contains("library files", output);
         Assert.Contains("Invalid cover path", output);
+        Assert.Contains("/metadata/items/", output);
+    }
+
+    [Fact]
+    public void CoverLink_Help_ShowsResponseShape()
+    {
+        var output = RenderHelp("items", "cover", "link");
+        Assert.Contains("Response shape:", output);
+        Assert.Contains("\"cover\"", output);
     }
 
     [Fact]
