@@ -1534,10 +1534,9 @@ fi
 # The scan may auto-assign the new image as cover; start from none.
 $CLI items cover remove --id "$FIRST_ITEM_ID" > /dev/null 2>&1 || true
 if [ -n "$LIBFILE_COVER_PATH" ]; then
-    # ABS copies the image into the item's cover dir (/metadata/items/<id>/
-    # unless storeCoverWithItem) and returns the copy's path.
+    # Assumes default storeCoverWithItem=false: ABS copies images from outside the cover dir to /metadata/items/<id>/.
     output=$($CLI items cover set --id "$FIRST_ITEM_ID" --server-path "$LIBFILE_COVER_PATH" 2>/dev/null || echo "{}")
-    assert_json_expr "items cover set --server-path applied library-file cover" "d['success']==True and d['cover'] in ('$LIBFILE_COVER_PATH', '/metadata/items/$FIRST_ITEM_ID/cover.png')" "$output"
+    assert_json_expr "items cover set --server-path applied library-file cover" "d['success']==True and d['cover']=='/metadata/items/$FIRST_ITEM_ID/cover.png'" "$output"
     APPLIED_COVER_PATH=$(json_get "$output" "['cover']" || echo "")
     output=$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)
     assert_json_expr "items get coverPath matches applied --server-path cover" "d['media'].get('coverPath')=='$APPLIED_COVER_PATH'" "$output"

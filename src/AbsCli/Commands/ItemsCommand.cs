@@ -558,9 +558,8 @@ public static class ItemsCommand
         var command = new Command("set", "Apply a cover to a library item by URL, local file, or existing server-side path") { idOption, urlOption, fileOption, serverPathOption };
         command.AddPermissionRequired("upload");
         command.AddHelpSection("Notes", HelpSectionPosition.Top,
-            "--server-path: ABS rejects any path not in the item's libraryFiles",
-            "with 500 \"Invalid cover path\" (e.g. a cover stored under /metadata by --file).",
-            "The image is copied to /metadata/items/<id>/ (unless storeCoverWithItem); the response cover is the copy.");
+            "--server-path outside the item's libraryFiles → 500 \"Invalid cover path\" (e.g. a --file cover under /metadata).",
+            "The image is copied to /metadata/items/<id>/ (unless storeCoverWithItem); response cover is the copy.");
         command.AddExamples(
             "abs-cli items cover set --id \"li_abc123\" --url \"https://example.com/cover.jpg\"",
             "abs-cli items cover set --id \"li_abc123\" --file ./cover.jpg",
