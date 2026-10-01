@@ -21,7 +21,8 @@ and any future media types.
 | `abs-cli items batch-update --input file.json` | `PATCH /api/items/batch/update` | Batch update from JSON file |
 | `abs-cli items batch-get --input file.json` | `POST /api/items/batch/get` | Batch get multiple items by ID |
 | `abs-cli items scan --id <id>` | `POST /api/items/{id}/scan` | Scan a single item (admin, sync) |
-| `abs-cli items cover set --id <id> [--url \| --file \| --server-path]` | `POST/PATCH /api/items/{id}/cover` | Apply a cover image |
+| `abs-cli items cover set --id <id> [--url \| --file]` | `POST /api/items/{id}/cover` | Apply a cover image |
+| `abs-cli items cover link --id <id> --path <path>` | `PATCH /api/items/{id}/cover` | Use an image among the item's files as its cover |
 | `abs-cli items cover get --id <id> --output <path>` | `GET /api/items/{id}/cover` | Download the cover image |
 | `abs-cli items cover remove --id <id>` | `DELETE /api/items/{id}/cover` | Remove the cover |
 
