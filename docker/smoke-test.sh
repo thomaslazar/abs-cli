@@ -1505,17 +1505,52 @@ assert_json_expr "items cover remove returns success" "d['success']" "$output"
 output=$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)
 assert_json_expr "items get reports null coverPath after remove" "d['media'].get('coverPath') is None" "$output"
 
-# --- Mode 2: --server-path (PATCH, link to existing on-disk file) ---
-# Re-link the cover file the previous --file step left on the ABS server's disk.
-if [ -n "$SERVER_COVER_PATH" ]; then
-    output=$($CLI items cover set --id "$FIRST_ITEM_ID" --server-path "$SERVER_COVER_PATH" 2>/dev/null)
-    assert_json_expr "items cover set --server-path applied cover from existing on-disk file" "d['success']==True and d['cover']=='$SERVER_COVER_PATH'" "$output"
-
+# --- Mode 2: --server-path (PATCH, link to an item library file) ---
+# ABS (>= 2.37) only accepts a path among the item's scanned libraryFiles.
+# Build one: upload the PNG into FIRST_ITEM's existing folder (ABS ensureDirs
+# it), rescan the item, then read the PNG's path back from libraryFiles.
+item_rel=$(json_get "$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)" "['relPath'].lstrip('/')" || echo "")
+IFS='/' read -r -a rel_parts <<<"$item_rel"
+case ${#rel_parts[@]} in
+    3) up_args=(--author "${rel_parts[0]}" --series "${rel_parts[1]}" --title "${rel_parts[2]}") ;;
+    2) up_args=(--author "${rel_parts[0]}" --title "${rel_parts[1]}") ;;
+    *) up_args=() ;;
+esac
+abs_login uploaduser uploadpass
+up_out=$($CLI upload "${up_args[@]}" --library "$LIB_ID" --folder "$FOLDER_ID" --files "$COVER_FILE" 2>/dev/null || echo "{}")
+abs_login root root
+assert_json_expr "upload adds cover image into existing item folder" "d.get('relPath','').lstrip('/')=='$item_rel'" "$up_out"
+$CLI items scan --id "$FIRST_ITEM_ID" >/dev/null 2>&1 || true
+LIBFILE_COVER_PATH=$($CLI items get --id "$FIRST_ITEM_ID" --expanded 2>/dev/null | python3 -c "
+import sys,json
+d=json.load(sys.stdin)
+print(next((f['metadata']['path'] for f in d.get('libraryFiles',[]) if f['metadata']['filename']=='cover.png'), ''))
+" 2>/dev/null || echo "")
+if [ -n "$LIBFILE_COVER_PATH" ]; then
+    pass "items scan registers uploaded cover as a library file"
+else
+    fail "items scan registers uploaded cover as a library file" "cover.png not in libraryFiles"
+fi
+# The scan may auto-assign the new image as cover; start from none.
+$CLI items cover remove --id "$FIRST_ITEM_ID" > /dev/null 2>&1 || true
+if [ -n "$LIBFILE_COVER_PATH" ]; then
+    # ABS copies the image into the item's cover dir (/metadata/items/<id>/
+    # unless storeCoverWithItem) and returns the copy's path.
+    output=$($CLI items cover set --id "$FIRST_ITEM_ID" --server-path "$LIBFILE_COVER_PATH" 2>/dev/null || echo "{}")
+    assert_json_expr "items cover set --server-path applied library-file cover" "d['success']==True and d['cover'] in ('$LIBFILE_COVER_PATH', '/metadata/items/$FIRST_ITEM_ID/cover.png')" "$output"
+    APPLIED_COVER_PATH=$(json_get "$output" "['cover']" || echo "")
     output=$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)
-    assert_json_expr "items get coverPath matches --server-path target" "d['media'].get('coverPath')=='$SERVER_COVER_PATH'" "$output"
-
-    # Cleanup: remove again so the next mode (or end-state) is clean
-    $CLI items cover remove --id "$FIRST_ITEM_ID" > /dev/null 2>&1
+    assert_json_expr "items get coverPath matches applied --server-path cover" "d['media'].get('coverPath')=='$APPLIED_COVER_PATH'" "$output"
+    $CLI items cover remove --id "$FIRST_ITEM_ID" > /dev/null 2>&1 || true
+fi
+# A path outside the item's libraryFiles (the --file cover under /metadata) is rejected.
+if [ -n "$SERVER_COVER_PATH" ]; then
+    neg_err=$($CLI items cover set --id "$FIRST_ITEM_ID" --server-path "$SERVER_COVER_PATH" 2>&1 >/dev/null) && neg_rc=0 || neg_rc=$?
+    if [ "$neg_rc" -ne 0 ] && echo "$neg_err" | grep -q "Invalid cover path"; then
+        pass "items cover set --server-path rejects path outside item libraryFiles"
+    else
+        fail "items cover set --server-path rejects path outside item libraryFiles" "rc=$neg_rc err=${neg_err:0:200}"
+    fi
 fi
 
 # --- Mode 3: --url (POST with {url}; ABS server downloads) ---
