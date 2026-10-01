@@ -554,13 +554,16 @@ public static class ItemsCommand
         var idOption = new Option<string>("--id") { Description = "Library item ID", Required = true };
         var urlOption = new Option<string?>("--url") { Description = "Cover image URL — ABS server downloads it" };
         var fileOption = new Option<string?>("--file") { Description = "Local cover image file to upload" };
-        var serverPathOption = new Option<string?>("--server-path") { Description = "Path to a file already on the ABS server's filesystem" };
+        var serverPathOption = new Option<string?>("--server-path") { Description = "Path of an image already among the item's library files" };
         var command = new Command("set", "Apply a cover to a library item by URL, local file, or existing server-side path") { idOption, urlOption, fileOption, serverPathOption };
         command.AddPermissionRequired("upload");
+        command.AddHelpSection("Notes", HelpSectionPosition.Top,
+            "--server-path outside the item's libraryFiles → 500 \"Invalid cover path\" (e.g. a --file cover under /metadata).",
+            "The image is copied to /metadata/items/<id>/ (unless storeCoverWithItem); response cover is the copy.");
         command.AddExamples(
             "abs-cli items cover set --id \"li_abc123\" --url \"https://example.com/cover.jpg\"",
             "abs-cli items cover set --id \"li_abc123\" --file ./cover.jpg",
-            "abs-cli items cover set --id \"li_abc123\" --server-path /srv/abs/library/foo/cover.jpg");
+            "abs-cli items cover set --id \"li_abc123\" --server-path \"/audiobooks/Author/Title/cover.jpg\"");
         command.AddResponseExample<CoverApplyResponse>();
         command.SetAction(async parseResult =>
         {

@@ -37,6 +37,14 @@ public class ItemsCoverCommandTests
     }
 
     [Fact]
+    public void CoverSet_Help_DocumentsServerPathRestriction()
+    {
+        var output = RenderHelp("items", "cover", "set");
+        Assert.Contains("library files", output);
+        Assert.Contains("Invalid cover path", output);
+    }
+
+    [Fact]
     public void CoverSet_Help_ShowsResponseShape()
     {
         var output = RenderHelp("items", "cover", "set");
