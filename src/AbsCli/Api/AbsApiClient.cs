@@ -332,12 +332,12 @@ public class AbsApiClient
         _logger.Debug("token refresh succeeded");
     }
 
-    // Raised from 2.33.1 after verifying the band empirically: on 2.33.1
-    // LibraryItemController.batchUpdate has no canUpdate check, so a read-only
-    // user can batch-update items. ABS added the check in 2.34.0, so below that
-    // the 'update' permission this CLI documents for `items batch-update` is not
-    // actually enforced. Everything else passed at 2.33.1 (336/338).
-    private static readonly string MinSupportedVersion = "2.34.0";
+    // Raised from 2.34.0 after verifying the band empirically: ABS 2.37.0
+    // restricts PATCH /api/items/:id/cover to paths among the item's
+    // libraryFiles; 2.36.1 still accepts any existing file, so the
+    // `items cover set --server-path` behavior this CLI documents does not
+    // hold below 2.37.0. Everything else passed at 2.36.1 (343/344).
+    private static readonly string MinSupportedVersion = "2.37.0";
     private static readonly string MaxTestedVersion = "2.37.1";
 
     internal static readonly TimeSpan VersionCheckInterval = TimeSpan.FromHours(24);

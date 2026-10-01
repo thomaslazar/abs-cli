@@ -131,8 +131,7 @@ public class LibraryItemExpanded
     public List<LibraryFile> LibraryFiles { get; set; } = new();
 
     /// <summary>
-    /// Present from ABS 2.36.0 on; older supported servers (2.34.0 — 2.35.1)
-    /// omit it from the expanded shape, so it stays null and is not emitted.
+    /// Present from ABS 2.36.0 on; stays null and is not emitted when absent.
     /// </summary>
     [JsonPropertyName("numFiles")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

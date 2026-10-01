@@ -359,7 +359,7 @@ See [docs/](docs/) for architecture, authentication, build targets, and more.
 
 ## Compatibility
 
-Tested against Audiobookshelf **2.34.0 — 2.37.1**. The CLI warns on login if the server version is outside the tested range. See [docs/abs-compatibility.md](docs/abs-compatibility.md) for the full compatibility matrix and policy.
+Tested against Audiobookshelf **2.37.0 — 2.37.1**. The CLI warns on login if the server version is outside the tested range. See [docs/abs-compatibility.md](docs/abs-compatibility.md) for the full compatibility matrix and policy.
 
 ## License
 

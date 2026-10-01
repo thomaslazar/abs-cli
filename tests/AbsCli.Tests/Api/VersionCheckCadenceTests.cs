@@ -40,7 +40,7 @@ public class VersionCheckCadenceTests
     [Fact]
     public void VersionWarning_InRange_ReturnsNull()
     {
-        Assert.Null(AbsApiClient.VersionWarning("2.36.0", previous: null));
+        Assert.Null(AbsApiClient.VersionWarning("2.37.0", previous: null));
     }
 
     [Fact]
