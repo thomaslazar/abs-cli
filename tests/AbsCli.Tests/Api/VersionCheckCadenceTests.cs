@@ -49,7 +49,7 @@ public class VersionCheckCadenceTests
         var warning = AbsApiClient.VersionWarning("2.38.0", previous: null);
         Assert.NotNull(warning);
         Assert.Contains("2.38.0", warning);
-        Assert.Contains("2.36.1", warning);
+        Assert.Contains("2.37.1", warning);
         Assert.Contains("Check for a newer abs-cli", warning);
     }
 

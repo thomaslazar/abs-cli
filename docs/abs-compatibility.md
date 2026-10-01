@@ -123,7 +123,7 @@ specific tag to match your target ABS version:
 
 ```bash
 # Supported version is set in src/AbsCli/Api/AbsApiClient.cs (MinSupportedVersion / MaxTestedVersion)
-git clone --depth 1 --branch v2.36.1 https://github.com/advplyr/audiobookshelf.git temp/audiobookshelf
+git clone --depth 1 --branch v2.37.1 https://github.com/advplyr/audiobookshelf.git temp/audiobookshelf
 ```
 
 ### Building DTOs from Source
