@@ -273,7 +273,7 @@ gh api repos/thomaslazar/homebrew-abs-cli/commits --jq '.[0].commit.message'
 Report:
 - Release URL
 - Version number
-- Number of release artifacts (should be 8: 6 binaries + 2 deb packages)
+- Number of release artifacts (should be 9: 6 binaries + 2 deb packages + SHA256SUMS)
 - Self-test result
 - Changelog committed to repo
 

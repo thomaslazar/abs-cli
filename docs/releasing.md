@@ -86,7 +86,9 @@ gh release create v{version} --title "v{version}" --notes-file temp/release-note
 ### Step 6: Wait for release CI (agent)
 
 The release event triggers CI which builds all 6 platforms and
-**automatically attaches binaries** to the GitHub Release.
+**automatically attaches binaries** to the GitHub Release. A follow-up
+`checksums` job then attaches a `SHA256SUMS` covering every asset, which
+`install.sh` and `install.ps1` verify downloads against.
 
 Agent monitors the run and reports results.
 
@@ -94,8 +96,8 @@ Agent monitors the run and reports results.
 
 Agent downloads one binary and runs `self-test`.
 
-**Human gate:** Check the GitHub Release page — all 6 binaries attached,
-notes render correctly.
+**Human gate:** Check the GitHub Release page — all 6 binaries and
+`SHA256SUMS` attached, notes render correctly.
 
 ### Step 8: Done
 
