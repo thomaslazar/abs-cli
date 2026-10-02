@@ -168,6 +168,23 @@ jobs:
           dpkg-deb --build --root-owner-group "$PKG_DIR"
           gh release upload "${{ github.event.release.tag_name }}" "${PKG_DIR}.deb"
 
+  # The installers verify downloads against this file. It is built once every
+  # matrix leg has attached its assets, since no single leg sees them all.
+  checksums:
+    if: github.event_name == 'release'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish SHA256SUMS
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          gh release download "$TAG" -R thomaslazar/abs-cli -p 'abs-cli*' -D assets
+          cd assets
+          sha256sum abs-cli* > SHA256SUMS
+          gh release upload "$TAG" SHA256SUMS -R thomaslazar/abs-cli
+
   update-homebrew:
     if: github.event_name == 'release'
     needs: build
