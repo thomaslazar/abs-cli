@@ -3,6 +3,65 @@
 All notable changes to abs-cli are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## v1.2.0 — 2026-10-02
+
+Minor release with one breaking change. Adds support for Audiobookshelf 2.37.x
+and raises the minimum supported server to 2.37.0. `items cover set
+--server-path` moves to a new `items cover link` command, and the cover
+commands now state the permissions ABS actually checks.
+
+### Highlights
+
+- **Tested against Audiobookshelf 2.37.0 and 2.37.1.** The supported range is
+  now **2.37.0 — 2.37.1**.
+- **Minimum server raised from 2.34.0 to 2.37.0.** ABS 2.37.0 changed how
+  covers are linked from a server path (below). The smoke suite against 2.36.1
+  passes everything except that check, so older servers no longer match what
+  abs-cli documents. If you run ABS 2.34–2.36, stay on abs-cli 1.1.4.
+- **New `items cover link --id <id> --path <path>`** (breaking: replaces
+  `items cover set --server-path`). It uses an image that is already one of the
+  item's files as its cover, and needs `update` permission. Since ABS 2.37.0,
+  any other path is rejected with `500 "Invalid cover path"`. The accepted
+  image is copied to `/metadata/items/<id>/` (unless `storeCoverWithItem` is
+  on), and the response `cover` is that copy.
+- **Cover permissions now match the server.** `items cover set` (`--url` /
+  `--file`) needs both `update` and `upload`; it previously listed only
+  `upload`. Its `--help` shows `Permission required: update, upload`, and a
+  403 names both. `items cover link` needs `update` only, and its 403 now says
+  so.
+
+### Features
+
+- feat: allow multiple tokens in permission-required help tags
+- feat: move cover set --server-path to items cover link
+
+### Fixes
+
+- fix: document and smoke-test the 2.37 cover server-path restriction
+- fix: tighten cover link notes and floor comment
+
+### Internal
+
+- chore: raise MaxTestedVersion to 2.37.1
+- chore: raise MinSupportedVersion to 2.37.0
+- test: pin the copied cover path in server-path smoke
+- test: seed an upload-only user and smoke-test cover permissions
+- test: add one-line test descriptions to smoke-test.sh
+- docs: align 2.37.1 bump spec with the copy behavior
+- docs: document items cover link and multi-permission tags
+- docs: align cover model comments and spec with cover link
+
+### Upgrading
+
+- Replace `abs-cli items cover set --id <id> --server-path <path>` with
+  `abs-cli items cover link --id <id> --path <path>`. A leftover
+  `--server-path` now fails as an unknown option.
+- The path must be one of the item's own files (see `items get --expanded`,
+  `libraryFiles[].metadata.path`). A cover that `--file` stored under
+  `/metadata` cannot be linked.
+- On ABS 2.34–2.36, keep using abs-cli 1.1.4. This version warns that the
+  server is older than the minimum supported version.
+
 ## v1.1.4 — 2026-09-27
 
 Patch release. Compatibility bump for Audiobookshelf 2.36.1; no CLI changes.
