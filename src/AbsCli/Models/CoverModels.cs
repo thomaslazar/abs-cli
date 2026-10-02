@@ -4,8 +4,9 @@ namespace AbsCli.Models;
 
 /// <summary>
 /// Response from POST /api/items/:id/cover (URL or multipart) and
-/// PATCH /api/items/:id/cover (existing server-side path).
-/// Server returns { success: true, cover: "<server-path>" }.
+/// PATCH /api/items/:id/cover (path among the item's libraryFiles).
+/// Server returns { success: true, cover: "<cover-path>" } — the stored
+/// cover, usually a copy under /metadata/items/<id>/.
 /// </summary>
 public class CoverApplyResponse
 {
@@ -27,8 +28,8 @@ public class CoverApplyByUrlRequest
 }
 
 /// <summary>
-/// Body for PATCH /api/items/:id/cover when pointing to a file already on
-/// the ABS server's filesystem. Path must not start with http:/https:.
+/// Body for PATCH /api/items/:id/cover. Since ABS 2.37.0 the path must be
+/// one of the item's libraryFiles.
 /// </summary>
 public class CoverLinkExistingRequest
 {

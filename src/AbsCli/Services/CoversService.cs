@@ -22,7 +22,7 @@ public class CoversService
             new CoverApplyByUrlRequest { Url = url },
             AppJsonContext.Default.CoverApplyByUrlRequest);
         return await _client.PostAsync(ApiEndpoints.ItemCover(itemId), body,
-            AppJsonContext.Default.CoverApplyResponse, "'upload' permission");
+            AppJsonContext.Default.CoverApplyResponse, "'update' and 'upload' permission");
     }
 
     /// <summary>
@@ -36,12 +36,11 @@ public class CoversService
         using var content = new MultipartFormDataContent();
         content.Add(new StreamContent(File.OpenRead(localFilePath)), "cover", Path.GetFileName(localFilePath));
         return await _client.PostMultipartAsync(ApiEndpoints.ItemCover(itemId), content,
-            AppJsonContext.Default.CoverApplyResponse, "'upload' permission");
+            AppJsonContext.Default.CoverApplyResponse, "'update' and 'upload' permission");
     }
 
     /// <summary>
-    /// Apply a cover by pointing to an existing file on the ABS server's
-    /// filesystem. The server validates the path exists and is a real file.
+    /// Apply a cover from a file already among the item's libraryFiles (ABS validates and copies it into the cover dir).
     /// </summary>
     public async Task<CoverApplyResponse> LinkExistingAsync(string itemId, string serverPath)
     {
@@ -49,7 +48,7 @@ public class CoversService
             new CoverLinkExistingRequest { Cover = serverPath },
             AppJsonContext.Default.CoverLinkExistingRequest);
         return await _client.PatchAsync(ApiEndpoints.ItemCover(itemId), body,
-            AppJsonContext.Default.CoverApplyResponse);
+            AppJsonContext.Default.CoverApplyResponse, permissionHint: "'update' permission");
     }
 
     /// <summary>

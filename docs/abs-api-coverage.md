@@ -83,8 +83,8 @@ any) that implements it.
 | GET | `/api/items/:id/download` | Download item | download | — |
 | PATCH | `/api/items/:id/media` | Update item metadata | update | `items update` ✅ |
 | GET | `/api/items/:id/cover` | Get cover | | `items cover get` ✅ |
-| POST | `/api/items/:id/cover` | Upload cover (url/file) | upload | `items cover set` ✅ |
-| PATCH | `/api/items/:id/cover` | Set cover from server path | update | `items cover set --server-path` ✅ |
+| POST | `/api/items/:id/cover` | Upload cover (url/file) | update, upload | `items cover set` ✅ |
+| PATCH | `/api/items/:id/cover` | Set cover from server path | update | `items cover link` ✅ |
 | DELETE | `/api/items/:id/cover` | Remove cover | delete | `items cover remove` ✅ |
 | POST | `/api/items/:id/match` | Match item to metadata | update | — |
 | POST | `/api/items/:id/play` | Start playback session | | — |

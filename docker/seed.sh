@@ -115,6 +115,28 @@ curl -sf -X POST "$ABS_URL/api/users" \
         }
     }' > /dev/null 2>&1 || true
 
+# Create upload-only test user (upload but no update) so smoke tests can
+# show POST /api/items/:id/cover needs 'update' as well as 'upload'.
+echo "Creating upload-only test user..."
+curl -sf -X POST "$ABS_URL/api/users" \
+    -H "$AUTH" \
+    -H 'Content-Type: application/json' \
+    -d '{
+        "username": "uploadonlyuser",
+        "password": "uploadonlypass",
+        "type": "user",
+        "isActive": true,
+        "permissions": {
+            "download": true,
+            "update": false,
+            "delete": false,
+            "upload": true,
+            "accessAllLibraries": true,
+            "accessAllTags": true,
+            "accessExplicitContent": true
+        }
+    }' > /dev/null 2>&1 || true
+
 # --- Upload test audiobooks ---
 # Create a tiny silent MP3 (1 second) for uploads.
 # Note: do NOT name this TMPDIR — that shadows the env var mktemp reads as
@@ -293,4 +315,4 @@ echo "ABS_URL=$ABS_URL"
 echo "LIBRARY_ID=$LIBRARY_ID"
 echo "Items: $ITEM_COUNT (7 authors, 3 series, 15 audiobooks + 1 multi-ebook fixture)"
 echo "Root credentials: root/root"
-echo "Test credentials: testuser/testpass, uploaduser/uploadpass, readonlyuser/readonlypass"
+echo "Test credentials: testuser/testpass, uploaduser/uploadpass, readonlyuser/readonlypass, uploadonlyuser/uploadonlypass"

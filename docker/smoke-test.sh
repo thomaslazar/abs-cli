@@ -1599,7 +1599,7 @@ assert_json_expr "items cover remove returns success" "d['success']" "$output"
 output=$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)
 assert_json_expr "items get reports null coverPath after remove" "d['media'].get('coverPath') is None" "$output"
 
-# --- Mode 2: --server-path (PATCH, link to an item library file) ---
+# --- Mode 2: items cover link (PATCH, link to an item library file) ---
 # ABS (>= 2.37) only accepts a path among the item's scanned libraryFiles.
 # Build one: upload the PNG into FIRST_ITEM's existing folder (ABS ensureDirs
 # it), rescan the item, then read the PNG's path back from libraryFiles.
@@ -1631,24 +1631,64 @@ fi
 $CLI items cover remove --id "$FIRST_ITEM_ID" > /dev/null 2>&1 || true
 if [ -n "$LIBFILE_COVER_PATH" ]; then
     # Assumes default storeCoverWithItem=false: ABS copies images from outside the cover dir to /metadata/items/<id>/.
-    # Test: set the cover via --server-path to the scanned libraryFile; expect success=True and the copied /metadata/items path.
-    output=$($CLI items cover set --id "$FIRST_ITEM_ID" --server-path "$LIBFILE_COVER_PATH" 2>/dev/null || echo "{}")
-    assert_json_expr "items cover set --server-path applied library-file cover" "d['success']==True and d['cover']=='/metadata/items/$FIRST_ITEM_ID/cover.png'" "$output"
+    # Test: link the cover via items cover link to the scanned libraryFile; expect success=True and the copied /metadata/items path.
+    output=$($CLI items cover link --id "$FIRST_ITEM_ID" --path "$LIBFILE_COVER_PATH" 2>/dev/null || echo "{}")
+    assert_json_expr "items cover link applied library-file cover" "d['success']==True and d['cover']=='/metadata/items/$FIRST_ITEM_ID/cover.png'" "$output"
     APPLIED_COVER_PATH=$(json_get "$output" "['cover']" || echo "")
-    # Test: get the item; expect coverPath to match the applied --server-path cover.
+    # Test: get the item; expect coverPath to match the applied items cover link cover.
     output=$($CLI items get --id "$FIRST_ITEM_ID" 2>/dev/null)
-    assert_json_expr "items get coverPath matches applied --server-path cover" "d['media'].get('coverPath')=='$APPLIED_COVER_PATH'" "$output"
+    assert_json_expr "items get coverPath matches applied items cover link cover" "d['media'].get('coverPath')=='$APPLIED_COVER_PATH'" "$output"
     $CLI items cover remove --id "$FIRST_ITEM_ID" > /dev/null 2>&1 || true
 fi
 # A path outside the item's libraryFiles (the --file cover under /metadata) is rejected.
-# Test: set the cover via --server-path outside the item's libraryFiles; expect failure with an 'Invalid cover path' error.
+# Test: link the cover via items cover link outside the item's libraryFiles; expect failure with an 'Invalid cover path' error.
 if [ -n "$SERVER_COVER_PATH" ]; then
-    neg_err=$($CLI items cover set --id "$FIRST_ITEM_ID" --server-path "$SERVER_COVER_PATH" 2>&1 >/dev/null) && neg_rc=0 || neg_rc=$?
+    neg_err=$($CLI items cover link --id "$FIRST_ITEM_ID" --path "$SERVER_COVER_PATH" 2>&1 >/dev/null) && neg_rc=0 || neg_rc=$?
     if [ "$neg_rc" -ne 0 ] && echo "$neg_err" | grep -q "Invalid cover path"; then
-        pass "items cover set --server-path rejects path outside item libraryFiles"
+        pass "items cover link rejects path outside item libraryFiles"
     else
-        fail "items cover set --server-path rejects path outside item libraryFiles" "rc=$neg_rc err=${neg_err:0:200}"
+        fail "items cover link rejects path outside item libraryFiles" "rc=$neg_rc err=${neg_err:0:200}"
     fi
+fi
+
+# Permission checks: POST (set) needs update AND upload; PATCH (link) needs update only.
+if [ -n "$LIBFILE_COVER_PATH" ]; then
+    # Test: link the library-file cover as testuser (update, no upload); expect success=True.
+    abs_login testuser testpass
+    output=$($CLI items cover link --id "$FIRST_ITEM_ID" --path "$LIBFILE_COVER_PATH" 2>/dev/null || echo "{}")
+    abs_login root root
+    assert_json_expr "items cover link as testuser (update only) succeeds" "d.get('success')==True" "$output"
+    $CLI items cover remove --id "$FIRST_ITEM_ID" > /dev/null 2>&1 || true
+fi
+
+# Test: link a cover as readonlyuser (no update); expect a 403 naming 'update' permission.
+abs_login readonlyuser readonlypass
+perm_err=$($CLI items cover link --id "$FIRST_ITEM_ID" --path "${LIBFILE_COVER_PATH:-/nonexistent.png}" 2>&1 >/dev/null) && perm_rc=0 || perm_rc=$?
+abs_login root root
+if [ "$perm_rc" -ne 0 ] && echo "$perm_err" | grep -q "'update' permission"; then
+    pass "items cover link as readonlyuser hits 'update' permission denial"
+else
+    fail "items cover link as readonlyuser hits 'update' permission denial" "rc=$perm_rc err=${perm_err:0:200}"
+fi
+
+# Test: set a cover from file as testuser (update, no upload); expect a 403 naming 'update' and 'upload' permission.
+abs_login testuser testpass
+perm_err=$($CLI items cover set --id "$FIRST_ITEM_ID" --file "$COVER_FILE" 2>&1 >/dev/null) && perm_rc=0 || perm_rc=$?
+abs_login root root
+if [ "$perm_rc" -ne 0 ] && echo "$perm_err" | grep -q "'update' and 'upload' permission"; then
+    pass "items cover set --file as testuser (no upload) is denied"
+else
+    fail "items cover set --file as testuser (no upload) is denied" "rc=$perm_rc err=${perm_err:0:200}"
+fi
+
+# Test: set a cover from file as uploadonlyuser (upload, no update); expect a 403 naming 'update' and 'upload' permission.
+abs_login uploadonlyuser uploadonlypass
+perm_err=$($CLI items cover set --id "$FIRST_ITEM_ID" --file "$COVER_FILE" 2>&1 >/dev/null) && perm_rc=0 || perm_rc=$?
+abs_login root root
+if [ "$perm_rc" -ne 0 ] && echo "$perm_err" | grep -q "'update' and 'upload' permission"; then
+    pass "items cover set --file as uploadonlyuser (no update) is denied"
+else
+    fail "items cover set --file as uploadonlyuser (no update) is denied" "rc=$perm_rc err=${perm_err:0:200}"
 fi
 
 # --- Mode 3: --url (POST with {url}; ABS server downloads) ---

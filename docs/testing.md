@@ -60,7 +60,7 @@ instance seeded with 15 books, 6 authors, and 3 series:
 - Items update — single field, multi-field, update from file, all verified via get after write
 - Items batch-update / batch-get — stdin + file inputs
 - Items scan — single-item sync scan
-- Items cover — set via `--file` / `--server-path` / `--url`, get to file and to stdout, remove
+- Items cover — set via `--file` / `--url`, link via `cover link --path`, permission denials (testuser / readonlyuser / uploadonlyuser), get to file and to stdout, remove
 - Series list — pagination, single series get by ID
 - Authors list/get — pagination, filter by name, fetch by ID
 - Authors match / lookup / update / delete / image — Audnexus-backed match,

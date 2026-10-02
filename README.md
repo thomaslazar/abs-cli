@@ -204,7 +204,8 @@ abs-cli config set defaultLibrary <library-id>
 | `items batch-update` | Batch update items (`--input <file>` or `--stdin`) |
 | `items batch-get` | Batch get items by ID (`--input <file>` or `--stdin`) |
 | `items scan --id <id>` | Scan a single item (admin, sync) |
-| `items cover set --id <id> [--url \| --file \| --server-path]` | Apply a cover image |
+| `items cover set --id <id> [--url \| --file]` | Apply a cover image (requires update and upload) |
+| `items cover link --id <id> --path <path>` | Use an image among the item's files as its cover (requires update) |
 | `items cover get --id <id> --output <path>` | Download the cover image |
 | `items cover remove --id <id>` | Remove the cover |
 | `items file download --id <id> --ino <ino> --output <path\|->` | Download a single file of an item (requires download) |
@@ -283,7 +284,7 @@ abs-cli config set defaultLibrary <library-id>
 | `changelog [--all]` | Print release notes from the bundled `CHANGELOG.md` (offline) |
 | `self-test` | Verify binary integrity (AOT validation, no network required) |
 
-Every command supports `--help` with examples and reference sections. Commands that require a non-default ABS permission render a `Permission required:` block at the top of their `--help` (one of `admin`, `update`, `upload`, `download`, `delete`); the absence of that block means any authenticated user can run the command.
+Every command supports `--help` with examples and reference sections. Commands that require a non-default ABS permission render a `Permission required:` block at the top of their `--help` (one or more of `admin`, `update`, `upload`, `download`, `delete` — all listed are required); the absence of that block means any authenticated user can run the command.
 
 Add `--help-full` to see the full help including `Response shape:` blocks. Plain `--help` omits those blocks (printing a one-line pointer instead) to keep output scannable — this CLI is designed for AI-agent consumption where terse default help reduces noise.
 
@@ -351,7 +352,7 @@ tools/
   GenerateNfcTables/         # Generates UnicodeNfc.g.cs from ICU (run manually)
 docker/
   docker-compose.yml  # Local ABS instance for testing
-  seed.sh             # Seed test data (15 audiobooks + 1 multi-ebook fixture, 7 authors, 3 series, 4 users)
+  seed.sh             # Seed test data (15 audiobooks + 1 multi-ebook fixture, 7 authors, 3 series, 5 users)
   smoke-test.sh       # End-to-end CLI smoke tests
 ```
 

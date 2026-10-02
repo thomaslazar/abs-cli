@@ -542,8 +542,9 @@ public static class ItemsCommand
 
     private static Command CreateCoverCommand()
     {
-        var command = new Command("cover", "Manage book covers (apply, fetch, remove)");
+        var command = new Command("cover", "Manage book covers (apply, link, fetch, remove)");
         command.Subcommands.Add(CreateCoverSetCommand());
+        command.Subcommands.Add(CreateCoverLinkCommand());
         command.Subcommands.Add(CreateCoverGetCommand());
         command.Subcommands.Add(CreateCoverRemoveCommand());
         return command;
@@ -554,27 +555,20 @@ public static class ItemsCommand
         var idOption = new Option<string>("--id") { Description = "Library item ID", Required = true };
         var urlOption = new Option<string?>("--url") { Description = "Cover image URL — ABS server downloads it" };
         var fileOption = new Option<string?>("--file") { Description = "Local cover image file to upload" };
-        var serverPathOption = new Option<string?>("--server-path") { Description = "Path of an image already among the item's library files" };
-        var command = new Command("set", "Apply a cover to a library item by URL, local file, or existing server-side path") { idOption, urlOption, fileOption, serverPathOption };
-        command.AddPermissionRequired("upload");
-        command.AddHelpSection("Notes", HelpSectionPosition.Top,
-            "--server-path outside the item's libraryFiles → 500 \"Invalid cover path\" (e.g. a --file cover under /metadata).",
-            "The image is copied to /metadata/items/<id>/ (unless storeCoverWithItem); response cover is the copy.");
+        var command = new Command("set", "Apply a cover to a library item by URL or local file") { idOption, urlOption, fileOption };
+        command.AddPermissionRequired("update", "upload");
         command.AddExamples(
             "abs-cli items cover set --id \"li_abc123\" --url \"https://example.com/cover.jpg\"",
-            "abs-cli items cover set --id \"li_abc123\" --file ./cover.jpg",
-            "abs-cli items cover set --id \"li_abc123\" --server-path \"/audiobooks/Author/Title/cover.jpg\"");
+            "abs-cli items cover set --id \"li_abc123\" --file ./cover.jpg");
         command.AddResponseExample<CoverApplyResponse>();
         command.SetAction(async parseResult =>
         {
             var id = parseResult.GetValue(idOption)!;
             var url = parseResult.GetValue(urlOption);
             var file = parseResult.GetValue(fileOption);
-            var serverPath = parseResult.GetValue(serverPathOption);
-            var sources = new[] { url, file, serverPath }.Count(s => !string.IsNullOrEmpty(s));
-            if (sources != 1)
+            if (string.IsNullOrEmpty(url) == string.IsNullOrEmpty(file))
             {
-                _logger.Error("Specify exactly one of --url, --file, --server-path");
+                _logger.Error("Specify exactly one of --url, --file");
                 Environment.Exit(1);
             }
             var (client, _) = CommandHelper.BuildClient();
@@ -584,19 +578,39 @@ public static class ItemsCommand
             {
                 result = await service.SetByUrlAsync(id, url);
             }
-            else if (!string.IsNullOrEmpty(file))
+            else
             {
                 if (!File.Exists(file))
                 {
                     _logger.Error($"File not found: {file}");
                     Environment.Exit(1);
                 }
-                result = await service.UploadFromFileAsync(id, file);
+                result = await service.UploadFromFileAsync(id, file!);
             }
-            else
-            {
-                result = await service.LinkExistingAsync(id, serverPath!);
-            }
+            ConsoleOutput.WriteJson(result, AppJsonContext.Default.CoverApplyResponse);
+        });
+        return command;
+    }
+
+    private static Command CreateCoverLinkCommand()
+    {
+        var idOption = new Option<string>("--id") { Description = "Library item ID", Required = true };
+        var pathOption = new Option<string>("--path") { Description = "Path of an image already among the item's library files", Required = true };
+        var command = new Command("link", "Use an image already among the item's files as its cover") { idOption, pathOption };
+        command.AddPermissionRequired("update");
+        command.AddHelpSection("Notes", HelpSectionPosition.Top,
+            "Path not in libraryFiles → 500 \"Invalid cover path\" (e.g. a cover applied via cover set --file, stored under /metadata).",
+            "The image is copied to /metadata/items/<id>/ (unless storeCoverWithItem); response cover is the copy.");
+        command.AddExamples(
+            "abs-cli items cover link --id \"li_abc123\" --path \"/audiobooks/Author/Title/cover.jpg\"");
+        command.AddResponseExample<CoverApplyResponse>();
+        command.SetAction(async parseResult =>
+        {
+            var id = parseResult.GetValue(idOption)!;
+            var path = parseResult.GetValue(pathOption)!;
+            var (client, _) = CommandHelper.BuildClient();
+            var service = new CoversService(client);
+            var result = await service.LinkExistingAsync(id, path);
             ConsoleOutput.WriteJson(result, AppJsonContext.Default.CoverApplyResponse);
         });
         return command;
