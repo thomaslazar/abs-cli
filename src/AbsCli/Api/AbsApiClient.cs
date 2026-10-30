@@ -338,7 +338,7 @@ public class AbsApiClient
     // `items cover link` behavior this CLI documents does not
     // hold below 2.37.0. Everything else passed at 2.36.1 (343/344).
     private static readonly string MinSupportedVersion = "2.37.0";
-    private static readonly string MaxTestedVersion = "2.37.1";
+    private static readonly string MaxTestedVersion = "2.37.2";
 
     internal static readonly TimeSpan VersionCheckInterval = TimeSpan.FromHours(24);
 
