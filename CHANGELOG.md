@@ -3,6 +3,30 @@
 All notable changes to abs-cli are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## v1.2.1 — 2026-10-30
+
+Patch release. Adds support for Audiobookshelf 2.37.2 and makes the
+installers verify downloads before replacing an existing binary.
+
+### Highlights
+
+- **Tested against Audiobookshelf 2.37.2.** The supported range is now
+  **2.37.0 — 2.37.2**. 2.37.2 has no API changes that affect abs-cli.
+- **Installers verify checksums.** `install.sh` and `install.ps1` download to
+  a temp dir, check the binary against the release's `SHA256SUMS`, and only
+  then replace the installed binary. A corrupt or truncated download no longer
+  overwrites a working install.
+- **Each release now ships a `SHA256SUMS` file** covering all assets.
+
+### Fixes
+
+- fix: verify release binary checksums during install
+
+### Internal
+
+- chore: raise MaxTestedVersion to 2.37.2
+- ci: publish SHA256SUMS with each release
+
 ## v1.2.0 — 2026-10-02
 
 Minor release with one breaking change. Adds support for Audiobookshelf 2.37.x
