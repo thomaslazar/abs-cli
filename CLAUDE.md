@@ -25,8 +25,11 @@ test: add metadata update assertion to smoke tests
 ## Pre-PR verification
 
 - Run `docker/smoke-test.sh` against the local docker-compose dev stack before opening any PR. Unit tests and `self-test` are not enough — many regressions only surface in the live HTTP path.
-- The compose stack lives at `docker/docker-compose.yml`; bring it up with `cd docker && docker compose up -d`. Run the smoke as `ABS_URL=http://docker-audiobookshelf-1.orb.local:80 bash docker/smoke-test.sh` — OrbStack resolves `<container-name>.orb.local` from inside the dev container, and unlike the container IP it survives the network being recreated by `down -v`. The `host.docker.internal` default does not work here, and neither does the bare container name.
-- Seed first if the stack is freshly created: `ABS_URL=http://<container-ip>:80 bash docker/seed.sh`.
+- The compose stack lives at `docker/docker-compose.yml`; bring it up with `cd docker && docker compose up -d`. How the dev container reaches ABS depends on the engine:
+  - **Kiri:** the scripts' default `http://host.docker.internal:13378` works, so leave `ABS_URL` unset: `bash docker/smoke-test.sh`. The container IP, the bare container name and `<name>.kiri.localhost` (resolves to `::1`) do not work.
+  - **OrbStack:** `ABS_URL=http://docker-audiobookshelf-1.orb.local:80 bash docker/smoke-test.sh`. The `host.docker.internal` default and the bare container name do not work there.
+  - Both survive the network being recreated by `down -v`; a hunted container IP does not.
+- Seed first if the stack is freshly created: `bash docker/seed.sh` (same `ABS_URL` rule).
 - **`smoke-test.sh` is not idempotent — every run needs a freshly seeded stack.** It creates and deletes library items, so a second run against the same stack fails on item-count assertions and the multi-ebook fixture's primary/supplementary state. Those failures are artifacts of the dirty stack, not regressions. To re-run (e.g. after a late code change): `docker compose down -v && docker compose up -d`, wait for `/healthcheck`, re-run `seed.sh`, then smoke.
 - Only mark "smoke test passed" in a PR description after actually running it. Do not copy the checkbox forward unverified.
 
