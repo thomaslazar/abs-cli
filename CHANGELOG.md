@@ -3,6 +3,30 @@
 All notable changes to abs-cli are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## v1.2.2 — 2026-11-19
+
+Patch release. Adds support for Audiobookshelf 2.38.0.
+
+### Highlights
+
+- **Tested against Audiobookshelf 2.38.0.** The supported range is now
+  **2.37.0 — 2.38.0**. 2.38.0 changes no response shapes or endpoints that
+  abs-cli uses. Its permission changes already match abs-cli's help tags:
+  `collections remove` needs `update`, and the server checks `upload` on
+  `items cover set` and `upload` before it reads the file.
+- **Updated Unicode normalization tables.** Filename normalization now
+  covers the newer Unicode compositions known to ICU 78.
+
+### Fixes
+
+- fix: regenerate nfc tables from icu 78
+
+### Internal
+
+- chore: raise MaxTestedVersion to 2.38.0
+- chore: support kiri as dev docker engine
+- test: skip encode-m4b already-processing check when merge wins the race
+
 ## v1.2.1 — 2026-10-30
 
 Patch release. Adds support for Audiobookshelf 2.37.2 and makes the
