@@ -1815,8 +1815,17 @@ done
 
 if [ "$encode_pending" = "1" ]; then
     output=$($CLI items encode-m4b start --id "$ENCODE_ITEM_ID" --codec copy 2>&1 || true)
+    pending_count=$($CLI tasks list 2>/dev/null | python3 -c "
+import sys, json
+tasks = json.load(sys.stdin).get('tasks', [])
+print(sum(1 for t in tasks if t.get('action') == 'encode-m4b' and (t.get('data') or {}).get('libraryItemId') == '$ENCODE_ITEM_ID' and not t.get('isFinished')))
+" 2>/dev/null || echo 0)
     if echo "$output" | grep -q "already processing"; then
         pass "encode-m4b start: second start while pending returns 400"
+    elif echo "$output" | grep -q '"action": "encode-m4b"' && [ "${pending_count:-0}" -lt 2 ]; then
+        # Race: the first merge finished between the pending check and the second start.
+        # A broken guard would leave two merges pending, which still fails below.
+        skip "encode-m4b start: second start while pending returns 400" "first merge finished before the second start"
     else
         fail "encode-m4b start: second start while pending returns 400" "missing 'already processing'"
         echo "    response: ${output:0:200}"
