@@ -46,25 +46,25 @@ public class VersionCheckCadenceTests
     [Fact]
     public void VersionWarning_AboveCeiling_NamesBothVersions()
     {
-        var warning = AbsApiClient.VersionWarning("2.38.0", previous: null);
+        var warning = AbsApiClient.VersionWarning("2.39.0", previous: null);
         Assert.NotNull(warning);
+        Assert.Contains("2.39.0", warning);
         Assert.Contains("2.38.0", warning);
-        Assert.Contains("2.37.2", warning);
         Assert.Contains("Check for a newer abs-cli", warning);
     }
 
     [Fact]
     public void VersionWarning_AboveCeilingAfterChange_NamesTheChange()
     {
-        var warning = AbsApiClient.VersionWarning("2.38.0", previous: "2.36.0");
+        var warning = AbsApiClient.VersionWarning("2.39.0", previous: "2.36.0");
         Assert.NotNull(warning);
-        Assert.Contains("moved from ABS 2.36.0 to 2.38.0", warning);
+        Assert.Contains("moved from ABS 2.36.0 to 2.39.0", warning);
     }
 
     [Fact]
     public void VersionWarning_SameVersionAsBefore_DoesNotClaimAChange()
     {
-        var warning = AbsApiClient.VersionWarning("2.38.0", previous: "2.38.0");
+        var warning = AbsApiClient.VersionWarning("2.39.0", previous: "2.39.0");
         Assert.NotNull(warning);
         Assert.DoesNotContain("moved from", warning);
     }
